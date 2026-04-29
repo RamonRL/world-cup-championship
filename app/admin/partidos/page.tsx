@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { formatDateTime } from "@/lib/utils";
 import { deleteMatch } from "@/app/admin/calendario/actions";
 
 export const metadata = { title: "Resultados · Admin" };
@@ -47,7 +48,7 @@ export default async function AdminMatchesPage() {
             {matchRows.map((m) => (
               <TableRow key={m.id}>
                 <TableCell className="text-xs">
-                  {new Date(m.scheduledAt).toLocaleString("es-ES", {
+                  {formatDateTime(m.scheduledAt, {
                     day: "2-digit",
                     month: "short",
                     hour: "2-digit",

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Calendario" };
 
@@ -66,7 +67,7 @@ export default async function CalendarPage() {
                   </div>
                   <p className="text-xs text-[var(--color-muted-foreground)]">
                     Cierre predicción ·{" "}
-                    {new Date(d.predictionDeadlineAt).toLocaleString("es-ES")}
+                    {formatDateTime(d.predictionDeadlineAt)}
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -78,7 +79,7 @@ export default async function CalendarPage() {
                         <Card className="transition-colors hover:border-[var(--color-primary)]/40">
                           <CardHeader className="flex flex-row items-center justify-between p-4">
                             <span className="text-xs text-[var(--color-muted-foreground)]">
-                              {new Date(m.scheduledAt).toLocaleString("es-ES", {
+                              {formatDateTime(m.scheduledAt, {
                                 day: "2-digit",
                                 month: "short",
                                 hour: "2-digit",

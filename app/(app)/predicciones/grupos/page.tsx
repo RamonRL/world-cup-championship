@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { Users } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/utils";
 import { GroupRankingForm } from "./group-ranking-form";
 
 export const metadata = { title: "Posiciones por grupo · Predicciones" };
@@ -80,7 +81,7 @@ export default async function PredictGroupsPage() {
         title="Posiciones por grupo"
         description={
           open
-            ? `Cierra ${KICKOFF.toLocaleString("es-ES")}. 3 pts exacto, 1 pt adyacente, +1 si aciertas top-2 en cualquier orden.`
+            ? `Cierra ${formatDateTime(KICKOFF)}. 3 pts exacto, 1 pt adyacente, +1 si aciertas top-2 en cualquier orden.`
             : "Predicción cerrada. Sólo puedes consultar lo que enviaste."
         }
       />

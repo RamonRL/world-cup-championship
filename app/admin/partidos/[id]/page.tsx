@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { matchScorers, matches, players, teams } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
+import { formatDateTime } from "@/lib/utils";
 import { ResultForm } from "./result-form";
 
 export default async function AdminMatchResultPage({
@@ -49,7 +50,7 @@ export default async function AdminMatchResultPage({
       <PageHeader
         eyebrow={match.stage.toUpperCase()}
         title={`${home?.name ?? "—"} vs ${away?.name ?? "—"}`}
-        description={`Código ${match.code} · ${new Date(match.scheduledAt).toLocaleString("es-ES")}${match.venue ? ` · ${match.venue}` : ""}`}
+        description={`Código ${match.code} · ${formatDateTime(match.scheduledAt)}${match.venue ? ` · ${match.venue}` : ""}`}
       />
       <ResultForm
         match={{

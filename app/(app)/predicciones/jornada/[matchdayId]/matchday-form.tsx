@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDateTime } from "@/lib/utils";
 import { saveMatchdayPredictions, type FormState } from "./actions";
 
 const initial: FormState = { ok: false };
@@ -96,7 +97,7 @@ export function MatchdayPredictionForm({
                   {m.stage}
                 </Badge>
                 <span className="text-xs text-[var(--color-muted-foreground)]">
-                  {new Date(m.scheduledAt).toLocaleString("es-ES", {
+                  {formatDateTime(m.scheduledAt, {
                     day: "2-digit",
                     month: "short",
                     hour: "2-digit",

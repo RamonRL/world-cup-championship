@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
-import { initials } from "@/lib/utils";
+import { formatDateTime, initials } from "@/lib/utils";
 import { banUser, deleteMessage } from "@/app/(app)/chat/actions";
 import { Trash2, UserX } from "lucide-react";
 
@@ -68,7 +68,7 @@ export default async function AdminChatPage() {
                       </Badge>
                     ) : null}
                     <span className="text-xs text-[var(--color-muted-foreground)]">
-                      {new Date(m.createdAt).toLocaleString("es-ES")}
+                      {formatDateTime(m.createdAt)}
                     </span>
                   </div>
                   <p

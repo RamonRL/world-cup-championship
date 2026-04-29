@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PageHeader } from "@/components/shell/page-header";
 import { ChatThread } from "@/app/(app)/chat/chat-thread";
 import { requireUser } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/utils";
 
 export default async function MatchDetailPage({
   params,
@@ -71,7 +72,7 @@ export default async function MatchDetailPage({
       <PageHeader
         eyebrow={match.stage.toUpperCase()}
         title={`${home?.name ?? "—"} vs ${away?.name ?? "—"}`}
-        description={`${new Date(match.scheduledAt).toLocaleString("es-ES")}${match.venue ? ` · ${match.venue}` : ""}`}
+        description={`${formatDateTime(match.scheduledAt)}${match.venue ? ` · ${match.venue}` : ""}`}
       />
 
       <Card>

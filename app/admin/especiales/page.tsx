@@ -4,6 +4,7 @@ import { specialPredictions } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shell/page-header";
+import { formatDateTime } from "@/lib/utils";
 import { ResolveSpecialForm } from "./resolve-form";
 
 export const metadata = { title: "Especiales · Admin" };
@@ -32,7 +33,7 @@ export default async function AdminSpecialsPage() {
                   </Badge>
                   <CardTitle className="text-base">{s.question}</CardTitle>
                   <CardDescription>
-                    Cierra: {new Date(s.closesAt).toLocaleString("es-ES")}
+                    Cierra: {formatDateTime(s.closesAt)}
                   </CardDescription>
                 </div>
                 {s.resolvedValueJson ? (

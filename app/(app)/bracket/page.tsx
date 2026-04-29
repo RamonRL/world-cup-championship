@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { Swords, Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Bracket" };
 
@@ -94,7 +95,7 @@ export default async function BracketPage() {
                     <Card key={m.id}>
                       <CardHeader className="flex flex-row items-center justify-between p-3">
                         <span className="text-xs text-[var(--color-muted-foreground)]">
-                          {new Date(m.scheduledAt).toLocaleString("es-ES", {
+                          {formatDateTime(m.scheduledAt, {
                             day: "2-digit",
                             month: "short",
                             hour: "2-digit",

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Resultados por jornada · Predicciones" };
 
@@ -43,7 +44,7 @@ export default async function MatchdaysIndex() {
                       </Badge>
                       <CardTitle className="mt-1 text-base">{d.name}</CardTitle>
                       <CardDescription className="text-xs">
-                        Cierra {new Date(d.predictionDeadlineAt).toLocaleString("es-ES")}
+                        Cierra {formatDateTime(d.predictionDeadlineAt)}
                       </CardDescription>
                     </div>
                     <Badge variant={open ? "success" : "outline"} className="text-[0.65rem]">

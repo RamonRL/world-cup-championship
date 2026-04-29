@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
-import { initials } from "@/lib/utils";
+import { formatDate, initials } from "@/lib/utils";
 import { UserActions } from "./user-actions";
 
 export const metadata = { title: "Usuarios · Admin" };
@@ -67,7 +67,7 @@ export default async function AdminUsersPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-xs text-[var(--color-muted-foreground)]">
-                    {new Date(u.createdAt).toLocaleDateString("es-ES")}
+                    {formatDate(u.createdAt)}
                   </TableCell>
                   <TableCell className="text-right">
                     <UserActions

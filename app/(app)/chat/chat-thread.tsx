@@ -5,7 +5,7 @@ import { Send, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { initials } from "@/lib/utils";
+import { formatTime, initials } from "@/lib/utils";
 import { deleteMessage, sendMessage, type FormState } from "./actions";
 
 const initial: FormState = { ok: false };
@@ -80,7 +80,7 @@ export function ChatThread({
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold">{display}</span>
                       <span className="text-[0.65rem] text-[var(--color-muted-foreground)]">
-                        {new Date(m.createdAt).toLocaleTimeString("es-ES", {
+                        {formatTime(m.createdAt, {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}

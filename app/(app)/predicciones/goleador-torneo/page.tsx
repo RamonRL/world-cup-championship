@@ -5,6 +5,7 @@ import { Target } from "lucide-react";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireUser } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/utils";
 import { TopScorerForm } from "./top-scorer-form";
 
 export const metadata = { title: "Bota de Oro · Predicciones" };
@@ -51,7 +52,7 @@ export default async function PredictTopScorerPage() {
         title="Bota de Oro"
         description={
           open
-            ? `Tu candidato al máximo goleador. Cierra ${KICKOFF.toLocaleString("es-ES")}.`
+            ? `Tu candidato al máximo goleador. Cierra ${formatDateTime(KICKOFF)}.`
             : "Cerrada."
         }
       />

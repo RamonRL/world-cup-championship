@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { formatDateTime } from "@/lib/utils";
 import { MatchdayDialog } from "./matchday-dialog";
 import { deleteMatchday } from "./actions";
 
@@ -52,7 +53,7 @@ export default async function AdminCalendarioPage() {
                     </Badge>
                     <CardTitle>{d.name}</CardTitle>
                     <CardDescription>
-                      Cierre: {new Date(d.predictionDeadlineAt).toLocaleString("es-ES")}
+                      Cierre: {formatDateTime(d.predictionDeadlineAt)}
                     </CardDescription>
                   </div>
                   <span className="font-display text-3xl text-[var(--color-muted-foreground)]">

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireUser } from "@/lib/auth/guards";
 import { isPredictionOpen } from "@/lib/visibility";
+import { formatDateTime } from "@/lib/utils";
 import { MatchdayPredictionForm } from "./matchday-form";
 
 export default async function PredictMatchdayPage({
@@ -70,8 +71,8 @@ export default async function PredictMatchdayPage({
         title={day.name}
         description={
           open
-            ? `Cierra el ${new Date(day.predictionDeadlineAt).toLocaleString("es-ES")}. Después no podrás editar.`
-            : `Cierre pasado: ${new Date(day.predictionDeadlineAt).toLocaleString("es-ES")}.`
+            ? `Cierra el ${formatDateTime(day.predictionDeadlineAt)}. Después no podrás editar.`
+            : `Cierre pasado: ${formatDateTime(day.predictionDeadlineAt)}.`
         }
       />
       <MatchdayPredictionForm

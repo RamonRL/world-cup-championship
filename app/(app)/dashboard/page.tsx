@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/utils";
 
 const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z";
 
@@ -189,7 +190,7 @@ export default async function DashboardPage() {
           label="Próximo cierre"
           value={
             upcomingMatchdays[0]
-              ? new Date(upcomingMatchdays[0].predictionDeadlineAt).toLocaleString("es-ES", {
+              ? formatDateTime(upcomingMatchdays[0].predictionDeadlineAt, {
                   day: "2-digit",
                   month: "short",
                   hour: "2-digit",
@@ -206,7 +207,7 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle>Predicciones pre-torneo</CardTitle>
             <CardDescription>
-              Cierra todo antes del kickoff ({kickoff.toLocaleString("es-ES")}).
+              Cierra todo antes del kickoff ({formatDateTime(kickoff)}).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireUser } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/utils";
 import { MatchScorerForm } from "./scorer-form";
 
 export default async function PredictMatchScorerPage({
@@ -61,7 +62,7 @@ export default async function PredictMatchScorerPage({
         title={`${home?.name ?? "—"} vs ${away?.name ?? "—"}`}
         description={
           open
-            ? `Cierra ${new Date(match.scheduledAt).toLocaleString("es-ES")}.`
+            ? `Cierra ${formatDateTime(match.scheduledAt)}.`
             : "Predicción cerrada."
         }
       />

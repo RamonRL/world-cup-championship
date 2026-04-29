@@ -5,6 +5,7 @@ import { Swords } from "lucide-react";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireUser } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/utils";
 import { BracketBuilder } from "./bracket-builder";
 
 export const metadata = { title: "Bracket · Predicciones" };
@@ -55,7 +56,7 @@ export default async function PredictBracketPage() {
         title="Bracket eliminatorio"
         description={
           open
-            ? `Selecciona los equipos que avanzan en cada ronda. Cierra ${KICKOFF.toLocaleString("es-ES")}.`
+            ? `Selecciona los equipos que avanzan en cada ronda. Cierra ${formatDateTime(KICKOFF)}.`
             : "Bracket cerrado."
         }
       />

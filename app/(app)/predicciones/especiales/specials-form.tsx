@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDateTime } from "@/lib/utils";
 import { saveSpecialPredictions, type FormState } from "./actions";
 
 const initial: FormState = { ok: false };
@@ -71,7 +72,7 @@ export function SpecialsForm({ specials, existing, players, teams }: Props) {
                     </Badge>
                     <CardTitle className="text-base">{s.question}</CardTitle>
                     <CardDescription>
-                      Cierra {new Date(s.closesAt).toLocaleString("es-ES")}
+                      Cierra {formatDateTime(s.closesAt)}
                     </CardDescription>
                   </div>
                   {!open ? (

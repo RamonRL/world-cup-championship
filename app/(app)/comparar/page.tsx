@@ -19,7 +19,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
-import { initials } from "@/lib/utils";
+import { formatDateTime, initials } from "@/lib/utils";
 import { OpponentPicker } from "./opponent-picker";
 
 export const metadata = { title: "Comparar predicciones" };
@@ -138,7 +138,7 @@ export default async function CompararPage({
             <CardTitle>Aún privadas</CardTitle>
             <CardDescription>
               Las predicciones de grupos, bracket y Bota de Oro se hacen públicas el{" "}
-              {KICKOFF.toLocaleString("es-ES")}.
+              {formatDateTime(KICKOFF)}.
             </CardDescription>
           </CardHeader>
         </Card>

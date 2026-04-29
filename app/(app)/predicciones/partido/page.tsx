@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireUser } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Goleador por partido · Predicciones" };
 
@@ -76,7 +77,7 @@ export default async function PredictMatchScorerIndex() {
                       {m.stage}
                     </Badge>
                     <span className="text-xs text-[var(--color-muted-foreground)]">
-                      {new Date(m.scheduledAt).toLocaleString("es-ES", {
+                      {formatDateTime(m.scheduledAt, {
                         day: "2-digit",
                         month: "short",
                         hour: "2-digit",

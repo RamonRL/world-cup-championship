@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { formatDateTime } from "@/lib/utils";
 import { MatchDialog } from "./match-dialog";
 import { deleteMatch } from "../actions";
 
@@ -57,7 +58,7 @@ export default async function AdminMatchdayDetailPage({
       <PageHeader
         eyebrow={day.stage.toUpperCase()}
         title={day.name}
-        description={`Cierre de predicción: ${new Date(day.predictionDeadlineAt).toLocaleString("es-ES")}`}
+        description={`Cierre de predicción: ${formatDateTime(day.predictionDeadlineAt)}`}
         actions={<MatchDialog matchdayId={day.id} stage={day.stage} teams={allTeams} groups={allGroups} />}
       />
 
@@ -88,7 +89,7 @@ export default async function AdminMatchdayDetailPage({
                   <TableCell className="font-medium">{away?.name ?? "—"}</TableCell>
                   <TableCell className="space-y-0.5 text-xs">
                     <div className="text-[var(--color-foreground)]">
-                      {new Date(m.scheduledAt).toLocaleString("es-ES")}
+                      {formatDateTime(m.scheduledAt)}
                     </div>
                     <div className="text-[var(--color-muted-foreground)]">{m.venue ?? "—"}</div>
                   </TableCell>

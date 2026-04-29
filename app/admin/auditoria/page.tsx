@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
+import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Auditoría · Admin" };
 
@@ -42,7 +43,7 @@ export default async function AuditPage() {
               return (
                 <TableRow key={l.id}>
                   <TableCell className="text-xs">
-                    {new Date(l.createdAt).toLocaleString("es-ES")}
+                    {formatDateTime(l.createdAt)}
                   </TableCell>
                   <TableCell className="text-sm">
                     {admin?.nickname ?? admin?.email ?? "—"}
