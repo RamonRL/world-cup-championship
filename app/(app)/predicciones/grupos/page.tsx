@@ -1,0 +1,104 @@
+import { asc, eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { groups, predGroupRanking, teams } from "@/lib/db/schema";
+import { PageHeader } from "@/components/shell/page-header";
+import { EmptyState } from "@/components/shell/empty-state";
+import { Users } from "lucide-react";
+import { requireUser } from "@/lib/auth/guards";
+import { GroupRankingForm } from "./group-ranking-form";
+
+export const metadata = { title: "Posiciones por grupo · Predicciones" };
+
+const KICKOFF = new Date(
+  process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z",
+);
+
+export default async function PredictGroupsPage() {
+  const me = await requireUser();
+  const [allGroups, allTeams, myPreds] = await Promise.all([
+    db.select().from(groups).orderBy(asc(groups.code)),
+    db.select().from(teams).orderBy(asc(teams.name)),
+    db.select().from(predGroupRanking).where(eq(predGroupRanking.userId, me.id)),
+  ]);
+
+  const teamsByGroup = new Map<number, typeof allTeams>();
+  for (const t of allTeams) {
+    if (t.groupId == null) continue;
+    const arr = teamsByGroup.get(t.groupId) ?? [];
+    arr.push(t);
+    teamsByGroup.set(t.groupId, arr);
+  }
+
+  const predByGroup = new Map(myPreds.map((p) => [p.groupId, p]));
+  const open = KICKOFF.getTime() > Date.now();
+  const ready = allGroups.length === 12 && Array.from(teamsByGroup.values()).every((arr) => arr.length === 4);
+
+  if (!ready) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Categoría 1"
+          title="Posiciones por grupo"
+          description="Ordena las 4 selecciones de cada grupo. 3 pts exacto, 1 pt adyacente, +1 si aciertas top-2 en cualquier orden."
+        />
+        <EmptyState
+          icon={<Users className="size-5" />}
+          title="Selecciones aún sin asignar a grupos"
+          description="Cuando el admin termine de asignar las 48 selecciones a sus 12 grupos, aquí podrás predecir las posiciones."
+        />
+      </div>
+    );
+  }
+
+  const initialOrders: Record<number, number[]> = {};
+  for (const g of allGroups) {
+    const groupTeams = teamsByGroup.get(g.id) ?? [];
+    const pred = predByGroup.get(g.id);
+    if (
+      pred &&
+      pred.pos1TeamId &&
+      pred.pos2TeamId &&
+      pred.pos3TeamId &&
+      pred.pos4TeamId
+    ) {
+      initialOrders[g.id] = [
+        pred.pos1TeamId,
+        pred.pos2TeamId,
+        pred.pos3TeamId,
+        pred.pos4TeamId,
+      ];
+    } else {
+      // default: alphabetical (could be coefficient-sorted later)
+      initialOrders[g.id] = groupTeams.map((t) => t.id);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Categoría 1"
+        title="Posiciones por grupo"
+        description={
+          open
+            ? `Cierra ${KICKOFF.toLocaleString("es-ES")}. 3 pts exacto, 1 pt adyacente, +1 si aciertas top-2 en cualquier orden.`
+            : "Predicción cerrada. Sólo puedes consultar lo que enviaste."
+        }
+      />
+      <GroupRankingForm
+        open={open}
+        groups={allGroups.map((g) => ({
+          id: g.id,
+          code: g.code,
+          name: g.name,
+          teams: (teamsByGroup.get(g.id) ?? []).map((t) => ({
+            id: t.id,
+            code: t.code,
+            name: t.name,
+            flagUrl: t.flagUrl,
+          })),
+          initialOrder: initialOrders[g.id],
+        }))}
+      />
+    </div>
+  );
+}

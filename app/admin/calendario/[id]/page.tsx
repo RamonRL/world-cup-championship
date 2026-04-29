@@ -1,0 +1,127 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ArrowLeft, ClipboardCheck } from "lucide-react";
+import { and, asc, eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { groups, matches, matchdays, teams } from "@/lib/db/schema";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { PageHeader } from "@/components/shell/page-header";
+import { MatchDialog } from "./match-dialog";
+
+export default async function AdminMatchdayDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const matchdayId = Number(id);
+  if (!Number.isFinite(matchdayId)) notFound();
+  const [day] = await db
+    .select()
+    .from(matchdays)
+    .where(eq(matchdays.id, matchdayId))
+    .limit(1);
+  if (!day) notFound();
+
+  const [matchRows, allTeams, allGroups] = await Promise.all([
+    db
+      .select()
+      .from(matches)
+      .where(eq(matches.matchdayId, matchdayId))
+      .orderBy(asc(matches.scheduledAt)),
+    db.select().from(teams).orderBy(asc(teams.name)),
+    db.select().from(groups).orderBy(asc(groups.code)),
+  ]);
+
+  const teamById = new Map(allTeams.map((t) => [t.id, t]));
+
+  return (
+    <div className="space-y-6">
+      <Button asChild variant="ghost" size="sm" className="px-0 text-[var(--color-muted-foreground)]">
+        <Link href="/admin/calendario">
+          <ArrowLeft />
+          Volver al calendario
+        </Link>
+      </Button>
+      <PageHeader
+        eyebrow={day.stage.toUpperCase()}
+        title={day.name}
+        description={`Cierre de predicción: ${new Date(day.predictionDeadlineAt).toLocaleString("es-ES")}`}
+        actions={<MatchDialog matchdayId={day.id} stage={day.stage} teams={allTeams} groups={allGroups} />}
+      />
+
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-24">Código</TableHead>
+              <TableHead>Local</TableHead>
+              <TableHead className="w-12 text-center">vs</TableHead>
+              <TableHead>Visitante</TableHead>
+              <TableHead>Sede / Hora</TableHead>
+              <TableHead>Resultado</TableHead>
+              <TableHead className="w-20 text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {matchRows.map((m) => {
+              const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
+              const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
+              return (
+                <TableRow key={m.id}>
+                  <TableCell className="font-mono text-xs">{m.code}</TableCell>
+                  <TableCell className="font-medium">{home?.name ?? "—"}</TableCell>
+                  <TableCell className="text-center text-[var(--color-muted-foreground)]">
+                    vs
+                  </TableCell>
+                  <TableCell className="font-medium">{away?.name ?? "—"}</TableCell>
+                  <TableCell className="space-y-0.5 text-xs">
+                    <div className="text-[var(--color-foreground)]">
+                      {new Date(m.scheduledAt).toLocaleString("es-ES")}
+                    </div>
+                    <div className="text-[var(--color-muted-foreground)]">{m.venue ?? "—"}</div>
+                  </TableCell>
+                  <TableCell>
+                    {m.status === "finished" ? (
+                      <Badge variant="success">
+                        {m.homeScore} – {m.awayScore}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">Programado</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild variant="ghost" size="icon">
+                      <Link href={`/admin/partidos/${m.id}`} aria-label="Resultado">
+                        <ClipboardCheck className="size-4" />
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {matchRows.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="py-12 text-center text-sm text-[var(--color-muted-foreground)]"
+                >
+                  No hay partidos en esta jornada todavía. Añade el primero.
+                </TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
