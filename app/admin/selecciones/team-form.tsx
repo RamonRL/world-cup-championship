@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -131,18 +131,7 @@ export function TeamForm({ open, onOpenChange, team, groups }: Props) {
           ) : null}
           <DialogFooter className="gap-2">
             {editing ? (
-              <form
-                action={async (fd) => {
-                  fd.set("id", team!.id.toString());
-                  await deleteTeam(fd);
-                  onOpenChange(false);
-                }}
-              >
-                <Button type="submit" variant="destructive" size="sm">
-                  <Trash2 />
-                  Eliminar
-                </Button>
-              </form>
+              <DeleteTeamButton teamId={team!.id} onDeleted={() => onOpenChange(false)} />
             ) : null}
             <Button
               type="button"
@@ -159,5 +148,41 @@ export function TeamForm({ open, onOpenChange, team, groups }: Props) {
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DeleteTeamButton({
+  teamId,
+  onDeleted,
+}: {
+  teamId: number;
+  onDeleted: () => void;
+}) {
+  const [pending, start] = useTransition();
+  return (
+    <Button
+      type="button"
+      variant="destructive"
+      size="sm"
+      disabled={pending}
+      onClick={() => {
+        if (
+          !confirm(
+            "¿Eliminar selección? También se borrarán sus jugadores y predicciones asociadas.",
+          )
+        ) {
+          return;
+        }
+        start(async () => {
+          const fd = new FormData();
+          fd.set("id", teamId.toString());
+          await deleteTeam(fd);
+          onDeleted();
+        });
+      }}
+    >
+      <Trash2 />
+      {pending ? "Eliminando…" : "Eliminar"}
+    </Button>
   );
 }

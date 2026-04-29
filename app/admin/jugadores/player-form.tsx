@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,18 +123,7 @@ export function PlayerForm({ open, onOpenChange, teamId, player }: Props) {
           {state.error ? <p className="text-sm text-[var(--color-danger)]">{state.error}</p> : null}
           <DialogFooter className="gap-2">
             {editing ? (
-              <form
-                action={async (fd) => {
-                  fd.set("id", player!.id.toString());
-                  await deletePlayer(fd);
-                  onOpenChange(false);
-                }}
-              >
-                <Button type="submit" variant="destructive" size="sm">
-                  <Trash2 />
-                  Eliminar
-                </Button>
-              </form>
+              <DeletePlayerButton playerId={player!.id} onDeleted={() => onOpenChange(false)} />
             ) : null}
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
@@ -147,5 +136,35 @@ export function PlayerForm({ open, onOpenChange, teamId, player }: Props) {
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DeletePlayerButton({
+  playerId,
+  onDeleted,
+}: {
+  playerId: number;
+  onDeleted: () => void;
+}) {
+  const [pending, start] = useTransition();
+  return (
+    <Button
+      type="button"
+      variant="destructive"
+      size="sm"
+      disabled={pending}
+      onClick={() => {
+        if (!confirm("¿Eliminar este jugador?")) return;
+        start(async () => {
+          const fd = new FormData();
+          fd.set("id", playerId.toString());
+          await deletePlayer(fd);
+          onDeleted();
+        });
+      }}
+    >
+      <Trash2 />
+      {pending ? "Eliminando…" : "Eliminar"}
+    </Button>
   );
 }
