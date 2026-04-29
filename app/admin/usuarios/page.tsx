@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
 import { initials } from "@/lib/utils";
+import { UserActions } from "./user-actions";
 
 export const metadata = { title: "Usuarios · Admin" };
 
@@ -24,7 +25,7 @@ export default async function AdminUsersPage() {
       <PageHeader
         eyebrow="Admin"
         title="Usuarios"
-        description="Lista de participantes registrados. La gestión de baneo y cambios de rol llegará en una próxima iteración."
+        description="Participantes registrados. Cambia su rol o suspéndelos / reactívalos según necesites."
       />
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
         <Table>
@@ -33,7 +34,9 @@ export default async function AdminUsersPage() {
               <TableHead>Participante</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Rol</TableHead>
+              <TableHead>Estado</TableHead>
               <TableHead>Registro</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -56,8 +59,23 @@ export default async function AdminUsersPage() {
                   <TableCell>
                     <Badge variant={u.role === "admin" ? "danger" : "outline"}>{u.role}</Badge>
                   </TableCell>
+                  <TableCell>
+                    {u.bannedAt ? (
+                      <Badge variant="danger">Suspendido</Badge>
+                    ) : (
+                      <Badge variant="success">Activo</Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs text-[var(--color-muted-foreground)]">
                     {new Date(u.createdAt).toLocaleDateString("es-ES")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <UserActions
+                      userId={u.id}
+                      role={u.role}
+                      banned={u.bannedAt != null}
+                      displayName={display}
+                    />
                   </TableCell>
                 </TableRow>
               );
@@ -65,7 +83,7 @@ export default async function AdminUsersPage() {
             {users.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={4}
+                  colSpan={6}
                   className="py-12 text-center text-sm text-[var(--color-muted-foreground)]"
                 >
                   Aún no hay usuarios registrados.
