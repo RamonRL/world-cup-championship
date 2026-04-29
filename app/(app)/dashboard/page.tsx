@@ -7,7 +7,6 @@ import {
   matches,
   pointsLedger,
   predGroupRanking,
-  predMatchResult,
   predMatchScorer,
   predTournamentTopScorer,
   profiles,
@@ -113,7 +112,7 @@ export default async function DashboardPage() {
   const pendingScorers = pendingScorerCount[0]?.c ?? 0;
 
   // Pre-tournament forms still pending?
-  const [groupCount, topScorerSet, predMatchCountRow, recentMatch] = await Promise.all([
+  const [groupCount, topScorerSet, recentMatch] = await Promise.all([
     db
       .select({ c: sql<number>`count(*)::int` })
       .from(predGroupRanking)
@@ -123,10 +122,6 @@ export default async function DashboardPage() {
       .from(predTournamentTopScorer)
       .where(eq(predTournamentTopScorer.userId, me.id))
       .limit(1),
-    db
-      .select({ c: sql<number>`count(*)::int` })
-      .from(predMatchResult)
-      .where(eq(predMatchResult.userId, me.id)),
     db
       .select()
       .from(matches)
@@ -225,12 +220,6 @@ export default async function DashboardPage() {
               done={false}
               label="Predicciones especiales"
               href="/predicciones/especiales"
-              soft
-            />
-            <PreCheck
-              done={(predMatchCountRow[0]?.c ?? 0) > 0}
-              label="Bracket eliminatorio"
-              href="/predicciones/bracket"
               soft
             />
           </CardContent>

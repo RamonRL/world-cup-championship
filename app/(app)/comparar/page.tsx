@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime, initials } from "@/lib/utils";
+import { getBracketStatus } from "@/lib/bracket-state";
 import { OpponentPicker } from "./opponent-picker";
 
 export const metadata = { title: "Comparar predicciones" };
@@ -61,7 +62,11 @@ export default async function CompararPage({
 
   const opponent = vsId ? allUsers.find((u) => u.id === vsId) ?? null : allUsers[0];
 
+  // Group rankings + Bota de Oro se hacen públicos al kickoff del torneo.
+  // Bracket sólo cuando arranca R32.
   const tournamentPredsPublic = KICKOFF.getTime() <= Date.now();
+  const bracketStatus = await getBracketStatus();
+  const bracketPublic = bracketStatus.state === "closed";
 
   const [myGroups, opponentGroups, allGroups, allTeams, allPlayers, myChamp, oppChamp, myTop, oppTop] = await Promise.all([
     db.select().from(predGroupRanking).where(eq(predGroupRanking.userId, me.id)),
@@ -137,8 +142,9 @@ export default async function CompararPage({
           <CardHeader>
             <CardTitle>Aún privadas</CardTitle>
             <CardDescription>
-              Las predicciones de grupos, bracket y Bota de Oro se hacen públicas el{" "}
-              {formatDateTime(KICKOFF)}.
+              Las predicciones de grupos y Bota de Oro se hacen públicas el{" "}
+              {formatDateTime(KICKOFF)}. El bracket eliminatorio se publicará al
+              empezar la primera ronda de dieciseisavos.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -180,6 +186,11 @@ export default async function CompararPage({
 
           <section className="space-y-3">
             <h2 className="font-display text-2xl">Bota de Oro & Campeón</h2>
+            {!bracketPublic ? (
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                El campeón se desvelará cuando empiecen los dieciseisavos.
+              </p>
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-2">
               <Card>
                 <CardHeader>
@@ -192,7 +203,11 @@ export default async function CompararPage({
                   />
                   <Pair
                     label="Campeón"
-                    value={teamById.get(myChampionTeamId ?? -1)?.name ?? "—"}
+                    value={
+                      bracketPublic
+                        ? teamById.get(myChampionTeamId ?? -1)?.name ?? "—"
+                        : "(privado hasta R32)"
+                    }
                   />
                 </CardContent>
               </Card>
@@ -211,7 +226,11 @@ export default async function CompararPage({
                   />
                   <Pair
                     label="Campeón"
-                    value={teamById.get(oppChampionTeamId ?? -1)?.name ?? "—"}
+                    value={
+                      bracketPublic
+                        ? teamById.get(oppChampionTeamId ?? -1)?.name ?? "—"
+                        : "(privado hasta R32)"
+                    }
                   />
                 </CardContent>
               </Card>

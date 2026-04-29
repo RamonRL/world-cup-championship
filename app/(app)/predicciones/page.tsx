@@ -26,7 +26,7 @@ const sections = [
     label: "Bracket eliminatorio",
     icon: Swords,
     description:
-      "Predice quién pasa cada ronda: 2 → 4 → 7 → 10 → 20 puntos por equipo correcto desde 1/16 hasta el campeón.",
+      "Disponible al cerrar la fase de grupos. Predice quién avanza cada ronda con los 32 clasificados: 2 → 4 → 7 → 10 → 20 pts hasta el campeón.",
   },
   {
     href: "/predicciones/goleador-torneo",
