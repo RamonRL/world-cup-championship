@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ClipboardCheck } from "lucide-react";
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, matches, matchdays, teams } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
+import { DeleteButton } from "@/components/admin/delete-button";
 import { MatchDialog } from "./match-dialog";
+import { deleteMatch } from "../actions";
 
 export default async function AdminMatchdayDetailPage({
   params,
@@ -69,7 +71,7 @@ export default async function AdminMatchdayDetailPage({
               <TableHead>Visitante</TableHead>
               <TableHead>Sede / Hora</TableHead>
               <TableHead>Resultado</TableHead>
-              <TableHead className="w-20 text-right">Acciones</TableHead>
+              <TableHead className="w-32 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -100,11 +102,18 @@ export default async function AdminMatchdayDetailPage({
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button asChild variant="ghost" size="icon">
-                      <Link href={`/admin/partidos/${m.id}`} aria-label="Resultado">
-                        <ClipboardCheck className="size-4" />
-                      </Link>
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button asChild variant="ghost" size="icon">
+                        <Link href={`/admin/partidos/${m.id}`} aria-label="Resultado">
+                          <ClipboardCheck className="size-4" />
+                        </Link>
+                      </Button>
+                      <DeleteButton
+                        action={deleteMatch}
+                        id={m.id}
+                        confirmMessage={`¿Eliminar el partido ${m.code}? Se borrarán también goleadores y predicciones.`}
+                      />
+                    </div>
                   </TableCell>
                 </TableRow>
               );

@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
+import { DeleteButton } from "@/components/admin/delete-button";
 import { MatchdayDialog } from "./matchday-dialog";
+import { deleteMatchday } from "./actions";
 
 export const metadata = { title: "Calendario · Admin" };
 
@@ -57,16 +59,23 @@ export default async function AdminCalendarioPage() {
                     {count}
                   </span>
                 </CardHeader>
-                <CardContent className="flex justify-between text-sm">
+                <CardContent className="flex items-center justify-between text-sm">
                   <span className="text-[var(--color-muted-foreground)]">
                     {count} partidos
                   </span>
-                  <Link
-                    href={`/admin/calendario/${d.id}`}
-                    className="flex items-center gap-1 text-[var(--color-primary)] hover:underline"
-                  >
-                    Gestionar partidos <ArrowRight className="size-4" />
-                  </Link>
+                  <div className="flex items-center gap-1">
+                    <DeleteButton
+                      action={deleteMatchday}
+                      id={d.id}
+                      confirmMessage={`¿Eliminar la jornada "${d.name}"? Sus ${count} partidos quedarán sin jornada asignada (no se borran).`}
+                    />
+                    <Link
+                      href={`/admin/calendario/${d.id}`}
+                      className="flex items-center gap-1 text-[var(--color-primary)] hover:underline"
+                    >
+                      Gestionar partidos <ArrowRight className="size-4" />
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             );

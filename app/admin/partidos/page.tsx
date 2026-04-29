@@ -13,6 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
+import { DeleteButton } from "@/components/admin/delete-button";
+import { deleteMatch } from "@/app/admin/calendario/actions";
 
 export const metadata = { title: "Resultados · Admin" };
 
@@ -82,12 +84,19 @@ export default async function AdminMatchesPage() {
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Link
-                    href={`/admin/partidos/${m.id}`}
-                    className="inline-flex items-center gap-1 text-sm text-[var(--color-primary)] hover:underline"
-                  >
-                    Editar <ArrowRight className="size-3.5" />
-                  </Link>
+                  <div className="flex items-center justify-end gap-2">
+                    <DeleteButton
+                      action={deleteMatch}
+                      id={m.id}
+                      confirmMessage={`¿Eliminar el partido ${m.code}? Se borrarán también goleadores y predicciones.`}
+                    />
+                    <Link
+                      href={`/admin/partidos/${m.id}`}
+                      className="inline-flex items-center gap-1 text-sm text-[var(--color-primary)] hover:underline"
+                    >
+                      Editar <ArrowRight className="size-3.5" />
+                    </Link>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
