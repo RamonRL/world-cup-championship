@@ -1,13 +1,13 @@
 "use client";
 
 import { TeamFlag } from "@/components/brand/team-flag";
+import { ScoreStepper } from "@/components/forms/score-stepper";
 import { useActionState, useState } from "react";
 import { Lock, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -121,33 +121,23 @@ export function MatchdayPredictionForm({
                   })}
                 </span>
               </CardHeader>
-              <CardContent className="space-y-3 p-4 pt-0">
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <CardContent className="space-y-2.5 p-4 pt-0">
+                <div className="flex items-center justify-between gap-3">
                   <TeamSide team={m.home} />
-                  <Input
-                    type="number"
-                    min={0}
-                    max={40}
+                  <ScoreStepper
                     value={p.homeScore}
-                    onChange={(e) =>
-                      update(m.id, { homeScore: Number(e.target.value) })
-                    }
+                    onChange={(v) => update(m.id, { homeScore: v })}
                     disabled={!open}
-                    className="h-12 w-14 text-center font-display text-xl"
+                    ariaLabel={`Goles ${m.home?.name ?? "local"}`}
                   />
                 </div>
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <div className="flex items-center justify-between gap-3">
                   <TeamSide team={m.away} />
-                  <Input
-                    type="number"
-                    min={0}
-                    max={40}
+                  <ScoreStepper
                     value={p.awayScore}
-                    onChange={(e) =>
-                      update(m.id, { awayScore: Number(e.target.value) })
-                    }
+                    onChange={(v) => update(m.id, { awayScore: v })}
                     disabled={!open}
-                    className="h-12 w-14 text-center font-display text-xl"
+                    ariaLabel={`Goles ${m.away?.name ?? "visitante"}`}
                   />
                 </div>
                 {isKnockout ? (
