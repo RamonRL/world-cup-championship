@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Crown, ListOrdered } from "lucide-react";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -126,9 +127,10 @@ export default async function RankingPage() {
           const isMe = p.user.id === me.id;
           const display = p.user.nickname || p.user.email.split("@")[0];
           return (
-            <div
+            <Link
               key={p.user.id}
-              className={`relative overflow-hidden rounded-xl border bg-[var(--color-surface)] p-5 ${
+              href={`/ranking/${p.user.id}`}
+              className={`group relative overflow-hidden rounded-xl border bg-[var(--color-surface)] p-5 transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/60 ${
                 realPosition === 1
                   ? "border-[var(--color-arena)]/60 sm:order-2 sm:-translate-y-2"
                   : "border-[var(--color-border)]"
@@ -184,7 +186,7 @@ export default async function RankingPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </Link>
           );
         })}
       </section>
@@ -230,34 +232,36 @@ export default async function RankingPage() {
               const isMe = r.user.id === me.id;
               const display = r.user.nickname || r.user.email.split("@")[0];
               return (
-                <li
-                  key={r.user.id}
-                  className={`grid grid-cols-[64px_1fr_80px_80px_80px] items-center gap-2 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0 ${
-                    isMe ? "bg-[color-mix(in_oklch,var(--color-arena)_6%,transparent)]" : ""
-                  }`}
-                >
-                  <span className="font-display text-2xl tabular text-[var(--color-muted-foreground)]">
-                    {position.toString().padStart(2, "0")}
-                  </span>
-                  <span className="flex items-center gap-3 truncate">
-                    <Avatar className="size-8 border border-[var(--color-border)]">
-                      {r.user.avatarUrl ? <AvatarImage src={r.user.avatarUrl} alt="" /> : null}
-                      <AvatarFallback>{initials(display)}</AvatarFallback>
-                    </Avatar>
-                    <span className="truncate text-sm font-medium">{display}</span>
-                    {isMe ? (
-                      <Badge variant="default" className="ml-1">
-                        Tú
-                      </Badge>
-                    ) : null}
-                  </span>
-                  <span className="text-right font-display tabular text-xl">{r.totalPoints}</span>
-                  <span className="hidden text-right text-sm tabular text-[var(--color-muted-foreground)] sm:inline">
-                    {r.exactScoresCount}
-                  </span>
-                  <span className="hidden text-right text-sm tabular text-[var(--color-muted-foreground)] sm:inline">
-                    {r.knockoutPoints}
-                  </span>
+                <li key={r.user.id}>
+                  <Link
+                    href={`/ranking/${r.user.id}`}
+                    className={`grid grid-cols-[64px_1fr_80px_80px_80px] items-center gap-2 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0 transition hover:bg-[var(--color-surface-2)] ${
+                      isMe ? "bg-[color-mix(in_oklch,var(--color-arena)_6%,transparent)]" : ""
+                    }`}
+                  >
+                    <span className="font-display text-2xl tabular text-[var(--color-muted-foreground)]">
+                      {position.toString().padStart(2, "0")}
+                    </span>
+                    <span className="flex items-center gap-3 truncate">
+                      <Avatar className="size-8 border border-[var(--color-border)]">
+                        {r.user.avatarUrl ? <AvatarImage src={r.user.avatarUrl} alt="" /> : null}
+                        <AvatarFallback>{initials(display)}</AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-sm font-medium">{display}</span>
+                      {isMe ? (
+                        <Badge variant="default" className="ml-1">
+                          Tú
+                        </Badge>
+                      ) : null}
+                    </span>
+                    <span className="text-right font-display tabular text-xl">{r.totalPoints}</span>
+                    <span className="hidden text-right text-sm tabular text-[var(--color-muted-foreground)] sm:inline">
+                      {r.exactScoresCount}
+                    </span>
+                    <span className="hidden text-right text-sm tabular text-[var(--color-muted-foreground)] sm:inline">
+                      {r.knockoutPoints}
+                    </span>
+                  </Link>
                 </li>
               );
             })}
