@@ -76,7 +76,7 @@ export function BracketTree({ matches, myPicks }: Props) {
       className="relative w-full overflow-x-auto pb-2"
       style={{ ["--bracket-gap" as string]: "18px" }}
     >
-      <div className="grid min-h-[1140px] min-w-[920px] grid-cols-[1fr_1fr_1fr_1fr_minmax(170px,1.1fr)_1fr_1fr_1fr_1fr] gap-x-4">
+      <div className="grid min-h-[1040px] min-w-[920px] grid-cols-[1fr_1fr_1fr_1fr_minmax(170px,1.1fr)_1fr_1fr_1fr_1fr] gap-x-4">
         {/* LEFT HALF */}
         <Column stage="r32" side="left" matches={matches} myPicks={myPicks} order={STRUCTURE.r32.left} />
         <Column stage="r16" side="left" matches={matches} myPicks={myPicks} order={STRUCTURE.r16.left} />
@@ -281,6 +281,7 @@ function BracketCard({
         score={match?.homeScore ?? null}
         isWinner={winnerId != null && home?.id === winnerId}
         isMyPick={home != null && advancePool?.has(home.id) === true}
+        compact
       />
       <div className="border-t border-dashed border-[var(--color-border)]" />
       <TeamLine
@@ -288,6 +289,7 @@ function BracketCard({
         score={match?.awayScore ?? null}
         isWinner={winnerId != null && away?.id === winnerId}
         isMyPick={away != null && advancePool?.has(away.id) === true}
+        compact
       />
       {match?.wentToPens ? (
         <p className="border-t border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-0.5 text-center font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
@@ -310,16 +312,19 @@ function TeamLine({
   score,
   isWinner,
   isMyPick,
+  compact,
 }: {
   team: TeamLite | null;
   score: number | null;
   isWinner: boolean;
   isMyPick: boolean;
+  compact?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-2 px-2 py-1.5",
+        "flex items-center justify-between gap-2 px-2",
+        compact ? "py-1" : "py-1.5",
         isWinner && "bg-[color-mix(in_oklch,var(--color-success)_10%,transparent)]",
       )}
     >
