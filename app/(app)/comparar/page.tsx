@@ -1,6 +1,6 @@
 import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
-import { asc, eq, ne } from "drizzle-orm";
+import { asc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   groups,
@@ -66,40 +66,47 @@ export default async function CompararPage({
   const bracketStatus = await getBracketStatus();
   const bracketPublic = bracketStatus.state === "closed";
 
-  const [myGroups, opponentGroups, allGroups, allTeams, allPlayers, myChamp, oppChamp, myTop, oppTop] = await Promise.all([
-    db.select().from(predGroupRanking).where(eq(predGroupRanking.userId, me.id)),
-    opponent
-      ? db.select().from(predGroupRanking).where(eq(predGroupRanking.userId, opponent.id))
-      : Promise.resolve([]),
-    db.select().from(groups).orderBy(asc(groups.code)),
-    db.select().from(teams),
-    db.select().from(players),
-    db
-      .select()
-      .from(predBracketSlot)
-      .where(eq(predBracketSlot.userId, me.id)),
-    opponent
-      ? db
-          .select()
-          .from(predBracketSlot)
-          .where(eq(predBracketSlot.userId, opponent.id))
-      : Promise.resolve([]),
-    db
-      .select()
-      .from(predTournamentTopScorer)
-      .where(eq(predTournamentTopScorer.userId, me.id))
-      .limit(1),
-    opponent
-      ? db
-          .select()
-          .from(predTournamentTopScorer)
-          .where(eq(predTournamentTopScorer.userId, opponent.id))
-          .limit(1)
-      : Promise.resolve([]),
-  ]);
+  const [myGroups, opponentGroups, allGroups, allTeams, myChamp, oppChamp, myTop, oppTop] =
+    await Promise.all([
+      db.select().from(predGroupRanking).where(eq(predGroupRanking.userId, me.id)),
+      opponent
+        ? db.select().from(predGroupRanking).where(eq(predGroupRanking.userId, opponent.id))
+        : Promise.resolve([]),
+      db.select().from(groups).orderBy(asc(groups.code)),
+      db.select().from(teams),
+      db.select().from(predBracketSlot).where(eq(predBracketSlot.userId, me.id)),
+      opponent
+        ? db.select().from(predBracketSlot).where(eq(predBracketSlot.userId, opponent.id))
+        : Promise.resolve([]),
+      db
+        .select()
+        .from(predTournamentTopScorer)
+        .where(eq(predTournamentTopScorer.userId, me.id))
+        .limit(1),
+      opponent
+        ? db
+            .select()
+            .from(predTournamentTopScorer)
+            .where(eq(predTournamentTopScorer.userId, opponent.id))
+            .limit(1)
+        : Promise.resolve([]),
+    ]);
+
+  // Solo cargar los 2 jugadores que de verdad necesitamos (los picks de Bota
+  // de Oro). Antes traíamos toda la tabla `players` (~1300 filas tras el seed
+  // de plantillas) sólo para hacer dos lookups — ese era el origen de los
+  // timeouts en /comparar.
+  const topScorerIds = [
+    myTop[0]?.playerId ?? null,
+    oppTop[0]?.playerId ?? null,
+  ].filter((x): x is number => x != null);
+  const topPlayerRows =
+    topScorerIds.length > 0
+      ? await db.select().from(players).where(inArray(players.id, topScorerIds))
+      : [];
 
   const teamById = new Map(allTeams.map((t) => [t.id, t]));
-  const playerById = new Map(allPlayers.map((p) => [p.id, p]));
+  const playerById = new Map(topPlayerRows.map((p) => [p.id, p]));
 
   function findGroupPred(rows: typeof myGroups, groupId: number) {
     return rows.find((r) => r.groupId === groupId) ?? null;

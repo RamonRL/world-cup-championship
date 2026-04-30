@@ -1,4 +1,4 @@
-import { desc } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { auditLog, profiles } from "@/lib/db/schema";
 import {
@@ -17,7 +17,10 @@ export const metadata = { title: "Auditoría · Admin" };
 export default async function AuditPage() {
   const logs = await db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(200);
   const adminIds = Array.from(new Set(logs.map((l) => l.adminId).filter((x): x is string => !!x)));
-  const admins = adminIds.length > 0 ? await db.select().from(profiles) : [];
+  const admins =
+    adminIds.length > 0
+      ? await db.select().from(profiles).where(inArray(profiles.id, adminIds))
+      : [];
   const adminById = new Map(admins.map((a) => [a.id, a]));
 
   return (
