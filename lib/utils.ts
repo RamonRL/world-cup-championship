@@ -24,12 +24,31 @@ export function formatPoints(value: number) {
 
 const SPAIN_TZ = "Europe/Madrid";
 
+// Defaults intentionally omit seconds — partidos y deadlines se hablan en
+// minutos, no en segundos. Pasar options explícitas las pisa.
+const DEFAULT_DATETIME_OPTS: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+};
+
+const DEFAULT_TIME_OPTS: Intl.DateTimeFormatOptions = {
+  hour: "2-digit",
+  minute: "2-digit",
+};
+
 export function formatDateTime(
   value: Date | string | number,
   options: Intl.DateTimeFormatOptions = {},
 ) {
   const date = value instanceof Date ? value : new Date(value);
-  return date.toLocaleString("es-ES", { timeZone: SPAIN_TZ, ...options });
+  return date.toLocaleString("es-ES", {
+    timeZone: SPAIN_TZ,
+    ...DEFAULT_DATETIME_OPTS,
+    ...options,
+  });
 }
 
 export function formatDate(
@@ -45,5 +64,9 @@ export function formatTime(
   options: Intl.DateTimeFormatOptions = {},
 ) {
   const date = value instanceof Date ? value : new Date(value);
-  return date.toLocaleTimeString("es-ES", { timeZone: SPAIN_TZ, ...options });
+  return date.toLocaleTimeString("es-ES", {
+    timeZone: SPAIN_TZ,
+    ...DEFAULT_TIME_OPTS,
+    ...options,
+  });
 }

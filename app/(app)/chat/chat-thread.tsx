@@ -39,14 +39,17 @@ export function ChatThread({
 }) {
   const [state, action, pending] = useActionState(sendMessage, initial);
   const formRef = useRef<HTMLFormElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (state.ok) formRef.current?.reset();
   }, [state.ok]);
 
+  // Mantén la conversación pegada abajo dentro de su contenedor sin
+  // disparar scrollIntoView, que arrastra a la página entera al cargar.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length]);
 
   return (
@@ -60,7 +63,7 @@ export function ChatThread({
           },
         ]}
       />
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <p className="py-12 text-center font-editorial text-base italic text-[var(--color-muted-foreground)]">
             Aún sin mensajes. Sé el primero.
@@ -126,7 +129,6 @@ export function ChatThread({
             })}
           </ul>
         )}
-        <div ref={bottomRef} />
       </div>
       <form
         ref={formRef}

@@ -6,6 +6,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   chatMessages,
+  groups,
   matchScorers,
   matches,
   players,
@@ -147,6 +148,14 @@ export default async function MatchDetailPage({
   const home = match.homeTeamId ? teamById.get(match.homeTeamId) : null;
   const away = match.awayTeamId ? teamById.get(match.awayTeamId) : null;
 
+  // For fase de grupos matches, both teams share the same group; surface it
+  // in the header so the user knows where the match sits.
+  const groupId = match.stage === "group" ? home?.groupId ?? away?.groupId ?? null : null;
+  const [matchGroup] =
+    groupId != null
+      ? await db.select().from(groups).where(eq(groups.id, groupId)).limit(1)
+      : [];
+
   const sortedScorers = [...scorerRows].sort(
     (a, b) => (a.minute ?? 999) - (b.minute ?? 999),
   );
@@ -247,11 +256,16 @@ export default async function MatchDetailPage({
 
         <div className="relative space-y-6 p-6 sm:p-10">
           <header className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="h-px w-8 bg-[var(--color-arena)]" />
               <span className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
                 {STAGE_LABEL[match.stage]} · {match.code}
               </span>
+              {matchGroup ? (
+                <span className="rounded-sm border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-arena)]">
+                  Grupo {matchGroup.code}
+                </span>
+              ) : null}
             </div>
             {match.status === "live" ? (
               <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-arena)]/60 bg-[color-mix(in_oklch,var(--color-arena)_14%,transparent)] px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
@@ -299,6 +313,8 @@ export default async function MatchDetailPage({
       {/* My pick */}
       <MyPickPanel
         match={match}
+        home={home ?? null}
+        away={away ?? null}
         myResult={myResult}
         myScorerPlayer={myScorer ? playerById.get(myScorer.playerId) ?? null : null}
         actualScorers={sortedScorers}
@@ -520,12 +536,16 @@ export default async function MatchDetailPage({
 
 function MyPickPanel({
   match,
+  home,
+  away,
   myResult,
   myScorerPlayer,
   actualScorers,
   teamById,
 }: {
   match: typeof matches.$inferSelect;
+  home: typeof teams.$inferSelect | null;
+  away: typeof teams.$inferSelect | null;
   myResult: typeof predMatchResult.$inferSelect | null;
   myScorerPlayer: typeof players.$inferSelect | null;
   actualScorers: (typeof matchScorers.$inferSelect)[];
@@ -557,6 +577,32 @@ function MyPickPanel({
     myScorerPlayer != null &&
     actualScorers.find((s) => s.isFirstGoal)?.playerId === myScorerPlayer.id;
 
+  const scoreBadges =
+    finished && myResult != null
+      ? [
+          exactScore
+            ? { variant: "success" as const, text: "Exacto +5" }
+            : winnerCorrect
+              ? { variant: "success" as const, text: "Ganador +2" }
+              : { variant: "outline" as const, text: "Falló" },
+          ...(myResult.willGoToPens && match.wentToPens
+            ? [{ variant: "success" as const, text: "Penaltis +2" }]
+            : []),
+        ]
+      : [];
+
+  const scorerBadges =
+    finished && myScorerPlayer
+      ? [
+          scorerHit
+            ? { variant: "success" as const, text: "Marcó +4" }
+            : { variant: "outline" as const, text: "No marcó" },
+          ...(firstGoalHit
+            ? [{ variant: "success" as const, text: "Primer gol +2" }]
+            : []),
+        ]
+      : [];
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3">
@@ -584,65 +630,33 @@ function MyPickPanel({
         ) : null}
       </CardHeader>
       <CardContent>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <PickRow
-            label="Marcador"
-            primary={
-              myResult != null
-                ? `${myResult.homeScore} · ${myResult.awayScore}`
+        <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
+          <ScoreboardPick
+            home={home}
+            away={away}
+            homeScore={myResult?.homeScore ?? null}
+            awayScore={myResult?.awayScore ?? null}
+            willGoToPens={myResult?.willGoToPens ?? false}
+            winnerName={
+              myResult?.winnerTeamId
+                ? teamById.get(myResult.winnerTeamId)?.name ?? null
                 : null
             }
-            extra={
-              myResult?.willGoToPens ? "predigo penaltis" : null
-            }
-            badges={
-              finished
-                ? [
-                    exactScore
-                      ? { variant: "success" as const, text: "Exacto +5" }
-                      : winnerCorrect
-                        ? { variant: "success" as const, text: "Ganador +2" }
-                        : { variant: "outline" as const, text: "Falló" },
-                    ...(myResult?.willGoToPens && match.wentToPens
-                      ? [{ variant: "success" as const, text: "Penaltis +2" }]
-                      : []),
-                  ]
-                : []
-            }
-            winnerHint={
+            winnerCorrect={
               finished &&
               myResult?.winnerTeamId != null &&
               match.winnerTeamId != null
                 ? myResult.winnerTeamId === match.winnerTeamId
-                  ? `Clasificado: ${teamById.get(myResult.winnerTeamId)?.name ?? "—"} ✓ +3`
-                  : `Clasificado: ${teamById.get(myResult.winnerTeamId)?.name ?? "—"} ✗`
-                : myResult?.winnerTeamId != null
-                  ? `Clasificado: ${teamById.get(myResult.winnerTeamId)?.name ?? "—"}`
-                  : null
-            }
-          />
-          <PickRow
-            label="Goleador"
-            primary={myScorerPlayer?.name ?? null}
-            extra={
-              myScorerPlayer
-                ? `#${myScorerPlayer.jerseyNumber ?? "—"} · ${
-                    teamById.get(myScorerPlayer.teamId)?.code ?? ""
-                  }`
                 : null
             }
-            badges={
-              finished && myScorerPlayer
-                ? [
-                    scorerHit
-                      ? { variant: "success" as const, text: "Marcó +4" }
-                      : { variant: "outline" as const, text: "No marcó" },
-                    ...(firstGoalHit
-                      ? [{ variant: "success" as const, text: "Primer gol +2" }]
-                      : []),
-                  ]
-                : []
+            badges={scoreBadges}
+          />
+          <ScorerPick
+            player={myScorerPlayer}
+            teamCode={
+              myScorerPlayer ? teamById.get(myScorerPlayer.teamId)?.code ?? null : null
             }
+            badges={scorerBadges}
           />
         </div>
       </CardContent>
@@ -650,41 +664,130 @@ function MyPickPanel({
   );
 }
 
-function PickRow({
-  label,
-  primary,
-  extra,
+function ScoreboardPick({
+  home,
+  away,
+  homeScore,
+  awayScore,
+  willGoToPens,
+  winnerName,
+  winnerCorrect,
   badges,
-  winnerHint,
 }: {
-  label: string;
-  primary: string | null;
-  extra?: string | null;
-  badges?: { variant: "success" | "outline"; text: string }[];
-  winnerHint?: string | null;
+  home: typeof teams.$inferSelect | null;
+  away: typeof teams.$inferSelect | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  willGoToPens: boolean;
+  winnerName: string | null;
+  winnerCorrect: boolean | null;
+  badges: { variant: "success" | "outline"; text: string }[];
 }) {
+  const noPick = homeScore == null || awayScore == null;
   return (
-    <div className="space-y-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
+    <div className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
       <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-        {label}
+        Marcador
       </p>
-      <p
-        className={`font-display tabular text-3xl tracking-tight ${
-          primary ? "" : "text-[var(--color-muted-foreground)]"
-        }`}
-      >
-        {primary ?? "Sin pick"}
-      </p>
-      {extra ? (
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-          {extra}
+      {noPick ? (
+        <p className="font-display tabular text-2xl tracking-tight text-[var(--color-muted-foreground)]">
+          Sin pick
+        </p>
+      ) : (
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-4">
+          <ScoreboardSide team={home} align="end" />
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Digit value={homeScore} />
+            <span className="font-display text-2xl text-[var(--color-muted-foreground)]">
+              –
+            </span>
+            <Digit value={awayScore} />
+          </div>
+          <ScoreboardSide team={away} align="start" />
+        </div>
+      )}
+      {willGoToPens ? (
+        <p className="text-center font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+          + Penaltis
         </p>
       ) : null}
-      {winnerHint ? (
-        <p className="text-[0.7rem] text-[var(--color-muted-foreground)]">{winnerHint}</p>
+      {winnerName ? (
+        <p className="border-t border-dashed border-[var(--color-border)] pt-2 text-center text-[0.7rem] text-[var(--color-muted-foreground)]">
+          Clasificado: <span className="font-medium text-[var(--color-foreground)]">{winnerName}</span>
+          {winnerCorrect === true ? " ✓ +3" : winnerCorrect === false ? " ✗" : ""}
+        </p>
       ) : null}
-      {badges && badges.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5 pt-1">
+      {badges.length > 0 ? (
+        <div className="flex flex-wrap justify-center gap-1.5 border-t border-dashed border-[var(--color-border)] pt-2">
+          {badges.map((b, i) => (
+            <Badge key={i} variant={b.variant} className="text-[0.55rem]">
+              {b.text}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function Digit({ value }: { value: number }) {
+  return (
+    <span className="grid h-14 min-w-[3rem] place-items-center rounded-md border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_10%,transparent)] px-2 font-display tabular text-5xl leading-none tracking-tight text-[var(--color-arena)] glow-arena sm:h-16 sm:min-w-[3.5rem] sm:text-6xl">
+      {value}
+    </span>
+  );
+}
+
+function ScoreboardSide({
+  team,
+  align,
+}: {
+  team: typeof teams.$inferSelect | null;
+  align: "start" | "end";
+}) {
+  const cls =
+    align === "end" ? "items-end text-right" : "items-start text-left";
+  return (
+    <div className={`flex min-w-0 flex-col gap-1 ${cls}`}>
+      <TeamFlag code={team?.code} size={28} />
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+        {team?.code ?? "—"}
+      </p>
+      <p className="truncate font-display text-sm leading-tight">{team?.name ?? "TBD"}</p>
+    </div>
+  );
+}
+
+function ScorerPick({
+  player,
+  teamCode,
+  badges,
+}: {
+  player: typeof players.$inferSelect | null;
+  teamCode: string | null;
+  badges: { variant: "success" | "outline"; text: string }[];
+}) {
+  return (
+    <div className="space-y-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+        Goleador
+      </p>
+      <p
+        className={`font-display tabular text-2xl leading-tight tracking-tight ${
+          player ? "" : "text-[var(--color-muted-foreground)]"
+        }`}
+      >
+        {player?.name ?? "Sin pick"}
+      </p>
+      {player ? (
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+          {player.jerseyNumber != null ? `#${player.jerseyNumber} · ` : ""}
+          {teamCode ?? ""}
+          {player.position ? ` · ${player.position}` : ""}
+        </p>
+      ) : null}
+      {badges.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 border-t border-dashed border-[var(--color-border)] pt-2">
           {badges.map((b, i) => (
             <Badge key={i} variant={b.variant} className="text-[0.55rem]">
               {b.text}

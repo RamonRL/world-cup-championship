@@ -3,7 +3,7 @@ import { TeamFlag } from "@/components/brand/team-flag";
 import { CalendarDays } from "lucide-react";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { matchdays, matches, teams } from "@/lib/db/schema";
+import { groups, matchdays, matches, teams } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
@@ -22,15 +22,17 @@ const STAGE_LABEL: Record<string, string> = {
 };
 
 export default async function CalendarPage() {
-  const [days, matchRows, allTeams] = await Promise.all([
+  const [days, matchRows, allTeams, allGroups] = await Promise.all([
     db
       .select()
       .from(matchdays)
       .orderBy(asc(matchdays.orderIndex), asc(matchdays.predictionDeadlineAt)),
     db.select().from(matches).orderBy(asc(matches.scheduledAt)),
     db.select().from(teams),
+    db.select().from(groups),
   ]);
   const teamById = new Map(allTeams.map((t) => [t.id, t]));
+  const groupById = new Map(allGroups.map((g) => [g.id, g]));
   const matchesByDay = new Map<number | null, typeof matchRows>();
   for (const m of matchRows) {
     const arr = matchesByDay.get(m.matchdayId) ?? [];
@@ -85,7 +87,19 @@ export default async function CalendarPage() {
                     dayMatches.map((m) => {
                       const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
                       const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
-                      return <MatchCard key={m.id} m={m} home={home} away={away} />;
+                      const groupCode =
+                        m.stage === "group" && home?.groupId
+                          ? groupById.get(home.groupId)?.code ?? null
+                          : null;
+                      return (
+                        <MatchCard
+                          key={m.id}
+                          m={m}
+                          home={home}
+                          away={away}
+                          groupCode={groupCode}
+                        />
+                      );
                     })
                   )}
                 </div>
@@ -112,10 +126,12 @@ function MatchCard({
   m,
   home,
   away,
+  groupCode,
 }: {
   m: MatchRow;
   home: { name: string; code: string; flagUrl: string | null } | null | undefined;
   away: { name: string; code: string; flagUrl: string | null } | null | undefined;
+  groupCode: string | null;
 }) {
   const status =
     m.status === "finished" ? "FINAL" : m.status === "live" ? "EN VIVO" : "PROGRAMADO";
@@ -126,15 +142,23 @@ function MatchCard({
     >
       {/* Top bar — match code + status */}
       <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2">
-        <span className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-          {m.code} ·{" "}
-          {formatDateTime(m.scheduledAt, {
-            weekday: "short",
-            day: "2-digit",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+        <span className="flex flex-wrap items-center gap-2 font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+          <span>{m.code}</span>
+          {groupCode ? (
+            <span className="rounded-sm border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.6rem] tracking-[0.18em] text-[var(--color-arena)]">
+              Grupo {groupCode}
+            </span>
+          ) : null}
+          <span className="opacity-60">·</span>
+          <span>
+            {formatDateTime(m.scheduledAt, {
+              weekday: "short",
+              day: "2-digit",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
         </span>
         <Badge
           variant={
