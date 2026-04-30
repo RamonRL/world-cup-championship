@@ -22,18 +22,10 @@ import {
 } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shell/page-header";
-import { ScoringBox, type ScoringSection } from "@/components/brand/scoring-box";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
 import { computeMatchdayStates, type Stage } from "@/lib/matchday-state";
 import { getBracketStatus } from "@/lib/bracket-state";
-import {
-  BRACKET_SCORING,
-  GROUPS_SCORING,
-  MATCH_SCORING,
-  SPECIALS_SCORING,
-  TOP_SCORER_SCORING,
-} from "@/lib/scoring/copy";
 
 export const metadata = { title: "Mis predicciones" };
 
@@ -151,7 +143,6 @@ export default async function PrediccionesHub() {
             icon={<Users className="size-5" />}
             label="Posiciones por grupo"
             description="Ordena las 4 selecciones de cada grupo del 1º al 4º."
-            scoring={GROUPS_SCORING}
             statusBadge={
               groupPredCount === 12
                 ? { variant: "success", text: "Completo" }
@@ -166,7 +157,6 @@ export default async function PrediccionesHub() {
             icon={<Target className="size-5" />}
             label="Bota de Oro"
             description="Tu candidato al máximo goleador del torneo."
-            scoring={TOP_SCORER_SCORING}
             statusBadge={
               topScorerPred
                 ? { variant: "success", text: "Pick enviado" }
@@ -181,7 +171,6 @@ export default async function PrediccionesHub() {
             icon={<Sparkles className="size-5" />}
             label="Especiales"
             description="Balón de Oro, Guante, anfitrión más lejos…"
-            scoring={SPECIALS_SCORING}
             statusBadge={
               answeredSpecials >= totalSpecials && totalSpecials > 0
                 ? { variant: "success", text: "Completo" }
@@ -236,7 +225,6 @@ export default async function PrediccionesHub() {
           </p>
         ) : (
           <div className="space-y-4">
-            <ScoringBox sections={MATCH_SCORING} />
             {featured ? (
               <FeaturedMatchday day={featured} />
             ) : waitingDays.length > 0 ? (
@@ -308,7 +296,6 @@ function CategoryCard({
   icon,
   label,
   description,
-  scoring,
   statusBadge,
   done,
   locked,
@@ -318,7 +305,6 @@ function CategoryCard({
   icon: React.ReactNode;
   label: string;
   description: string;
-  scoring: ScoringSection[];
   statusBadge: { variant: "success" | "warning"; text: string };
   done: boolean;
   locked: boolean;
@@ -363,8 +349,7 @@ function CategoryCard({
         <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)]">
           {description}
         </p>
-        <ScoringBox sections={scoring} dense className="mt-auto" />
-        <Badge variant={statusBadge.variant} className="self-start">
+        <Badge variant={statusBadge.variant} className="mt-auto self-start">
           {statusBadge.text}
         </Badge>
       </div>
@@ -407,9 +392,9 @@ function BracketCard({
             </span>
             <div>
               <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                Cat. 04 · Bracket eliminatorio
+                Cat. 04
               </p>
-              <h3 className="font-display text-3xl tracking-tight">32 → 16 → 8 → 4 → 2 → 1</h3>
+              <h3 className="font-display text-3xl tracking-tight">Fase final</h3>
             </div>
           </header>
           {status === "waiting" ? (
@@ -438,7 +423,6 @@ function BracketCard({
                 }.`
               : "Bracket cerrado. Los dieciseisavos ya arrancaron."}
         </p>
-        <ScoringBox sections={BRACKET_SCORING} dense />
       </div>
     </article>
   );
