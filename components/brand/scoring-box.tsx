@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ScoringRule = {
@@ -26,102 +27,101 @@ type Props = {
   dense?: boolean;
   /** Footer note (e.g. "Máximo 12 pts por grupo"). */
   footnote?: string;
+  /** Whether the box renders open by default. Defaults to false (closed). */
+  defaultOpen?: boolean;
   className?: string;
 };
 
 /**
- * Visual breakdown of the scoring rules for a category. Shows each rule
- * as a `[N pts]` pill alongside its description so the player understands
- * exactly what they earn before predicting.
- *
- * Two density modes:
- *   - default ("full"): used on detail pages, larger spacing.
- *   - dense=true: used inside hub category cards, compact.
+ * Collapsible breakdown of the scoring rules for a category. Closed by
+ * default — clicking the header expands a scrollable body that lists each
+ * rule as `[N pts] · description`. Uses native `<details>`/`<summary>` so
+ * keyboard nav and screen readers work without extra JS.
  */
 export function ScoringBox({
   title = "Cómo se puntúa",
   sections,
   dense = false,
   footnote,
+  defaultOpen = false,
   className,
 }: Props) {
+  const totalRules = sections.reduce((sum, s) => sum + s.rules.length, 0);
+
   return (
-    <section
+    <details
       className={cn(
-        "rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)]",
-        dense ? "p-3" : "p-5",
+        "group rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)]",
         className,
       )}
-      aria-label={title}
+      open={defaultOpen}
     >
-      <header className="flex items-center gap-2">
-        <span
+      <summary
+        className={cn(
+          "flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-surface)]",
+          "marker:hidden [&::-webkit-details-marker]:hidden",
+        )}
+      >
+        <ChevronRight
           aria-hidden
-          className="h-px flex-1 bg-[var(--color-border)]"
+          className="size-3.5 shrink-0 text-[var(--color-muted-foreground)] transition-transform duration-150 group-open:rotate-90"
         />
-        <p
+        <span
           className={cn(
-            "font-mono uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]",
+            "flex-1 font-mono uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]",
             dense ? "text-[0.55rem]" : "text-[0.6rem]",
           )}
         >
           {title}
-        </p>
-        <span
-          aria-hidden
-          className="h-px flex-1 bg-[var(--color-border)]"
-        />
-      </header>
+        </span>
+        <span className="shrink-0 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+          {totalRules} {totalRules === 1 ? "regla" : "reglas"}
+        </span>
+      </summary>
 
-      <div className={cn("space-y-3", dense ? "mt-3" : "mt-4")}>
-        {sections.map((section, sIdx) => (
-          <div
-            key={section.heading ?? `s${sIdx}`}
-            className={cn(sIdx > 0 && "border-t border-dashed border-[var(--color-border)] pt-3")}
-          >
-            {section.heading ? (
-              <p
-                className={cn(
-                  "mb-2 font-mono uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]",
-                  dense ? "text-[0.55rem]" : "text-[0.6rem]",
-                )}
-              >
-                {section.heading}
-              </p>
-            ) : null}
-            <ul className={cn("space-y-1.5", dense && "space-y-1")}>
-              {section.rules.map((rule, rIdx) => (
-                <li
-                  key={`${sIdx}-${rIdx}`}
-                  className="flex items-baseline gap-2.5"
-                >
-                  <PointPill points={rule.points} prefix={rule.prefix} bonus={rule.bonus} dense={dense} />
-                  <span
-                    className={cn(
-                      "leading-snug text-[var(--color-foreground)]",
-                      dense ? "text-xs" : "text-sm",
-                    )}
-                  >
-                    {rule.label}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-
-      {footnote ? (
-        <p
+      <div className="border-t border-[var(--color-border)]">
+        <div
           className={cn(
-            "mt-3 border-t border-dashed border-[var(--color-border)] pt-3 font-editorial italic text-[var(--color-muted-foreground)]",
-            dense ? "text-[0.7rem]" : "text-xs",
+            "max-h-60 overflow-y-auto",
+            dense ? "px-3 py-2.5" : "px-3 py-3",
           )}
         >
-          {footnote}
-        </p>
-      ) : null}
-    </section>
+          <div className="space-y-2.5">
+            {sections.map((section, sIdx) => (
+              <div
+                key={section.heading ?? `s${sIdx}`}
+                className={cn(sIdx > 0 && "border-t border-dashed border-[var(--color-border)] pt-2.5")}
+              >
+                {section.heading ? (
+                  <p className="mb-1.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                    {section.heading}
+                  </p>
+                ) : null}
+                <ul className="space-y-1">
+                  {section.rules.map((rule, rIdx) => (
+                    <li
+                      key={`${sIdx}-${rIdx}`}
+                      className="flex items-center gap-2"
+                    >
+                      <PointPill points={rule.points} prefix={rule.prefix} bonus={rule.bonus} />
+                      <span className="text-xs leading-snug text-[var(--color-foreground)]">
+                        {rule.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {footnote ? (
+          <p className="border-t border-dashed border-[var(--color-border)] px-3 py-2 font-editorial text-[0.7rem] italic text-[var(--color-muted-foreground)]">
+            {footnote}
+          </p>
+        ) : null}
+      </div>
+    </details>
   );
 }
 
@@ -129,35 +129,24 @@ function PointPill({
   points,
   prefix,
   bonus,
-  dense,
 }: {
   points: number;
   prefix?: "+" | "";
   bonus?: boolean;
-  dense: boolean;
 }) {
   const sign = prefix !== undefined ? prefix : bonus ? "+" : "";
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-baseline justify-center rounded-md font-display tabular leading-none",
-        dense
-          ? "min-w-[2.25rem] gap-0 px-1.5 py-1 text-base"
-          : "min-w-[3rem] gap-0.5 px-2 py-1.5 text-2xl",
+        "inline-flex shrink-0 items-baseline justify-center gap-0 rounded font-display tabular leading-none",
+        "min-w-[2rem] px-1.5 py-1 text-sm",
         bonus
           ? "border border-dashed border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] text-[var(--color-arena)]"
           : "border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_12%,transparent)] text-[var(--color-arena)] glow-arena",
       )}
     >
-      {sign ? (
-        <span className={cn("opacity-70", dense ? "text-xs" : "text-base")}>{sign}</span>
-      ) : null}
+      {sign ? <span className="text-[0.65rem] opacity-70">{sign}</span> : null}
       <span>{points}</span>
-      {dense ? null : (
-        <span className="ml-0.5 self-end pb-0.5 text-[0.55rem] uppercase tracking-[0.18em] opacity-60">
-          {points === 1 ? "pt" : "pts"}
-        </span>
-      )}
     </span>
   );
 }

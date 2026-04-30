@@ -235,29 +235,27 @@ export default async function PrediccionesHub() {
             El admin todavía no ha publicado las jornadas. Cuando lo haga, aquí podrás predecirlas.
           </p>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-            <div className="space-y-4">
-              {featured ? (
-                <FeaturedMatchday day={featured} />
-              ) : waitingDays.length > 0 ? (
-                <WaitingMatchday day={waitingDays[0]} />
-              ) : null}
+          <div className="space-y-4">
+            <ScoringBox sections={MATCH_SCORING} />
+            {featured ? (
+              <FeaturedMatchday day={featured} />
+            ) : waitingDays.length > 0 ? (
+              <WaitingMatchday day={waitingDays[0]} />
+            ) : null}
 
-              {(otherOpen.length > 0 || waitingDays.length > 1 || closedDays.length > 0) && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {otherOpen.map((d) => (
-                    <MatchdayMini key={d.id} day={d} />
-                  ))}
-                  {waitingDays.slice(featured ? 0 : 1).map((d) => (
-                    <MatchdayMini key={d.id} day={d} />
-                  ))}
-                  {closedDays.map((d) => (
-                    <MatchdayMini key={d.id} day={d} />
-                  ))}
-                </div>
-              )}
-            </div>
-            <ScoringBox sections={MATCH_SCORING} className="self-start" />
+            {(otherOpen.length > 0 || waitingDays.length > 1 || closedDays.length > 0) && (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {otherOpen.map((d) => (
+                  <MatchdayMini key={d.id} day={d} />
+                ))}
+                {waitingDays.slice(featured ? 0 : 1).map((d) => (
+                  <MatchdayMini key={d.id} day={d} />
+                ))}
+                {closedDays.map((d) => (
+                  <MatchdayMini key={d.id} day={d} />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Section>
@@ -401,8 +399,8 @@ function BracketCard({
       >
         04
       </span>
-      <div className="relative grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-3">
+      <div className="relative space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <header className="flex items-center gap-3">
             <span className="grid size-12 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-arena)]">
               <Swords className="size-6" />
@@ -414,34 +412,32 @@ function BracketCard({
               <h3 className="font-display text-3xl tracking-tight">32 → 16 → 8 → 4 → 2 → 1</h3>
             </div>
           </header>
-          <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-            {status === "waiting"
-              ? "Disponible cuando termine la fase de grupos. Predecirás los 32 clasificados que avanzan ronda a ronda hasta el campeón."
-              : status === "open"
-                ? `Selecciona quién avanza en cada ronda. Cierre: ${
-                    closesAt
-                      ? formatDateTime(closesAt, {
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "primer partido de R32"
-                  }.`
-                : "Bracket cerrado. Los dieciseisavos ya arrancaron."}
-          </p>
-          <div>
-            {status === "waiting" ? (
-              <Badge variant="warning" className="gap-1">
-                <Lock className="size-3" /> Bloqueado
-              </Badge>
-            ) : status === "open" ? (
-              <Badge variant="success">Abierto</Badge>
-            ) : (
-              <Badge variant="outline">Cerrado</Badge>
-            )}
-          </div>
+          {status === "waiting" ? (
+            <Badge variant="warning" className="gap-1">
+              <Lock className="size-3" /> Bloqueado
+            </Badge>
+          ) : status === "open" ? (
+            <Badge variant="success">Abierto</Badge>
+          ) : (
+            <Badge variant="outline">Cerrado</Badge>
+          )}
         </div>
+        <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+          {status === "waiting"
+            ? "Disponible cuando termine la fase de grupos. Predecirás los 32 clasificados que avanzan ronda a ronda hasta el campeón."
+            : status === "open"
+              ? `Selecciona quién avanza en cada ronda. Cierre: ${
+                  closesAt
+                    ? formatDateTime(closesAt, {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "primer partido de R32"
+                }.`
+              : "Bracket cerrado. Los dieciseisavos ya arrancaron."}
+        </p>
         <ScoringBox sections={BRACKET_SCORING} dense />
       </div>
     </article>
