@@ -74,22 +74,26 @@ export async function saveMatchResult(
     }));
   }
 
+  // When the match goes back to "programado", strip every result-related
+  // field so the public views show dashes again instead of a stale 0-0.
+  const reverting = parsed.data.status === "scheduled";
+
   await db.transaction(async (tx) => {
     await tx
       .update(matches)
       .set({
-        homeScore: parsed.data.homeScore,
-        awayScore: parsed.data.awayScore,
+        homeScore: reverting ? null : parsed.data.homeScore,
+        awayScore: reverting ? null : parsed.data.awayScore,
         status: parsed.data.status,
-        wentToPens: parsed.data.wentToPens,
-        homeScorePen: parsed.data.homeScorePen ?? null,
-        awayScorePen: parsed.data.awayScorePen ?? null,
-        winnerTeamId: parsed.data.winnerTeamId ?? null,
+        wentToPens: reverting ? false : parsed.data.wentToPens,
+        homeScorePen: reverting ? null : parsed.data.homeScorePen ?? null,
+        awayScorePen: reverting ? null : parsed.data.awayScorePen ?? null,
+        winnerTeamId: reverting ? null : parsed.data.winnerTeamId ?? null,
       })
       .where(eq(matches.id, parsed.data.matchId));
 
     await tx.delete(matchScorers).where(eq(matchScorers.matchId, parsed.data.matchId));
-    if (parsed.data.scorers.length > 0) {
+    if (!reverting && parsed.data.scorers.length > 0) {
       await tx.insert(matchScorers).values(
         parsed.data.scorers.map((s) => ({
           matchId: parsed.data.matchId,
@@ -110,9 +114,8 @@ export async function saveMatchResult(
     payload: { matchId: parsed.data.matchId, status: parsed.data.status },
   });
 
-  if (parsed.data.status === "finished") {
-    await recomputeMatchScoringForAllUsers(parsed.data.matchId);
-  }
+  // Always reconcile points so reverting wipes any stale ledger entries.
+  await recomputeMatchScoringForAllUsers(parsed.data.matchId);
 
   revalidatePath(`/admin/partidos/${parsed.data.matchId}`);
   revalidatePath(`/partido/${parsed.data.matchId}`);

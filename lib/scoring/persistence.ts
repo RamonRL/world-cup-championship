@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   groupStandings,
@@ -210,21 +210,27 @@ function keyBelongsToSource(key: string, source: LedgerEntry["source"]) {
 }
 
 async function clearMatchLedger(matchId: number) {
+  // Every match-scoped ledger entry stores its source_key as
+  // `match:{matchId}:...` (and the per-scorer keys carry the player suffix).
+  // Filter on that prefix so reverting one match doesn't wipe ledger rows
+  // for unrelated matches.
+  const prefix = `match:${matchId}:`;
   await db
     .delete(pointsLedger)
     .where(
-      inArray(pointsLedger.source, [
-        "match_exact_score",
-        "match_outcome",
-        "knockout_score_90",
-        "knockout_qualifier",
-        "knockout_pens_bonus",
-        "match_scorer",
-        "match_first_scorer",
-      ]),
+      and(
+        inArray(pointsLedger.source, [
+          "match_exact_score",
+          "match_outcome",
+          "knockout_score_90",
+          "knockout_qualifier",
+          "knockout_pens_bonus",
+          "match_scorer",
+          "match_first_scorer",
+        ]),
+        sql`${pointsLedger.sourceKey} like ${prefix + "%"}`,
+      ),
     );
-  // Caller should still re-run match scoring once a final result is set.
-  void matchId;
 }
 
 // ───────────────────────── group rankings ─────────────────────────
