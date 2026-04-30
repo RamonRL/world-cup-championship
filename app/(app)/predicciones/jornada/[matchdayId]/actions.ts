@@ -1,10 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { matchdays, matches, predMatchResult } from "@/lib/db/schema";
+import {
+  matchdays,
+  matches,
+  players,
+  predMatchResult,
+  predMatchScorer,
+} from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/guards";
 import { getMatchdayState, type Stage } from "@/lib/matchday-state";
 
@@ -20,6 +26,7 @@ const schema = z.object({
         awayScore: z.coerce.number().int().min(0).max(40),
         willGoToPens: z.coerce.boolean().default(false),
         winnerTeamId: z.coerce.number().int().optional().nullable(),
+        scorerPlayerId: z.coerce.number().int().optional().nullable(),
       }),
     )
     .min(1),
@@ -62,15 +69,40 @@ export async function saveMatchdayPredictions(
     return { ok: false, error: "La predicción para esta jornada ya está cerrada." };
   }
 
-  // Validate that all matches belong to this matchday.
-  const matchIdsInDay = await db
-    .select({ id: matches.id })
+  // Validate that all matches belong to this matchday and load their squads
+  // so we can check that any picked scorer plays for one of the two teams.
+  const matchRows = await db
+    .select({
+      id: matches.id,
+      homeTeamId: matches.homeTeamId,
+      awayTeamId: matches.awayTeamId,
+    })
     .from(matches)
     .where(eq(matches.matchdayId, parsed.data.matchdayId));
-  const validIds = new Set(matchIdsInDay.map((m) => m.id));
+  const matchById = new Map(matchRows.map((m) => [m.id, m]));
   for (const p of parsed.data.predictions) {
-    if (!validIds.has(p.matchId)) {
+    if (!matchById.has(p.matchId)) {
       return { ok: false, error: "Partido no pertenece a esta jornada." };
+    }
+  }
+
+  const scorerIds = parsed.data.predictions
+    .map((p) => p.scorerPlayerId)
+    .filter((id): id is number => typeof id === "number");
+  const scorerRows =
+    scorerIds.length > 0
+      ? await db.select().from(players).where(inArray(players.id, scorerIds))
+      : [];
+  const scorerById = new Map(scorerRows.map((p) => [p.id, p]));
+  for (const p of parsed.data.predictions) {
+    if (p.scorerPlayerId == null) continue;
+    const player = scorerById.get(p.scorerPlayerId);
+    if (!player) {
+      return { ok: false, error: "Jugador no encontrado." };
+    }
+    const m = matchById.get(p.matchId)!;
+    if (player.teamId !== m.homeTeamId && player.teamId !== m.awayTeamId) {
+      return { ok: false, error: "Ese jugador no juega este partido." };
     }
   }
 
@@ -97,6 +129,33 @@ export async function saveMatchdayPredictions(
             submittedAt: new Date(),
           },
         });
+
+      if (p.scorerPlayerId == null) {
+        await tx
+          .delete(predMatchScorer)
+          .where(
+            and(
+              eq(predMatchScorer.userId, me.id),
+              eq(predMatchScorer.matchId, p.matchId),
+            ),
+          );
+      } else {
+        await tx
+          .insert(predMatchScorer)
+          .values({
+            userId: me.id,
+            matchId: p.matchId,
+            playerId: p.scorerPlayerId,
+            submittedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [predMatchScorer.userId, predMatchScorer.matchId],
+            set: {
+              playerId: p.scorerPlayerId,
+              submittedAt: new Date(),
+            },
+          });
+      }
     }
   });
 

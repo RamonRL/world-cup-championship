@@ -24,8 +24,7 @@ export function DeadlineBanner({ deadline }: { deadline: PendingDeadline | null 
           Cierra en {remaining}
         </p>
         <p className="truncate text-sm font-semibold">
-          {deadline.kind === "matchday" ? "Predicción de " : "Goleador para "}
-          <span className="font-display text-base">{deadline.label}</span>
+          Predicción de <span className="font-display text-base">{deadline.label}</span>
           {deadline.missing > 1 ? (
             <span className="ml-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-[var(--color-muted-foreground)]">
               · {deadline.missing} sin enviar

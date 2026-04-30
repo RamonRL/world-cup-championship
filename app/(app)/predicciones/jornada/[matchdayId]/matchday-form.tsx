@@ -12,7 +12,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -21,7 +23,15 @@ import { saveMatchdayPredictions, type FormState } from "./actions";
 
 const initial: FormState = { ok: false };
 
+const NO_SCORER = "__none__";
+
 type TeamLite = { id: number; name: string; code: string; flagUrl: string | null };
+type PlayerLite = {
+  id: number;
+  name: string;
+  jerseyNumber: number | null;
+  position: string | null;
+};
 
 type MatchInput = {
   id: number;
@@ -30,12 +40,15 @@ type MatchInput = {
   venue: string | null;
   home: TeamLite | null;
   away: TeamLite | null;
+  homePlayers: PlayerLite[];
+  awayPlayers: PlayerLite[];
   existing: {
     homeScore: number;
     awayScore: number;
     willGoToPens: boolean;
     winnerTeamId: number | null;
   } | null;
+  existingScorerPlayerId: number | null;
 };
 
 type Prediction = {
@@ -44,6 +57,7 @@ type Prediction = {
   awayScore: number;
   willGoToPens: boolean;
   winnerTeamId: number | null;
+  scorerPlayerId: number | null;
 };
 
 export function MatchdayPredictionForm({
@@ -62,6 +76,7 @@ export function MatchdayPredictionForm({
       awayScore: m.existing?.awayScore ?? 0,
       willGoToPens: m.existing?.willGoToPens ?? false,
       winnerTeamId: m.existing?.winnerTeamId ?? null,
+      scorerPlayerId: m.existingScorerPlayerId,
     })),
   );
   const [state, action, pending] = useActionState(saveMatchdayPredictions, initial);
@@ -90,6 +105,7 @@ export function MatchdayPredictionForm({
         {matches.map((m) => {
           const p = predictions.find((x) => x.matchId === m.id)!;
           const isKnockout = m.stage !== "group";
+          const hasPlayers = m.homePlayers.length > 0 || m.awayPlayers.length > 0;
           return (
             <Card key={m.id}>
               <CardHeader className="flex flex-row items-center justify-between gap-2 p-4">
@@ -175,6 +191,62 @@ export function MatchdayPredictionForm({
                     </div>
                   </div>
                 ) : null}
+
+                <div className="space-y-1.5 border-t border-dashed border-[var(--color-border)] pt-3">
+                  <Label className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                    Goleador del partido <span className="text-[var(--color-arena)]">+4 / +6</span>
+                  </Label>
+                  {hasPlayers ? (
+                    <Select
+                      value={p.scorerPlayerId?.toString() ?? NO_SCORER}
+                      onValueChange={(v) =>
+                        update(m.id, {
+                          scorerPlayerId: v === NO_SCORER ? null : Number(v),
+                        })
+                      }
+                      disabled={!open}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Sin pick" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_SCORER}>
+                          <span className="text-[var(--color-muted-foreground)]">
+                            Sin pick
+                          </span>
+                        </SelectItem>
+                        {m.home && m.homePlayers.length > 0 ? (
+                          <SelectGroup>
+                            <SelectLabel className="font-mono text-[0.6rem] uppercase tracking-[0.18em]">
+                              {m.home.code}
+                            </SelectLabel>
+                            {m.homePlayers.map((pl) => (
+                              <SelectItem key={pl.id} value={pl.id.toString()}>
+                                {playerLabel(pl)}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ) : null}
+                        {m.away && m.awayPlayers.length > 0 ? (
+                          <SelectGroup>
+                            <SelectLabel className="font-mono text-[0.6rem] uppercase tracking-[0.18em]">
+                              {m.away.code}
+                            </SelectLabel>
+                            {m.awayPlayers.map((pl) => (
+                              <SelectItem key={pl.id} value={pl.id.toString()}>
+                                {playerLabel(pl)}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ) : null}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-editorial text-xs italic text-[var(--color-muted-foreground)]">
+                      Plantillas pendientes de carga.
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           );
@@ -200,6 +272,12 @@ export function MatchdayPredictionForm({
       ) : null}
     </form>
   );
+}
+
+function playerLabel(p: PlayerLite): string {
+  const num = p.jerseyNumber != null ? `#${p.jerseyNumber} ` : "";
+  const pos = p.position ? ` · ${p.position}` : "";
+  return `${num}${p.name}${pos}`;
 }
 
 function TeamSide({ team }: { team: TeamLite | null }) {

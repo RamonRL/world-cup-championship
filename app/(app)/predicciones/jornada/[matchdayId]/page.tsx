@@ -3,7 +3,14 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { matchdays, matches, predMatchResult, teams } from "@/lib/db/schema";
+import {
+  matchdays,
+  matches,
+  players,
+  predMatchResult,
+  predMatchScorer,
+  teams,
+} from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
 import { Lock } from "lucide-react";
@@ -43,9 +50,9 @@ export default async function PredictMatchdayPage({
           size="sm"
           className="px-0 text-[var(--color-muted-foreground)]"
         >
-          <Link href="/predicciones/jornada">
+          <Link href="/predicciones">
             <ArrowLeft />
-            Volver a jornadas
+            Mis predicciones
           </Link>
         </Button>
         <PageHeader eyebrow={day.stage.toUpperCase()} title={day.name} description={status.reason} />
@@ -67,25 +74,54 @@ export default async function PredictMatchdayPage({
   const teamIds = matchRows
     .flatMap((m) => [m.homeTeamId, m.awayTeamId])
     .filter((x): x is number => x != null);
+  const matchIds = matchRows.map((m) => m.id);
+
   const allTeams =
     teamIds.length > 0
       ? await db.select().from(teams).where(inArray(teams.id, teamIds))
       : [];
-  const teamById = new Map(allTeams.map((t) => [t.id, t]));
+  const allPlayers =
+    teamIds.length > 0
+      ? await db
+          .select()
+          .from(players)
+          .where(inArray(players.teamId, teamIds))
+          .orderBy(asc(players.jerseyNumber))
+      : [];
+  const myResults =
+    matchIds.length > 0
+      ? await db
+          .select()
+          .from(predMatchResult)
+          .where(
+            and(
+              eq(predMatchResult.userId, me.id),
+              inArray(predMatchResult.matchId, matchIds),
+            ),
+          )
+      : [];
+  const myScorers =
+    matchIds.length > 0
+      ? await db
+          .select()
+          .from(predMatchScorer)
+          .where(
+            and(
+              eq(predMatchScorer.userId, me.id),
+              inArray(predMatchScorer.matchId, matchIds),
+            ),
+          )
+      : [];
 
-  const myPreds = await db
-    .select()
-    .from(predMatchResult)
-    .where(
-      and(
-        eq(predMatchResult.userId, me.id),
-        inArray(
-          predMatchResult.matchId,
-          matchRows.map((m) => m.id),
-        ),
-      ),
-    );
-  const predByMatch = new Map(myPreds.map((p) => [p.matchId, p]));
+  const teamById = new Map(allTeams.map((t) => [t.id, t]));
+  const playersByTeam = new Map<number, typeof allPlayers>();
+  for (const p of allPlayers) {
+    const arr = playersByTeam.get(p.teamId) ?? [];
+    arr.push(p);
+    playersByTeam.set(p.teamId, arr);
+  }
+  const resultByMatch = new Map(myResults.map((r) => [r.matchId, r]));
+  const scorerByMatch = new Map(myScorers.map((r) => [r.matchId, r]));
 
   const open = status.state === "open";
 
@@ -102,43 +138,64 @@ export default async function PredictMatchdayPage({
         title={day.name}
         description={
           open
-            ? `Cierra el ${formatDateTime(day.predictionDeadlineAt)}. Después no podrás editar.`
+            ? `Cierra el ${formatDateTime(day.predictionDeadlineAt)}. Marcador y goleador en una sola jugada.`
             : `Cierre pasado: ${formatDateTime(day.predictionDeadlineAt)}.`
         }
       />
       <MatchdayPredictionForm
         matchdayId={day.id}
         open={open}
-        matches={matchRows.map((m) => ({
-          id: m.id,
-          stage: m.stage,
-          scheduledAt: m.scheduledAt.toISOString(),
-          venue: m.venue,
-          home: m.homeTeamId
-            ? {
-                id: m.homeTeamId,
-                name: teamById.get(m.homeTeamId)?.name ?? "—",
-                code: teamById.get(m.homeTeamId)?.code ?? "—",
-                flagUrl: teamById.get(m.homeTeamId)?.flagUrl ?? null,
-              }
-            : null,
-          away: m.awayTeamId
-            ? {
-                id: m.awayTeamId,
-                name: teamById.get(m.awayTeamId)?.name ?? "—",
-                code: teamById.get(m.awayTeamId)?.code ?? "—",
-                flagUrl: teamById.get(m.awayTeamId)?.flagUrl ?? null,
-              }
-            : null,
-          existing: predByMatch.get(m.id)
-            ? {
-                homeScore: predByMatch.get(m.id)!.homeScore,
-                awayScore: predByMatch.get(m.id)!.awayScore,
-                willGoToPens: predByMatch.get(m.id)!.willGoToPens,
-                winnerTeamId: predByMatch.get(m.id)!.winnerTeamId ?? null,
-              }
-            : null,
-        }))}
+        matches={matchRows.map((m) => {
+          const homeId = m.homeTeamId;
+          const awayId = m.awayTeamId;
+          const homePlayers = homeId ? playersByTeam.get(homeId) ?? [] : [];
+          const awayPlayers = awayId ? playersByTeam.get(awayId) ?? [] : [];
+          const result = resultByMatch.get(m.id);
+          const scorer = scorerByMatch.get(m.id);
+          return {
+            id: m.id,
+            stage: m.stage,
+            scheduledAt: m.scheduledAt.toISOString(),
+            venue: m.venue,
+            home: homeId
+              ? {
+                  id: homeId,
+                  name: teamById.get(homeId)?.name ?? "—",
+                  code: teamById.get(homeId)?.code ?? "—",
+                  flagUrl: teamById.get(homeId)?.flagUrl ?? null,
+                }
+              : null,
+            away: awayId
+              ? {
+                  id: awayId,
+                  name: teamById.get(awayId)?.name ?? "—",
+                  code: teamById.get(awayId)?.code ?? "—",
+                  flagUrl: teamById.get(awayId)?.flagUrl ?? null,
+                }
+              : null,
+            homePlayers: homePlayers.map((p) => ({
+              id: p.id,
+              name: p.name,
+              jerseyNumber: p.jerseyNumber,
+              position: p.position,
+            })),
+            awayPlayers: awayPlayers.map((p) => ({
+              id: p.id,
+              name: p.name,
+              jerseyNumber: p.jerseyNumber,
+              position: p.position,
+            })),
+            existing: result
+              ? {
+                  homeScore: result.homeScore,
+                  awayScore: result.awayScore,
+                  willGoToPens: result.willGoToPens,
+                  winnerTeamId: result.winnerTeamId ?? null,
+                }
+              : null,
+            existingScorerPlayerId: scorer?.playerId ?? null,
+          };
+        })}
       />
     </div>
   );
