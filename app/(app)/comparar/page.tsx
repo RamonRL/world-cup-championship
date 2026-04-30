@@ -1,10 +1,9 @@
 import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
-import { asc, eq, inArray, ne, or } from "drizzle-orm";
+import { asc, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   groups,
-  matches,
   players,
   predBracketSlot,
   predGroupRanking,
@@ -12,14 +11,13 @@ import {
   profiles,
   teams,
 } from "@/lib/db/schema";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
-import { Trophy } from "lucide-react";
+import { Lock, Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
-import { formatDateTime, initials } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
+import { formatRemaining } from "@/lib/deadlines";
 import { getBracketStatus } from "@/lib/bracket-state";
 import { OpponentPicker } from "./opponent-picker";
 
@@ -99,7 +97,6 @@ export default async function CompararPage({
           .limit(1)
       : Promise.resolve([]),
   ]);
-  void or; void inArray; void matches;
 
   const teamById = new Map(allTeams.map((t) => [t.id, t]));
   const playerById = new Map(allPlayers.map((p) => [p.id, p]));
@@ -138,16 +135,9 @@ export default async function CompararPage({
           description="Elige un participante en el desplegable para empezar."
         />
       ) : !tournamentPredsPublic ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Aún privadas</CardTitle>
-            <CardDescription>
-              Las predicciones de grupos y Bota de Oro se hacen públicas el{" "}
-              {formatDateTime(KICKOFF)}. El bracket eliminatorio se publicará al
-              empezar la primera ronda de dieciseisavos.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <PreKickoffTeaser
+          opponentName={opponent.nickname || opponent.email.split("@")[0]}
+        />
       ) : (
         <>
           <section className="space-y-3">
@@ -157,26 +147,51 @@ export default async function CompararPage({
                 const m = findGroupPred(myGroups, g.id);
                 const o = findGroupPred(opponentGroups, g.id);
                 if (!m && !o) return null;
+                const myIds = [m?.pos1TeamId, m?.pos2TeamId, m?.pos3TeamId, m?.pos4TeamId];
+                const oppIds = [o?.pos1TeamId, o?.pos2TeamId, o?.pos3TeamId, o?.pos4TeamId];
+                const matches = myIds.map((id, i) => id != null && id === oppIds[i]);
+                const matchCount = matches.filter(Boolean).length;
                 return (
                   <Card key={g.id}>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-baseline justify-between gap-2">
                       <CardTitle className="text-base">{g.name}</CardTitle>
+                      <span className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-arena)]">
+                        {matchCount}/4 coinciden
+                      </span>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <ParticipantColumn
-                          title="Tú"
-                          rows={[m?.pos1TeamId, m?.pos2TeamId, m?.pos3TeamId, m?.pos4TeamId].map(
-                            (id) => teamById.get(id ?? -1) ?? null,
-                          )}
-                        />
-                        <ParticipantColumn
-                          title={opponent.nickname || opponent.email.split("@")[0]}
-                          rows={[o?.pos1TeamId, o?.pos2TeamId, o?.pos3TeamId, o?.pos4TeamId].map(
-                            (id) => teamById.get(id ?? -1) ?? null,
-                          )}
-                        />
-                      </div>
+                      <ul className="space-y-1.5">
+                        {[0, 1, 2, 3].map((i) => {
+                          const myTeam = teamById.get(myIds[i] ?? -1) ?? null;
+                          const oppTeam = teamById.get(oppIds[i] ?? -1) ?? null;
+                          const match = matches[i];
+                          return (
+                            <li
+                              key={i}
+                              className={`grid grid-cols-[28px_1fr_24px_1fr] items-center gap-2 rounded-md px-2 py-1.5 ${
+                                match
+                                  ? "bg-[color-mix(in_oklch,var(--color-success)_8%,transparent)] ring-1 ring-[var(--color-success)]/30"
+                                  : ""
+                              }`}
+                            >
+                              <span className="font-display tabular text-base text-[var(--color-muted-foreground)]">
+                                {i + 1}º
+                              </span>
+                              <ComparisonCell team={myTeam} match={match} />
+                              <span
+                                className={`text-center font-mono text-[0.7rem] ${
+                                  match
+                                    ? "text-[var(--color-success)]"
+                                    : "text-[var(--color-muted-foreground)]/40"
+                                }`}
+                              >
+                                {match ? "=" : "·"}
+                              </span>
+                              <ComparisonCell team={oppTeam} match={match} align="end" />
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </CardContent>
                   </Card>
                 );
@@ -250,34 +265,41 @@ export default async function CompararPage({
   );
 }
 
-function ParticipantColumn({
-  title,
-  rows,
+function ComparisonCell({
+  team,
+  match,
+  align = "start",
 }: {
-  title: string;
-  rows: Array<{ name: string; code: string; flagUrl: string | null } | null>;
+  team: { name: string; code: string; flagUrl: string | null } | null;
+  match: boolean;
+  align?: "start" | "end";
 }) {
+  if (!team) {
+    return (
+      <span
+        className={`text-sm text-[var(--color-muted-foreground)] ${
+          align === "end" ? "text-right" : ""
+        }`}
+      >
+        —
+      </span>
+    );
+  }
   return (
-    <div className="space-y-1">
-      <p className="text-xs uppercase tracking-wider text-[var(--color-muted-foreground)]">
-        {title}
-      </p>
-      {rows.map((t, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span className="font-mono text-xs text-[var(--color-muted-foreground)]">
-            {i + 1}º
-          </span>
-          {t ? (
-            <>
-              <TeamFlag code={t.code} size={16} />
-              <span className="truncate">{t.name}</span>
-            </>
-          ) : (
-            <span className="text-[var(--color-muted-foreground)]">—</span>
-          )}
-        </div>
-      ))}
-    </div>
+    <span
+      className={`flex min-w-0 items-center gap-2 ${
+        align === "end" ? "flex-row-reverse text-right" : ""
+      }`}
+    >
+      <TeamFlag code={team.code} size={20} />
+      <span
+        className={`truncate text-sm ${
+          match ? "font-semibold text-[var(--color-success)]" : "font-medium"
+        }`}
+      >
+        {team.name}
+      </span>
+    </span>
   );
 }
 
@@ -292,20 +314,34 @@ function Pair({ label, value }: { label: string; value: string }) {
   );
 }
 
-function _UserBadge({
-  user,
-}: {
-  user: { email: string; nickname: string | null; avatarUrl: string | null };
-}) {
-  const display = user.nickname || user.email.split("@")[0];
+function PreKickoffTeaser({ opponentName }: { opponentName: string }) {
+  const ms = Math.max(0, KICKOFF.getTime() - Date.now());
   return (
-    <div className="flex items-center gap-2">
-      <Avatar className="size-6">
-        {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
-        <AvatarFallback className="text-[0.6rem]">{initials(display)}</AvatarFallback>
-      </Avatar>
-      <span className="text-sm font-medium">{display}</span>
-      <Badge variant="outline" className="text-[0.6rem]">{user.email}</Badge>
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_5%,var(--color-surface))]">
+      <div className="halftone pointer-events-none absolute inset-0 opacity-[0.05]" aria-hidden />
+      <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+            <Lock className="size-3" />
+            Aún privadas
+          </div>
+          <h3 className="font-display text-3xl tracking-tight">
+            Las predicciones de <span className="font-medium">{opponentName}</span> se desvelan al kickoff
+          </h3>
+          <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+            Posiciones de grupo y Bota de Oro se publican el {formatDateTime(KICKOFF)}.
+            El bracket queda privado hasta el primer partido de dieciseisavos.
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-1 lg:items-end lg:text-right">
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            Faltan
+          </p>
+          <p className="font-display tabular text-5xl leading-none tracking-tighter text-[var(--color-arena)] glow-arena sm:text-6xl">
+            {formatRemaining(ms)}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

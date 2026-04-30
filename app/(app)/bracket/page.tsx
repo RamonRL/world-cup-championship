@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
-import { Swords, Trophy } from "lucide-react";
+import { Lock, Swords, Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
+import { getBracketStatus } from "@/lib/bracket-state";
 import { BracketTree, type BracketMatch } from "@/components/bracket/bracket-tree";
 
 export const metadata = { title: "Bracket" };
@@ -28,11 +29,14 @@ type KoStage = (typeof KO_STAGES)[number];
 
 export default async function BracketPage() {
   const me = await requireUser();
-  const koMatches = await db
-    .select()
-    .from(matches)
-    .where(inArray(matches.stage, [...KO_STAGES] as KoStage[]))
-    .orderBy(asc(matches.scheduledAt));
+  const [koMatches, bracketStatus] = await Promise.all([
+    db
+      .select()
+      .from(matches)
+      .where(inArray(matches.stage, [...KO_STAGES] as KoStage[]))
+      .orderBy(asc(matches.scheduledAt)),
+    getBracketStatus(),
+  ]);
 
   const teamIds = koMatches
     .flatMap((m) => [m.homeTeamId, m.awayTeamId, m.winnerTeamId])
@@ -72,6 +76,35 @@ export default async function BracketPage() {
           title="Sin partidos eliminatorios"
           description="Programa la fase eliminatoria desde /admin/calendario."
         />
+      </div>
+    );
+  }
+
+  // Pre-fase eliminatoria: las llaves existen pero los equipos no están
+  // asignados todavía. En vez de pintar 32 cuadros con TBD, damos un
+  // mensaje claro y un atajo a /predicciones/bracket.
+  if (bracketStatus.state === "waiting") {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Eliminación directa"
+          title="Bracket del torneo"
+          description="Disponible cuando termine la fase de grupos. Se rellena con los 32 clasificados (top-2 de cada grupo + 8 mejores terceros)."
+        />
+        <EmptyState
+          icon={<Lock className="size-5" />}
+          title="Aún no hay clasificados"
+          description="El árbol oficial se construye al cierre de la fase de grupos. Mientras tanto, ya puedes prepararlo desde tus predicciones."
+        />
+        <div className="flex justify-center">
+          <Link
+            href="/predicciones/bracket"
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-arena)] transition hover:border-[var(--color-arena)]"
+          >
+            <Swords className="size-3.5" />
+            Ir a tus predicciones
+          </Link>
+        </div>
       </div>
     );
   }
@@ -134,7 +167,7 @@ export default async function BracketPage() {
 
       {/* Mobile list fallback */}
       <div className="space-y-6 lg:hidden">
-        {KO_STAGES.filter((s) => s !== "third").map((stage) => {
+        {(["r32", "r16", "qf", "sf", "final", "third"] as const).map((stage) => {
           const stageMatches = koMatches.filter((m) => m.stage === stage);
           if (stageMatches.length === 0) return null;
           const myPicksHere = myByStage.get(stage) ?? new Set();
@@ -160,9 +193,15 @@ export default async function BracketPage() {
                           })}
                         </span>
                         <Badge
-                          variant={m.status === "finished" ? "success" : "outline"}
+                          variant={
+                            m.status === "finished"
+                              ? "success"
+                              : m.status === "live"
+                                ? "warning"
+                                : "outline"
+                          }
                         >
-                          {m.status}
+                          {STATUS_LABEL[m.status] ?? m.status}
                         </Badge>
                       </CardHeader>
                       <CardContent className="space-y-1.5 p-3 pt-0">
@@ -236,11 +275,17 @@ function Legend() {
         ● Tu pick
       </span>
       <span className="ml-auto hidden font-mono text-[0.6rem] uppercase tracking-[0.32em] sm:inline">
-        Tap any match for details
+        Pulsa cualquier partido para ver el detalle
       </span>
     </div>
   );
 }
+
+const STATUS_LABEL: Record<string, string> = {
+  scheduled: "Programado",
+  live: "En vivo",
+  finished: "Final",
+};
 
 function MobileTeamRow({
   team,
