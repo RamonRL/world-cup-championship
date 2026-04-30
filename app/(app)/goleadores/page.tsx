@@ -1,16 +1,8 @@
-import { Target } from "lucide-react";
+import { Crown, Target } from "lucide-react";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matchScorers, players, teams } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 
@@ -21,7 +13,6 @@ export default async function ScorersPage() {
     .select({
       playerId: matchScorers.playerId,
       goals: sql<number>`count(*)::int`,
-      ownGoals: sql<number>`sum(case when ${matchScorers.isOwnGoal} then 1 else 0 end)::int`,
       teamId: sql<number>`max(${matchScorers.teamId})::int`,
     })
     .from(matchScorers)
@@ -43,11 +34,11 @@ export default async function ScorersPage() {
   const teamById = new Map(teamRows.map((t) => [t.id, t]));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         eyebrow="Bota de Oro"
         title="Goleadores del torneo"
-        description="Top en directo. La Bota de Oro la gana el primero al cierre del torneo."
+        description="Top en directo. La Bota de Oro va al primero al cierre del torneo · 15 / 5 / 2 puntos según posición predicha."
       />
       {rows.length === 0 ? (
         <EmptyState
@@ -56,39 +47,67 @@ export default async function ScorersPage() {
           description="Cuando se carguen los primeros partidos, aparecerá aquí el ranking de goleadores."
         />
       ) : (
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">#</TableHead>
-                <TableHead>Jugador</TableHead>
-                <TableHead>Selección</TableHead>
-                <TableHead className="text-right">Goles</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r, i) => {
-                const player = playerById.get(r.playerId);
-                const team = teamById.get(r.teamId);
-                return (
-                  <TableRow key={r.playerId}>
-                    <TableCell className="font-display text-lg">{i + 1}</TableCell>
-                    <TableCell className="font-medium">{player?.name ?? "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{team?.code ?? "?"}</Badge>{" "}
-                      <span className="text-sm text-[var(--color-muted-foreground)]">
-                        {team?.name ?? ""}
+        <section className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="grid grid-cols-[60px_1fr_140px_60px] items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+            <span>Pos</span>
+            <span>Jugador</span>
+            <span>Selección</span>
+            <span className="text-right">Goles</span>
+          </div>
+          <ul>
+            {rows.map((r, i) => {
+              const player = playerById.get(r.playerId);
+              const team = teamById.get(r.teamId);
+              const position = i + 1;
+              return (
+                <li
+                  key={r.playerId}
+                  className={`grid grid-cols-[60px_1fr_140px_60px] items-center gap-2 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0 ${
+                    position === 1
+                      ? "bg-[color-mix(in_oklch,var(--color-arena)_6%,transparent)]"
+                      : ""
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className={`font-display tabular text-2xl ${
+                        position === 1
+                          ? "text-[var(--color-arena)] glow-arena"
+                          : position <= 3
+                            ? "text-[var(--color-foreground)]"
+                            : "text-[var(--color-muted-foreground)]"
+                      }`}
+                    >
+                      {position.toString().padStart(2, "0")}
+                    </span>
+                    {position === 1 ? <Crown className="size-3.5 text-[var(--color-arena)]" /> : null}
+                  </span>
+                  <span className="truncate font-display text-base tracking-tight">
+                    {player?.name ?? "—"}
+                    {player?.position ? (
+                      <span className="ml-2 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                        {player.position}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-right font-display text-xl tabular-nums">
-                      {r.goals}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                    ) : null}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Badge variant="outline">{team?.code ?? "?"}</Badge>
+                    <span className="hidden truncate text-xs text-[var(--color-muted-foreground)] sm:inline">
+                      {team?.name ?? ""}
+                    </span>
+                  </span>
+                  <span
+                    className={`text-right font-display tabular text-3xl tracking-tight ${
+                      position === 1 ? "text-[var(--color-arena)] glow-arena" : ""
+                    }`}
+                  >
+                    {r.goals}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
     </div>
   );

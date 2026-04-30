@@ -49,11 +49,11 @@ export function ChatThread({
   }, [messages.length]);
 
   return (
-    <div className="flex h-[60dvh] flex-col rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div className="flex h-[60dvh] flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
-          <p className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">
-            Sé el primero en escribir.
+          <p className="py-12 text-center font-editorial text-base italic text-[var(--color-muted-foreground)]">
+            Aún sin mensajes. Sé el primero.
           </p>
         ) : (
           <ul className="space-y-3">
@@ -79,7 +79,7 @@ export function ChatThread({
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold">{display}</span>
-                      <span className="text-[0.65rem] text-[var(--color-muted-foreground)]">
+                      <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-[var(--color-muted-foreground)]">
                         {formatTime(m.createdAt, {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -87,11 +87,11 @@ export function ChatThread({
                       </span>
                     </div>
                     <div
-                      className={`mt-0.5 rounded-2xl px-3 py-1.5 text-sm ${
+                      className={`mt-0.5 rounded-2xl px-3.5 py-2 text-sm ${
                         deleted
                           ? "italic text-[var(--color-muted-foreground)] line-through"
                           : mine
-                            ? "bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                            ? "bg-[var(--color-arena)] text-white"
                             : "bg-[var(--color-surface-2)] text-[var(--color-foreground)]"
                       }`}
                     >

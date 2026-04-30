@@ -2,15 +2,6 @@ import Image from "next/image";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, groupStandings, teams } from "@/lib/db/schema";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { Users } from "lucide-react";
@@ -37,11 +28,11 @@ export default async function GroupsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         eyebrow="Fase de grupos"
         title="12 grupos"
-        description="2 primeros + 8 mejores terceros pasan al cuadro de eliminación directa (R32)."
+        description="2 primeros + 8 mejores terceros pasan a R32. La tabla se actualiza al cierre de cada jornada."
       />
       {allGroups.length === 0 ? (
         <EmptyState
@@ -59,73 +50,97 @@ export default async function GroupsPage() {
               return sa - sb;
             });
             return (
-              <Card key={g.id}>
-                <CardHeader>
-                  <CardTitle>{g.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10">#</TableHead>
-                        <TableHead>Selección</TableHead>
-                        <TableHead className="text-right">PJ</TableHead>
-                        <TableHead className="text-right">G</TableHead>
-                        <TableHead className="text-right">E</TableHead>
-                        <TableHead className="text-right">P</TableHead>
-                        <TableHead className="text-right">GF</TableHead>
-                        <TableHead className="text-right">GC</TableHead>
-                        <TableHead className="text-right">Pts</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sorted.length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={9}
-                            className="py-6 text-center text-xs text-[var(--color-muted-foreground)]"
+              <article
+                key={g.id}
+                className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]"
+              >
+                <header className="flex items-baseline justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-display text-3xl tracking-tight text-[var(--color-arena)] glow-arena">
+                      {g.code}
+                    </span>
+                    <span className="font-display text-xl tracking-tight">{g.name}</span>
+                  </div>
+                  <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                    Top 2 → R32
+                  </span>
+                </header>
+
+                <div className="grid grid-cols-[28px_1fr_28px_28px_28px_28px_36px_36px_44px] gap-2 border-b border-[var(--color-border)] px-4 py-2 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+                  <span>#</span>
+                  <span>Selección</span>
+                  <span className="text-right">PJ</span>
+                  <span className="text-right">G</span>
+                  <span className="text-right">E</span>
+                  <span className="text-right">P</span>
+                  <span className="text-right">GF</span>
+                  <span className="text-right">GC</span>
+                  <span className="text-right">Pts</span>
+                </div>
+                {sorted.length === 0 ? (
+                  <p className="py-6 text-center font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+                    Selecciones aún sin asignar.
+                  </p>
+                ) : (
+                  <ul>
+                    {sorted.map((t, i) => {
+                      const s = standingByPair.get(`${g.id}-${t.id}`);
+                      const pos = i + 1;
+                      const advances = pos <= 2;
+                      const limbo = pos === 3;
+                      return (
+                        <li
+                          key={t.id}
+                          className={`grid grid-cols-[28px_1fr_28px_28px_28px_28px_36px_36px_44px] items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5 last:border-b-0 ${
+                            advances
+                              ? "bg-[color-mix(in_oklch,var(--color-success)_6%,transparent)]"
+                              : limbo
+                                ? "bg-[color-mix(in_oklch,var(--color-accent)_6%,transparent)]"
+                                : ""
+                          }`}
+                        >
+                          <span
+                            className={`font-display tabular text-base ${
+                              advances ? "text-[var(--color-success)]" : "text-[var(--color-muted-foreground)]"
+                            }`}
                           >
-                            Selecciones aún sin asignar.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        sorted.map((t, i) => {
-                          const s = standingByPair.get(`${g.id}-${t.id}`);
-                          return (
-                            <TableRow key={t.id}>
-                              <TableCell className="font-mono text-xs">{i + 1}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <span className="grid size-5 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                                    {t.flagUrl ? (
-                                      <Image
-                                        src={t.flagUrl}
-                                        alt={t.code}
-                                        width={20}
-                                        height={20}
-                                      />
-                                    ) : null}
-                                  </span>
-                                  <span className="font-medium">{t.name}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">{s?.played ?? 0}</TableCell>
-                              <TableCell className="text-right tabular-nums">{s?.won ?? 0}</TableCell>
-                              <TableCell className="text-right tabular-nums">{s?.drawn ?? 0}</TableCell>
-                              <TableCell className="text-right tabular-nums">{s?.lost ?? 0}</TableCell>
-                              <TableCell className="text-right tabular-nums">{s?.goalsFor ?? 0}</TableCell>
-                              <TableCell className="text-right tabular-nums">{s?.goalsAgainst ?? 0}</TableCell>
-                              <TableCell className="text-right font-display tabular-nums">
-                                {s?.points ?? 0}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                            {pos}
+                          </span>
+                          <span className="flex items-center gap-2 truncate">
+                            <span className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+                              {t.flagUrl ? (
+                                <Image src={t.flagUrl} alt={t.code} width={20} height={20} />
+                              ) : null}
+                            </span>
+                            <span className="truncate text-sm font-medium">{t.name}</span>
+                          </span>
+                          <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+                            {s?.played ?? 0}
+                          </span>
+                          <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+                            {s?.won ?? 0}
+                          </span>
+                          <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+                            {s?.drawn ?? 0}
+                          </span>
+                          <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+                            {s?.lost ?? 0}
+                          </span>
+                          <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+                            {s?.goalsFor ?? 0}
+                          </span>
+                          <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+                            {s?.goalsAgainst ?? 0}
+                          </span>
+                          <span className="text-right font-display tabular text-lg">
+                            {s?.points ?? 0}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </article>
             );
           })}
         </div>

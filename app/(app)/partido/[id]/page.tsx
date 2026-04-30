@@ -8,10 +8,19 @@ import { chatMessages, matchScorers, matches, players, profiles, teams } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PageHeader } from "@/components/shell/page-header";
 import { ChatThread } from "@/app/(app)/chat/chat-thread";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
+
+const STAGE_LABEL: Record<string, string> = {
+  group: "Fase de grupos",
+  r32: "Dieciseisavos",
+  r16: "Octavos",
+  qf: "Cuartos",
+  sf: "Semifinales",
+  third: "Tercer puesto",
+  final: "Final",
+};
 
 export default async function MatchDetailPage({
   params,
@@ -61,62 +70,152 @@ export default async function MatchDetailPage({
   const home = match.homeTeamId ? teamById.get(match.homeTeamId) : null;
   const away = match.awayTeamId ? teamById.get(match.awayTeamId) : null;
 
+  const sortedScorers = [...scorerRows].sort(
+    (a, b) => (a.minute ?? 999) - (b.minute ?? 999),
+  );
+
+  const status =
+    match.status === "finished" ? "FINAL" : match.status === "live" ? "EN VIVO" : "PROGRAMADO";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Button asChild variant="ghost" size="sm" className="px-0 text-[var(--color-muted-foreground)]">
         <Link href="/calendario">
           <ArrowLeft />
           Volver al calendario
         </Link>
       </Button>
-      <PageHeader
-        eyebrow={match.stage.toUpperCase()}
-        title={`${home?.name ?? "—"} vs ${away?.name ?? "—"}`}
-        description={`${formatDateTime(match.scheduledAt)}${match.venue ? ` · ${match.venue}` : ""}`}
-      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Marcador</CardTitle>
-          <CardDescription>
-            {match.status === "finished"
-              ? "Finalizado"
-              : match.status === "live"
-                ? "En juego"
-                : "Aún no jugado"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6 py-4">
-            <TeamCard team={home} />
-            <div className="text-center">
+      {/* Hero scoreboard */}
+      <section className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="spotlight absolute inset-0" aria-hidden />
+        <div className="pitch-grid absolute inset-0 opacity-25" aria-hidden />
+
+        <div className="relative space-y-6 p-6 sm:p-10">
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="h-px w-8 bg-[var(--color-arena)]" />
+              <span className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                {STAGE_LABEL[match.stage]} · {match.code}
+              </span>
+            </div>
+            <Badge
+              variant={
+                match.status === "finished"
+                  ? "success"
+                  : match.status === "live"
+                    ? "warning"
+                    : "outline"
+              }
+            >
+              {status}
+            </Badge>
+          </header>
+
+          <div className="grid items-center gap-6 sm:grid-cols-[1fr_auto_1fr]">
+            <TeamHero team={home} side="home" winner={match.winnerTeamId === home?.id} />
+            <div className="flex flex-col items-center gap-2 text-center">
               {match.homeScore != null && match.awayScore != null ? (
-                <span className="font-display text-5xl tabular-nums">
-                  {match.homeScore}{" "}
-                  <span className="text-[var(--color-muted-foreground)]">·</span>{" "}
+                <span className="font-display tabular text-7xl leading-none tracking-tighter sm:text-9xl glow-arena">
+                  {match.homeScore}
+                  <span className="mx-2 text-[var(--color-muted-foreground)] opacity-60">·</span>
                   {match.awayScore}
                 </span>
               ) : (
-                <span className="font-display text-3xl text-[var(--color-muted-foreground)]">
+                <span className="font-display text-6xl text-[var(--color-muted-foreground)]">
                   vs
                 </span>
               )}
               {match.wentToPens ? (
-                <p className="text-xs text-[var(--color-muted-foreground)]">
-                  Pen.: {match.homeScorePen ?? 0} – {match.awayScorePen ?? 0}
+                <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                  Pen. {match.homeScorePen ?? 0} — {match.awayScorePen ?? 0}
                 </p>
               ) : null}
             </div>
-            <TeamCard team={away} />
+            <TeamHero team={away} side="away" winner={match.winnerTeamId === away?.id} />
           </div>
+
+          <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] pt-4 font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+            <span>{formatDateTime(match.scheduledAt)}</span>
+            {match.venue ? <span className="truncate">{match.venue}</span> : null}
+          </footer>
+        </div>
+      </section>
+
+      {/* Scorers timeline */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Goleadores</CardTitle>
+          <CardDescription>
+            En orden cronológico. La marca en rojo arena indica el primer gol del partido.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {sortedScorers.length === 0 ? (
+            <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+              Sin goles registrados.
+            </p>
+          ) : (
+            <ol className="relative space-y-3 border-l-2 border-dashed border-[var(--color-border)] pl-6">
+              {sortedScorers.map((s) => {
+                const p = playerById.get(s.playerId);
+                const team = teamById.get(s.teamId);
+                return (
+                  <li key={s.id} className="relative">
+                    <span
+                      className={`absolute -left-[1.95rem] top-1 grid size-4 place-items-center rounded-full border-2 ${
+                        s.isFirstGoal
+                          ? "border-[var(--color-arena)] bg-[var(--color-arena)]"
+                          : "border-[var(--color-border-strong)] bg-[var(--color-surface)]"
+                      }`}
+                    >
+                      {s.isFirstGoal ? (
+                        <span className="size-1 rounded-full bg-white" />
+                      ) : null}
+                    </span>
+                    <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{team?.code ?? "?"}</Badge>
+                        <span className="font-display text-base tracking-tight">
+                          {p?.name ?? "Jugador"}
+                        </span>
+                        {s.isFirstGoal ? (
+                          <Badge variant="default" className="text-[0.55rem]">
+                            1er gol
+                          </Badge>
+                        ) : null}
+                        {s.isOwnGoal ? (
+                          <Badge variant="danger" className="text-[0.55rem]">
+                            En propia
+                          </Badge>
+                        ) : null}
+                        {s.isPenalty ? (
+                          <Badge variant="warning" className="text-[0.55rem]">
+                            Pen.
+                          </Badge>
+                        ) : null}
+                      </div>
+                      {s.minute != null ? (
+                        <span className="font-display tabular text-2xl text-[var(--color-muted-foreground)]">
+                          {s.minute}
+                          <span className="text-sm">′</span>
+                        </span>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
         </CardContent>
       </Card>
 
+      {/* Match thread */}
       <Card>
         <CardHeader>
-          <CardTitle>Comentarios del partido</CardTitle>
+          <CardTitle>Hilo del partido</CardTitle>
           <CardDescription>
-            Hilo específico de este partido. El admin puede eliminar mensajes.
+            Comentario en directo. El admin puede borrar mensajes que se pasen de raya.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -140,76 +239,52 @@ export default async function MatchDetailPage({
           />
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Goleadores</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {scorerRows.length === 0 ? (
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              Sin goles registrados.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {scorerRows.map((s) => {
-                const p = playerById.get(s.playerId);
-                const team = teamById.get(s.teamId);
-                return (
-                  <li
-                    key={s.id}
-                    className="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline">{team?.code ?? "?"}</Badge>
-                      <span className="font-medium">{p?.name ?? "Jugador"}</span>
-                      {s.isFirstGoal ? (
-                        <Badge variant="success" className="text-[0.65rem]">
-                          1er gol
-                        </Badge>
-                      ) : null}
-                      {s.isOwnGoal ? (
-                        <Badge variant="danger" className="text-[0.65rem]">
-                          En propia
-                        </Badge>
-                      ) : null}
-                      {s.isPenalty ? (
-                        <Badge variant="warning" className="text-[0.65rem]">
-                          Pen.
-                        </Badge>
-                      ) : null}
-                    </div>
-                    {s.minute != null ? (
-                      <span className="text-sm tabular-nums text-[var(--color-muted-foreground)]">
-                        {s.minute}&apos;
-                      </span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
-function TeamCard({
+function TeamHero({
   team,
+  side,
+  winner,
 }: {
   team: { name: string; code: string; flagUrl: string | null } | null | undefined;
+  side: "home" | "away";
+  winner: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 text-center">
-      <span className="grid size-16 place-items-center overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+    <div
+      className={`flex flex-col items-center gap-3 text-center ${
+        side === "home" ? "sm:items-end sm:text-right" : "sm:items-start sm:text-left"
+      }`}
+    >
+      <span
+        className={`grid size-20 place-items-center overflow-hidden rounded-lg border ${
+          winner
+            ? "border-[var(--color-arena)] shadow-[var(--shadow-arena)]"
+            : "border-[var(--color-border-strong)]"
+        } bg-[var(--color-surface-2)]`}
+      >
         {team?.flagUrl ? (
-          <Image src={team.flagUrl} alt={team.code} width={64} height={64} />
+          <Image src={team.flagUrl} alt={team.code} width={80} height={80} />
         ) : (
-          <span className="text-xs text-[var(--color-muted-foreground)]">{team?.code ?? "?"}</span>
+          <span className="font-mono text-xs text-[var(--color-muted-foreground)]">
+            {team?.code ?? "?"}
+          </span>
         )}
       </span>
-      <p className="font-display text-xl">{team?.name ?? "—"}</p>
+      <div>
+        <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+          {team?.code ?? "—"}
+        </p>
+        <p
+          className={`font-display text-3xl tracking-tight sm:text-4xl ${
+            winner ? "text-[var(--color-arena)]" : ""
+          }`}
+        >
+          {team?.name ?? "TBD"}
+        </p>
+      </div>
     </div>
   );
 }

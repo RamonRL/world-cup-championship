@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matchScorers, matches } from "@/lib/db/schema";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { BarChart3 } from "lucide-react";
@@ -13,7 +12,6 @@ export default async function StatsPage() {
     .select({
       played: sql<number>`count(*) filter (where status = 'finished')::int`,
       total: sql<number>`count(*)::int`,
-      goals: sql<number>`coalesce(sum(home_score) + sum(away_score), 0)::int`,
     })
     .from(matches);
 
@@ -21,29 +19,13 @@ export default async function StatsPage() {
     .select({ goals: sql<number>`count(*)::int` })
     .from(matchScorers);
 
-  const drawsRow = await db
+  const [drawsRow] = await db
     .select({
       draws: sql<number>`count(*) filter (where home_score = away_score and status = 'finished')::int`,
       penalties: sql<number>`count(*) filter (where went_to_pens)::int`,
       over6: sql<number>`count(*) filter (where home_score + away_score > 6)::int`,
     })
     .from(matches);
-  const draws = drawsRow[0];
-
-  const stats = [
-    { label: "Partidos jugados", value: matchAgg.played, sub: `de ${matchAgg.total}` },
-    {
-      label: "Goles totales",
-      value: scorerCount.goals,
-      sub:
-        matchAgg.played > 0
-          ? `${(scorerCount.goals / matchAgg.played).toFixed(2)} por partido`
-          : "0 por partido",
-    },
-    { label: "Empates", value: draws.draws, sub: "(en 90′)" },
-    { label: "Tandas de penaltis", value: draws.penalties, sub: "decididos así" },
-    { label: "Partidos con +6 goles", value: draws.over6, sub: "" },
-  ];
 
   if (matchAgg.played === 0) {
     return (
@@ -51,7 +33,7 @@ export default async function StatsPage() {
         <PageHeader
           eyebrow="Datos del torneo"
           title="Estadísticas"
-          description="Goles totales, empates, tandas de penaltis y partidos goleadores."
+          description="Goles, empates, tandas de penaltis y partidos goleadores. Calculado en directo desde los resultados."
         />
         <EmptyState
           icon={<BarChart3 className="size-5" />}
@@ -62,28 +44,68 @@ export default async function StatsPage() {
     );
   }
 
+  const avg = (scorerCount.goals / matchAgg.played).toFixed(2);
+
+  const stats = [
+    {
+      label: "Partidos jugados",
+      value: matchAgg.played,
+      hint: `de ${matchAgg.total}`,
+    },
+    {
+      label: "Goles totales",
+      value: scorerCount.goals,
+      hint: `${avg} por partido`,
+      accent: true,
+    },
+    {
+      label: "Empates en 90'",
+      value: drawsRow.draws,
+      hint: "antes de prórroga / penaltis",
+    },
+    {
+      label: "Tandas de penaltis",
+      value: drawsRow.penalties,
+      hint: "decididas en 11 metros",
+    },
+    {
+      label: "Partidos +6 goles",
+      value: drawsRow.over6,
+      hint: "festival de gol",
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         eyebrow="Datos del torneo"
         title="Estadísticas"
-        description="Cifras agregadas en directo a partir de los resultados cargados."
+        description="Cifras agregadas en directo. Se actualizan cada vez que el admin guarda un resultado."
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((s) => (
-          <Card key={s.label}>
-            <CardHeader>
-              <CardDescription className="text-[0.65rem] uppercase tracking-wider">
-                {s.label}
-              </CardDescription>
-              <CardTitle className="font-display text-4xl tabular-nums">{s.value}</CardTitle>
-            </CardHeader>
-            {s.sub ? (
-              <CardContent className="text-xs text-[var(--color-muted-foreground)]">
-                {s.sub}
-              </CardContent>
-            ) : null}
-          </Card>
+          <article
+            key={s.label}
+            className={`relative overflow-hidden rounded-xl border p-6 ${
+              s.accent
+                ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface))]"
+                : "border-[var(--color-border)] bg-[var(--color-surface)]"
+            }`}
+          >
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              {s.label}
+            </p>
+            <p
+              className={`mt-3 font-display tabular text-7xl leading-none tracking-tight ${
+                s.accent ? "text-[var(--color-arena)] glow-arena" : ""
+              }`}
+            >
+              {s.value}
+            </p>
+            <p className="mt-2 font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+              {s.hint}
+            </p>
+          </article>
         ))}
       </div>
     </div>

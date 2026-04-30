@@ -30,18 +30,25 @@ export function ProfileForm({
       <Card>
         <CardHeader>
           <CardTitle>Identidad</CardTitle>
-          <CardDescription>Tu email es fijo: {email}</CardDescription>
+          <CardDescription>
+            Tu email queda fijo (es tu identidad de acceso): {email}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="size-20 ring-2 ring-[var(--color-border)]">
+        <CardContent className="space-y-6">
+          <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+            <Avatar className="size-24 border border-[var(--color-border-strong)] shadow-[var(--shadow-elev-1)]">
               {preview ? <AvatarImage src={preview} alt={display} /> : null}
-              <AvatarFallback className="font-display text-2xl">
+              <AvatarFallback className="font-display text-3xl">
                 {initials(display)}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 space-y-1.5">
-              <Label htmlFor="avatar">Avatar</Label>
+            <div className="flex-1 space-y-2">
+              <Label
+                htmlFor="avatar"
+                className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]"
+              >
+                Avatar
+              </Label>
               <Input
                 id="avatar"
                 name="avatar"
@@ -52,13 +59,19 @@ export function ProfileForm({
                   if (f) setPreview(URL.createObjectURL(f));
                 }}
               />
-              <p className="text-xs text-[var(--color-muted-foreground)]">
-                PNG/JPG cuadrado. Se recorta a círculo automáticamente.
+              <p className="font-editorial text-xs italic text-[var(--color-muted-foreground)]">
+                PNG/JPG cuadrado. Se recorta a círculo en ranking, podio y chat.
               </p>
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="nickname">Apodo</Label>
+
+          <div className="space-y-2">
+            <Label
+              htmlFor="nickname"
+              className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]"
+            >
+              Apodo
+            </Label>
             <Input
               id="nickname"
               name="nickname"
@@ -66,13 +79,15 @@ export function ProfileForm({
               maxLength={40}
               placeholder={email.split("@")[0]}
             />
-            <p className="text-xs text-[var(--color-muted-foreground)]">
+            <p className="font-editorial text-xs italic text-[var(--color-muted-foreground)]">
               Si lo dejas vacío, se mostrará la primera parte de tu email.
             </p>
           </div>
         </CardContent>
       </Card>
-      {state.error ? <p className="text-sm text-[var(--color-danger)]">{state.error}</p> : null}
+      {state.error ? (
+        <p className="text-sm text-[var(--color-danger)]">{state.error}</p>
+      ) : null}
       {state.ok ? (
         <p className="text-sm text-[var(--color-success)]">Perfil actualizado.</p>
       ) : null}
