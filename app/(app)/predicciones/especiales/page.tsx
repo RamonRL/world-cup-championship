@@ -4,7 +4,9 @@ import { players, predSpecial, specialPredictions, teams } from "@/lib/db/schema
 import { Sparkles } from "lucide-react";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
+import { ScoringBox } from "@/components/brand/scoring-box";
 import { requireUser } from "@/lib/auth/guards";
+import { SPECIALS_FOOTNOTE, SPECIALS_SCORING } from "@/lib/scoring/copy";
 import { SpecialsForm } from "./specials-form";
 
 export const metadata = { title: "Predicciones especiales" };
@@ -27,6 +29,7 @@ export default async function PredictSpecialsPage() {
           title="Predicciones especiales"
           description="Balón de Oro, Guante de Oro, gol >6 en grupos…"
         />
+        <ScoringBox sections={SPECIALS_SCORING} footnote={SPECIALS_FOOTNOTE} />
         <EmptyState
           icon={<Sparkles className="size-5" />}
           title="Sin predicciones especiales todavía"
@@ -43,6 +46,7 @@ export default async function PredictSpecialsPage() {
         title="Predicciones especiales"
         description="Una pregunta por especial. Cada una con su propio cierre. Puedes editar hasta el cierre individual."
       />
+      <ScoringBox sections={SPECIALS_SCORING} footnote={SPECIALS_FOOTNOTE} />
       <SpecialsForm
         specials={specials.map((s) => ({
           id: s.id,
@@ -50,6 +54,7 @@ export default async function PredictSpecialsPage() {
           question: s.question,
           type: s.type,
           optionsJson: s.optionsJson as unknown,
+          pointsConfigJson: s.pointsConfigJson as unknown,
           closesAt: s.closesAt.toISOString(),
         }))}
         existing={Array.from(myByKey.entries()).map(([specialId, row]) => ({

@@ -3,9 +3,11 @@ import { db } from "@/lib/db";
 import { groups, predGroupRanking, teams } from "@/lib/db/schema";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
+import { ScoringBox } from "@/components/brand/scoring-box";
 import { Users } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
+import { GROUPS_FOOTNOTE, GROUPS_SCORING } from "@/lib/scoring/copy";
 import { GroupRankingForm } from "./group-ranking-form";
 
 export const metadata = { title: "Posiciones por grupo · Predicciones" };
@@ -81,10 +83,11 @@ export default async function PredictGroupsPage() {
         title="Posiciones por grupo"
         description={
           open
-            ? `Cierra ${formatDateTime(KICKOFF)}. 3 pts exacto, 1 pt adyacente, +1 si aciertas top-2 en cualquier orden.`
+            ? `Cierra ${formatDateTime(KICKOFF)}. Ordena las 4 selecciones de cada grupo del 1º al 4º.`
             : "Predicción cerrada. Sólo puedes consultar lo que enviaste."
         }
       />
+      <ScoringBox sections={GROUPS_SCORING} footnote={GROUPS_FOOTNOTE} />
       <GroupRankingForm
         open={open}
         groups={allGroups.map((g) => ({

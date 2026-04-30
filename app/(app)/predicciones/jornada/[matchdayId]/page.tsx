@@ -13,11 +13,13 @@ import {
 } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
+import { ScoringBox } from "@/components/brand/scoring-box";
 import { Lock } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
 import { getMatchdayState, type Stage } from "@/lib/matchday-state";
 import { EmptyState } from "@/components/shell/empty-state";
+import { MATCH_FOOTNOTE, MATCH_SCORING } from "@/lib/scoring/copy";
 import { MatchdayPredictionForm } from "./matchday-form";
 
 export default async function PredictMatchdayPage({
@@ -142,6 +144,7 @@ export default async function PredictMatchdayPage({
             : `Cierre pasado: ${formatDateTime(day.predictionDeadlineAt)}.`
         }
       />
+      <ScoringBox sections={MATCH_SCORING} footnote={MATCH_FOOTNOTE} />
       <MatchdayPredictionForm
         matchdayId={day.id}
         open={open}

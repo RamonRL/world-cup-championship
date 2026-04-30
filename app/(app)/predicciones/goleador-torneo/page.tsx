@@ -4,8 +4,10 @@ import { players, predTournamentTopScorer, teams } from "@/lib/db/schema";
 import { Target } from "lucide-react";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
+import { ScoringBox } from "@/components/brand/scoring-box";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
+import { TOP_SCORER_SCORING } from "@/lib/scoring/copy";
 import { TopScorerForm } from "./top-scorer-form";
 
 export const metadata = { title: "Bota de Oro · Predicciones" };
@@ -32,8 +34,9 @@ export default async function PredictTopScorerPage() {
         <PageHeader
           eyebrow="Categoría 3"
           title="Bota de Oro"
-          description="15 / 5 / 2 puntos según posición final del jugador en el ranking de goleadores."
+          description="Tu candidato al máximo goleador del torneo."
         />
+        <ScoringBox sections={TOP_SCORER_SCORING} />
         <EmptyState
           icon={<Target className="size-5" />}
           title="Aún no hay jugadores cargados"
@@ -56,6 +59,7 @@ export default async function PredictTopScorerPage() {
             : "Cerrada."
         }
       />
+      <ScoringBox sections={TOP_SCORER_SCORING} />
       <TopScorerForm
         open={open}
         existingPlayerId={mine[0]?.playerId ?? null}

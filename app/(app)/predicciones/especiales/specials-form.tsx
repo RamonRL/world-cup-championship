@@ -28,8 +28,23 @@ type SpecialDef = {
   question: string;
   type: SpecialType;
   optionsJson: unknown;
+  pointsConfigJson: unknown;
   closesAt: string;
 };
+
+function maxPointsFor(config: unknown): number | null {
+  if (!config || typeof config !== "object") return null;
+  const obj = config as Record<string, unknown>;
+  if (typeof obj.correct === "number") return obj.correct;
+  if (typeof obj.maxPoints === "number") return obj.maxPoints;
+  if (obj.perRound && typeof obj.perRound === "object") {
+    const values = Object.values(obj.perRound as Record<string, unknown>).filter(
+      (v): v is number => typeof v === "number",
+    );
+    return values.length > 0 ? Math.max(...values) : null;
+  }
+  return null;
+}
 
 type Existing = { specialId: number; valueJson: Record<string, unknown> };
 
@@ -62,6 +77,7 @@ export function SpecialsForm({ specials, existing, players, teams }: Props) {
       <div className="grid gap-4">
         {specials.map((s) => {
           const open = new Date(s.closesAt).getTime() > Date.now();
+          const maxPts = maxPointsFor(s.pointsConfigJson);
           return (
             <Card key={s.id}>
               <CardHeader>
@@ -75,12 +91,34 @@ export function SpecialsForm({ specials, existing, players, teams }: Props) {
                       Cierra {formatDateTime(s.closesAt)}
                     </CardDescription>
                   </div>
-                  {!open ? (
-                    <Badge variant="warning" className="gap-1 text-[0.6rem]">
-                      <Lock className="size-3" />
-                      Cerrada
-                    </Badge>
-                  ) : null}
+                  <div className="flex flex-col items-end gap-2">
+                    {maxPts != null ? (
+                      <span
+                        className="inline-flex items-baseline gap-1 rounded-md border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_12%,transparent)] px-2 py-1 font-display tabular leading-none text-[var(--color-arena)] glow-arena"
+                        title={
+                          (s.pointsConfigJson as { perRound?: unknown })?.perRound
+                            ? "Escala por ronda. El máximo se logra acertando la ronda más alta."
+                            : "Puntos por respuesta correcta."
+                        }
+                      >
+                        {(s.pointsConfigJson as { perRound?: unknown })?.perRound ? (
+                          <span className="text-[0.55rem] uppercase tracking-[0.18em] opacity-70">
+                            Hasta
+                          </span>
+                        ) : null}
+                        <span className="text-xl">{maxPts}</span>
+                        <span className="text-[0.55rem] uppercase tracking-[0.18em] opacity-70">
+                          {maxPts === 1 ? "pt" : "pts"}
+                        </span>
+                      </span>
+                    ) : null}
+                    {!open ? (
+                      <Badge variant="warning" className="gap-1 text-[0.6rem]">
+                        <Lock className="size-3" />
+                        Cerrada
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>

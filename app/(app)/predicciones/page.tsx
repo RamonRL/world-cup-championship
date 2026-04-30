@@ -22,10 +22,18 @@ import {
 } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shell/page-header";
+import { ScoringBox, type ScoringSection } from "@/components/brand/scoring-box";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
 import { computeMatchdayStates, type Stage } from "@/lib/matchday-state";
 import { getBracketStatus } from "@/lib/bracket-state";
+import {
+  BRACKET_SCORING,
+  GROUPS_SCORING,
+  MATCH_SCORING,
+  SPECIALS_SCORING,
+  TOP_SCORER_SCORING,
+} from "@/lib/scoring/copy";
 
 export const metadata = { title: "Mis predicciones" };
 
@@ -143,7 +151,7 @@ export default async function PrediccionesHub() {
             icon={<Users className="size-5" />}
             label="Posiciones por grupo"
             description="Ordena las 4 selecciones de cada grupo del 1º al 4º."
-            pts="3 · 1 · +1"
+            scoring={GROUPS_SCORING}
             statusBadge={
               groupPredCount === 12
                 ? { variant: "success", text: "Completo" }
@@ -158,7 +166,7 @@ export default async function PrediccionesHub() {
             icon={<Target className="size-5" />}
             label="Bota de Oro"
             description="Tu candidato al máximo goleador del torneo."
-            pts="15 · 5 · 2"
+            scoring={TOP_SCORER_SCORING}
             statusBadge={
               topScorerPred
                 ? { variant: "success", text: "Pick enviado" }
@@ -173,7 +181,7 @@ export default async function PrediccionesHub() {
             icon={<Sparkles className="size-5" />}
             label="Especiales"
             description="Balón de Oro, Guante, anfitrión más lejos…"
-            pts="3 · 4 · 6 · 8"
+            scoring={SPECIALS_SCORING}
             statusBadge={
               answeredSpecials >= totalSpecials && totalSpecials > 0
                 ? { variant: "success", text: "Completo" }
@@ -227,26 +235,29 @@ export default async function PrediccionesHub() {
             El admin todavía no ha publicado las jornadas. Cuando lo haga, aquí podrás predecirlas.
           </p>
         ) : (
-          <div className="space-y-4">
-            {featured ? (
-              <FeaturedMatchday day={featured} />
-            ) : waitingDays.length > 0 ? (
-              <WaitingMatchday day={waitingDays[0]} />
-            ) : null}
+          <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+            <div className="space-y-4">
+              {featured ? (
+                <FeaturedMatchday day={featured} />
+              ) : waitingDays.length > 0 ? (
+                <WaitingMatchday day={waitingDays[0]} />
+              ) : null}
 
-            {(otherOpen.length > 0 || waitingDays.length > 1 || closedDays.length > 0) && (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {otherOpen.map((d) => (
-                  <MatchdayMini key={d.id} day={d} />
-                ))}
-                {waitingDays.slice(featured ? 0 : 1).map((d) => (
-                  <MatchdayMini key={d.id} day={d} />
-                ))}
-                {closedDays.map((d) => (
-                  <MatchdayMini key={d.id} day={d} />
-                ))}
-              </div>
-            )}
+              {(otherOpen.length > 0 || waitingDays.length > 1 || closedDays.length > 0) && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {otherOpen.map((d) => (
+                    <MatchdayMini key={d.id} day={d} />
+                  ))}
+                  {waitingDays.slice(featured ? 0 : 1).map((d) => (
+                    <MatchdayMini key={d.id} day={d} />
+                  ))}
+                  {closedDays.map((d) => (
+                    <MatchdayMini key={d.id} day={d} />
+                  ))}
+                </div>
+              )}
+            </div>
+            <ScoringBox sections={MATCH_SCORING} className="self-start" />
           </div>
         )}
       </Section>
@@ -299,7 +310,7 @@ function CategoryCard({
   icon,
   label,
   description,
-  pts,
+  scoring,
   statusBadge,
   done,
   locked,
@@ -309,14 +320,14 @@ function CategoryCard({
   icon: React.ReactNode;
   label: string;
   description: string;
-  pts: string;
+  scoring: ScoringSection[];
   statusBadge: { variant: "success" | "warning"; text: string };
   done: boolean;
   locked: boolean;
 }) {
   const Inner = (
     <article
-      className={`relative h-full overflow-hidden rounded-xl border bg-[var(--color-surface)] p-5 transition-all duration-200 ${
+      className={`relative flex h-full flex-col overflow-hidden rounded-xl border bg-[var(--color-surface)] p-5 transition-all duration-200 ${
         locked
           ? "border-[var(--color-border)] opacity-70"
           : "border-[var(--color-border)] hover:-translate-y-0.5 hover:border-[var(--color-arena)]/50 hover:shadow-[var(--shadow-elev-2)]"
@@ -328,7 +339,7 @@ function CategoryCard({
       >
         {cat}
       </span>
-      <div className="relative space-y-4">
+      <div className="relative flex flex-1 flex-col gap-4">
         <header className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span
@@ -354,12 +365,10 @@ function CategoryCard({
         <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)]">
           {description}
         </p>
-        <footer className="flex items-center justify-between border-t border-dashed border-[var(--color-border)] pt-3">
-          <Badge variant={statusBadge.variant}>{statusBadge.text}</Badge>
-          <span className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-            {pts}
-          </span>
-        </footer>
+        <ScoringBox sections={scoring} dense className="mt-auto" />
+        <Badge variant={statusBadge.variant} className="self-start">
+          {statusBadge.text}
+        </Badge>
       </div>
     </article>
   );
@@ -392,17 +401,19 @@ function BracketCard({
       >
         04
       </span>
-      <div className="relative grid gap-5 lg:grid-cols-[auto_1fr_auto] lg:items-center">
-        <span className="grid size-12 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-arena)]">
-          <Swords className="size-6" />
-        </span>
-        <div className="space-y-1.5">
-          <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-            Cat. 04 · Bracket eliminatorio
-          </p>
-          <h3 className="font-display text-3xl tracking-tight">
-            32 → 16 → 8 → 4 → 2 → 1
-          </h3>
+      <div className="relative grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <div className="space-y-3">
+          <header className="flex items-center gap-3">
+            <span className="grid size-12 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-arena)]">
+              <Swords className="size-6" />
+            </span>
+            <div>
+              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Cat. 04 · Bracket eliminatorio
+              </p>
+              <h3 className="font-display text-3xl tracking-tight">32 → 16 → 8 → 4 → 2 → 1</h3>
+            </div>
+          </header>
           <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
             {status === "waiting"
               ? "Disponible cuando termine la fase de grupos. Predecirás los 32 clasificados que avanzan ronda a ronda hasta el campeón."
@@ -419,21 +430,19 @@ function BracketCard({
                   }.`
                 : "Bracket cerrado. Los dieciseisavos ya arrancaron."}
           </p>
+          <div>
+            {status === "waiting" ? (
+              <Badge variant="warning" className="gap-1">
+                <Lock className="size-3" /> Bloqueado
+              </Badge>
+            ) : status === "open" ? (
+              <Badge variant="success">Abierto</Badge>
+            ) : (
+              <Badge variant="outline">Cerrado</Badge>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-3 lg:flex-col lg:items-end">
-          {status === "waiting" ? (
-            <Badge variant="warning" className="gap-1">
-              <Lock className="size-3" /> Bloqueado
-            </Badge>
-          ) : status === "open" ? (
-            <Badge variant="success">Abierto</Badge>
-          ) : (
-            <Badge variant="outline">Cerrado</Badge>
-          )}
-          <span className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-            2 → 4 → 7 → 10 → 20 pts
-          </span>
-        </div>
+        <ScoringBox sections={BRACKET_SCORING} dense />
       </div>
     </article>
   );
