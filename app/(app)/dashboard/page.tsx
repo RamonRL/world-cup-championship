@@ -11,8 +11,10 @@ import {
   pointsLedger,
   predGroupRanking,
   predMatchScorer,
+  predSpecial,
   predTournamentTopScorer,
   profiles,
+  specialPredictions,
   teams,
 } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
@@ -123,7 +125,15 @@ export default async function DashboardPage() {
     .where(and(gt(matches.scheduledAt, new Date()), sql`${predMatchScorer.matchId} is null`));
   const pendingScorers = pendingScorerCount[0]?.c ?? 0;
 
-  const [groupCount, topScorerSet, recentMatch, nextMatch, liveMatchRows] = await Promise.all([
+  const [
+    groupCount,
+    topScorerSet,
+    mySpecialsRow,
+    totalSpecialsRow,
+    recentMatch,
+    nextMatch,
+    liveMatchRows,
+  ] = await Promise.all([
     db
       .select({ c: sql<number>`count(*)::int` })
       .from(predGroupRanking)
@@ -133,6 +143,11 @@ export default async function DashboardPage() {
       .from(predTournamentTopScorer)
       .where(eq(predTournamentTopScorer.userId, me.id))
       .limit(1),
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(predSpecial)
+      .where(eq(predSpecial.userId, me.id)),
+    db.select({ c: sql<number>`count(*)::int` }).from(specialPredictions),
     db
       .select()
       .from(matches)
@@ -199,6 +214,19 @@ export default async function DashboardPage() {
 
   const greeting = me.nickname || me.email.split("@")[0];
   const podium = sorted.slice(0, 3);
+
+  // Pre-torneo progress: 3 categories — group rankings, top scorer, specials.
+  const groupsDone = (groupCount[0]?.c ?? 0) === 12;
+  const topScorerDone = topScorerSet.length > 0;
+  const totalSpecials = totalSpecialsRow[0]?.c ?? 0;
+  const mySpecials = mySpecialsRow[0]?.c ?? 0;
+  const specialsDone = totalSpecials > 0 && mySpecials >= totalSpecials;
+  const preTorneoComplete =
+    [groupsDone, topScorerDone, specialsDone].filter(Boolean).length;
+  const preTorneoTotal = 3;
+  const tournamentStarted = kickoff.getTime() <= Date.now();
+  const myStats = stats.get(me.id);
+  const exactScores = myStats?.exactScoresCount ?? 0;
 
   return (
     <div className="space-y-10">
@@ -330,9 +358,22 @@ export default async function DashboardPage() {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
-              <span className="mx-2 opacity-60">·</span>
-              Estadio Azteca <span className="opacity-60">/ MÉX</span> vs RSA
             </p>
+            {!tournamentStarted ? (
+              <div className="flex items-center gap-3 border-t border-dashed border-[var(--color-border)] pt-4">
+                <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                  Pre-torneo
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <ProgressDot done={groupsDone} label="Grupos" />
+                  <ProgressDot done={topScorerDone} label="Bota" />
+                  <ProgressDot done={specialsDone} label="Especiales" />
+                </div>
+                <span className="ml-auto font-display tabular text-base text-[var(--color-arena)] glow-arena">
+                  {preTorneoComplete}/{preTorneoTotal}
+                </span>
+              </div>
+            ) : null}
           </div>
 
           {/* Right column — next match & up next deadline */}
@@ -419,20 +460,53 @@ export default async function DashboardPage() {
           label="TU POSICIÓN"
           value={myPosition != null ? `${myPosition.toString().padStart(2, "0")}` : "--"}
           prefix={myPosition != null ? "#" : null}
-          hint={myPosition != null ? `de ${sorted.length}` : "Sin puntos aún"}
+          hint={
+            myPosition != null
+              ? `de ${sorted.length}`
+              : sorted.length > 1
+                ? `${sorted.length} jugadores · sin puntos aún`
+                : "Esperando primer resultado"
+          }
           accent
         />
         <Stat label="PUNTOS" value={myPoints.toString()} hint="acumulados" />
-        <Stat
-          label="GOLEADORES PEND."
-          value={pendingScorers.toString()}
-          hint="próximos sin pick"
-        />
-        <Stat
-          label="EXACTOS"
-          value={(stats.get(me.id)?.exactScoresCount ?? 0).toString()}
-          hint="marcadores clavados"
-        />
+        {tournamentStarted ? (
+          <>
+            <Stat
+              label="GOLEADORES PEND."
+              value={pendingScorers.toString()}
+              hint="próximos sin pick"
+            />
+            <Stat
+              label="EXACTOS"
+              value={exactScores.toString()}
+              hint="marcadores clavados"
+            />
+          </>
+        ) : (
+          <>
+            <Stat
+              label="PRE-TORNEO"
+              value={`${preTorneoComplete}/${preTorneoTotal}`}
+              hint={
+                preTorneoComplete === preTorneoTotal
+                  ? "todo listo · puedes editar hasta el kickoff"
+                  : "categorías por cerrar"
+              }
+            />
+            <Stat
+              label="ESPECIALES"
+              value={`${mySpecials}/${totalSpecials || "—"}`}
+              hint={
+                totalSpecials === 0
+                  ? "aún no publicadas"
+                  : mySpecials === totalSpecials
+                    ? "todas respondidas"
+                    : "preguntas sin responder"
+              }
+            />
+          </>
+        )}
       </section>
 
       {/* Activity feed — appears once the user has earned points */}
@@ -484,21 +558,25 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <PreCheck
-              done={(groupCount[0]?.c ?? 0) === 12}
+              done={groupsDone}
               label="Posiciones de grupo"
-              hint="12 grupos × 4 selecciones"
+              hint={`${groupCount[0]?.c ?? 0}/12 grupos`}
               href="/predicciones/grupos"
             />
             <PreCheck
-              done={topScorerSet.length > 0}
+              done={topScorerDone}
               label="Bota de Oro"
               hint="Tu candidato al máximo goleador"
               href="/predicciones/goleador-torneo"
             />
             <PreCheck
-              done={false}
+              done={specialsDone}
               label="Predicciones especiales"
-              hint="Balón / Guante / Anfitrión / África…"
+              hint={
+                totalSpecials > 0
+                  ? `${mySpecials}/${totalSpecials} respondidas`
+                  : "Balón / Guante / Anfitrión / África…"
+              }
               href="/predicciones/especiales"
             />
           </CardContent>
@@ -511,10 +589,23 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {recentMatch.length === 0 ? (
-              <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-                Sin resultados todavía. Cuando termine el primer partido, aparecerá aquí como
-                marcador encendido.
-              </p>
+              <div className="space-y-3">
+                <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+                  Aún no hay partidos finalizados. Mientras tanto:
+                </p>
+                <Link
+                  href="/calendario"
+                  className="group flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-sm transition hover:border-[var(--color-arena)]/40"
+                >
+                  <span>
+                    <p className="font-medium">Ver el calendario completo</p>
+                    <p className="text-[0.7rem] text-[var(--color-muted-foreground)]">
+                      104 partidos por jornada
+                    </p>
+                  </span>
+                  <ArrowRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1" />
+                </Link>
+              </div>
             ) : (
               recentMatch.map((m) => {
                 const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
@@ -550,9 +641,25 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {podium.length === 0 || podium[0].totalPoints === 0 ? (
-              <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-                Aún no hay puntos en juego. Empezad fuerte la J1.
-              </p>
+              <div className="space-y-3">
+                <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+                  {sorted.length > 1
+                    ? `${sorted.length} jugadores empatados a 0. Que empiece el torneo.`
+                    : "Esperando más participantes."}
+                </p>
+                <Link
+                  href="/ranking"
+                  className="group flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-sm transition hover:border-[var(--color-arena)]/40"
+                >
+                  <span>
+                    <p className="font-medium">Ver el ranking completo</p>
+                    <p className="text-[0.7rem] text-[var(--color-muted-foreground)]">
+                      Todos los participantes inscritos
+                    </p>
+                  </span>
+                  <ArrowRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1" />
+                </Link>
+              </div>
             ) : (
               podium.map((p, i) => {
                 const display = p.user.nickname || p.user.email.split("@")[0];
@@ -628,6 +735,22 @@ function Stat({
         <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{hint}</p>
       ) : null}
     </div>
+  );
+}
+
+function ProgressDot({ done, label }: { done: boolean; label: string }) {
+  return (
+    <span
+      title={`${label}: ${done ? "completo" : "pendiente"}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] ${
+        done
+          ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_12%,transparent)] text-[var(--color-arena)]"
+          : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted-foreground)]"
+      }`}
+    >
+      <span className={`size-1.5 rounded-full ${done ? "bg-[var(--color-arena)]" : "bg-[var(--color-muted-foreground)]/40"}`} />
+      {label}
+    </span>
   );
 }
 
