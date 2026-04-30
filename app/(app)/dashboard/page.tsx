@@ -21,6 +21,7 @@ import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
+import { loadActivityFeed } from "@/lib/activity-feed";
 
 const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z";
 
@@ -174,6 +175,8 @@ export default async function DashboardPage() {
         .from(matchScorers)
         .where(eq(matchScorers.matchId, liveMatch.id))
     : [];
+  const activity = await loadActivityFeed(me.id, 8);
+
   const liveScorerPlayerIds = liveScorerRows.map((s) => s.playerId);
   const livePlayerRows =
     liveScorerPlayerIds.length > 0
@@ -431,6 +434,41 @@ export default async function DashboardPage() {
           hint="marcadores clavados"
         />
       </section>
+
+      {/* Activity feed — appears once the user has earned points */}
+      {activity.length > 0 ? (
+        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+          <header className="flex items-center justify-between gap-3 pb-3">
+            <div className="flex items-center gap-3">
+              <span className="h-px w-6 bg-[var(--color-arena)]" />
+              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Últimos puntos · tu ledger
+              </p>
+            </div>
+            <p className="font-display text-xl tracking-tight">+{myPoints}</p>
+          </header>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {activity.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{a.label}</p>
+                  {a.detail ? (
+                    <p className="truncate font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                      {a.detail}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="font-display tabular text-2xl text-[var(--color-arena)] glow-arena">
+                  +{a.points}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* Body — checklist + recent + podium */}
       <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">

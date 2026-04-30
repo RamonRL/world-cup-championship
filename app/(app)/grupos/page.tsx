@@ -1,10 +1,11 @@
 import Image from "next/image";
+import Link from "next/link";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, groupStandings, teams } from "@/lib/db/schema";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
-import { Users } from "lucide-react";
+import { ArrowUpRight, Users } from "lucide-react";
 
 export const metadata = { title: "Grupos" };
 
@@ -50,9 +51,10 @@ export default async function GroupsPage() {
               return sa - sb;
             });
             return (
-              <article
+              <Link
                 key={g.id}
-                className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]"
+                href={`/grupos/${g.code}`}
+                className="group block overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)]"
               >
                 <header className="flex items-baseline justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
                   <div className="flex items-baseline gap-3">
@@ -61,9 +63,7 @@ export default async function GroupsPage() {
                     </span>
                     <span className="font-display text-xl tracking-tight">{g.name}</span>
                   </div>
-                  <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                    Top 2 → R32
-                  </span>
+                  <ArrowUpRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:text-[var(--color-arena)]" />
                 </header>
 
                 <div className="grid grid-cols-[28px_1fr_28px_28px_28px_28px_36px_36px_44px] gap-2 border-b border-[var(--color-border)] px-4 py-2 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
@@ -82,7 +82,7 @@ export default async function GroupsPage() {
                     Selecciones aún sin asignar.
                   </p>
                 ) : (
-                  <ul>
+                  <ul className="pointer-events-none">
                     {sorted.map((t, i) => {
                       const s = standingByPair.get(`${g.id}-${t.id}`);
                       const pos = i + 1;
@@ -140,7 +140,7 @@ export default async function GroupsPage() {
                     })}
                   </ul>
                 )}
-              </article>
+              </Link>
             );
           })}
         </div>
