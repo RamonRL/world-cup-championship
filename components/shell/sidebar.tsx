@@ -6,9 +6,9 @@ import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV, NAV_ITEMS, type NavItem } from "./nav-data";
 
-type Props = { isAdmin: boolean };
+type Props = { isAdmin: boolean; pendingCount?: number };
 
-export function Sidebar({ isAdmin }: Props) {
+export function Sidebar({ isAdmin, pendingCount = 0 }: Props) {
   const pathname = usePathname();
   const main = NAV_ITEMS.filter((i) => i.group === "main");
   const preds = NAV_ITEMS.filter((i) => i.group === "predicciones");
@@ -34,7 +34,13 @@ export function Sidebar({ isAdmin }: Props) {
         </Link>
         <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-5">
           <NavGroup title="Torneo" items={main} pathname={pathname} />
-          <NavGroup title="Predicciones" items={preds} pathname={pathname} />
+          <NavGroup
+            title="Predicciones"
+            items={preds}
+            pathname={pathname}
+            badgeFor="/predicciones"
+            badgeCount={pendingCount}
+          />
           <NavGroup title="Comunidad" items={social} pathname={pathname} />
           {admin.length > 0 ? (
             <NavGroup title="Admin" items={admin} pathname={pathname} />
@@ -55,10 +61,14 @@ function NavGroup({
   title,
   items,
   pathname,
+  badgeFor,
+  badgeCount = 0,
 }: {
   title: string;
   items: NavItem[];
   pathname: string;
+  badgeFor?: string;
+  badgeCount?: number;
 }) {
   return (
     <div className="space-y-1">
@@ -73,6 +83,7 @@ function NavGroup({
           item.href === "/dashboard"
             ? pathname === item.href
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const showBadge = badgeFor === item.href && badgeCount > 0;
         return (
           <Link
             key={item.href}
@@ -97,6 +108,11 @@ function NavGroup({
               )}
             />
             <span>{item.label}</span>
+            {showBadge ? (
+              <span className="ml-auto grid min-w-[1.25rem] place-items-center rounded-full bg-[var(--color-arena)] px-1.5 font-mono text-[0.6rem] font-semibold tabular text-white">
+                {badgeCount > 99 ? "99+" : badgeCount}
+              </span>
+            ) : null}
           </Link>
         );
       })}

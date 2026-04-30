@@ -4,8 +4,10 @@ import { ArrowRight, ArrowUpRight, Flame } from "lucide-react";
 import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
+  matchScorers,
   matchdays,
   matches,
+  players,
   pointsLedger,
   predGroupRanking,
   predMatchScorer,
@@ -15,6 +17,7 @@ import {
 } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
@@ -119,7 +122,7 @@ export default async function DashboardPage() {
     .where(and(gt(matches.scheduledAt, new Date()), sql`${predMatchScorer.matchId} is null`));
   const pendingScorers = pendingScorerCount[0]?.c ?? 0;
 
-  const [groupCount, topScorerSet, recentMatch, nextMatch] = await Promise.all([
+  const [groupCount, topScorerSet, recentMatch, nextMatch, liveMatchRows] = await Promise.all([
     db
       .select({ c: sql<number>`count(*)::int` })
       .from(predGroupRanking)
@@ -141,9 +144,16 @@ export default async function DashboardPage() {
       .where(gt(matches.scheduledAt, new Date()))
       .orderBy(asc(matches.scheduledAt))
       .limit(1),
+    db
+      .select()
+      .from(matches)
+      .where(eq(matches.status, "live"))
+      .orderBy(asc(matches.scheduledAt))
+      .limit(1),
   ]);
+  const liveMatch = liveMatchRows[0] ?? null;
 
-  const teamIds = [...recentMatch, ...nextMatch]
+  const teamIds = [...recentMatch, ...nextMatch, ...(liveMatch ? [liveMatch] : [])]
     .flatMap((m) => [m.homeTeamId, m.awayTeamId])
     .filter((x): x is number => x != null);
   const teamRows =
@@ -154,6 +164,35 @@ export default async function DashboardPage() {
   const next = nextMatch[0];
   const nextHome = next?.homeTeamId ? teamById.get(next.homeTeamId) ?? null : null;
   const nextAway = next?.awayTeamId ? teamById.get(next.awayTeamId) ?? null : null;
+
+  // Live HUD data: the active match's flags, scorers in chronological order.
+  const liveHome = liveMatch?.homeTeamId ? teamById.get(liveMatch.homeTeamId) ?? null : null;
+  const liveAway = liveMatch?.awayTeamId ? teamById.get(liveMatch.awayTeamId) ?? null : null;
+  const liveScorerRows = liveMatch
+    ? await db
+        .select()
+        .from(matchScorers)
+        .where(eq(matchScorers.matchId, liveMatch.id))
+    : [];
+  const liveScorerPlayerIds = liveScorerRows.map((s) => s.playerId);
+  const livePlayerRows =
+    liveScorerPlayerIds.length > 0
+      ? await db
+          .select()
+          .from(players)
+          .where(sql`id = ANY(${sql.raw(`ARRAY[${liveScorerPlayerIds.join(",")}]::int[]`)})`)
+      : [];
+  const livePlayerById = new Map(livePlayerRows.map((p) => [p.id, p]));
+  const liveMinute =
+    liveMatch != null
+      ? Math.max(
+          1,
+          Math.min(
+            120,
+            Math.floor((Date.now() - new Date(liveMatch.scheduledAt).getTime()) / 60000),
+          ),
+        )
+      : null;
 
   const greeting = me.nickname || me.email.split("@")[0];
   const podium = sorted.slice(0, 3);
@@ -175,6 +214,80 @@ export default async function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Live HUD — appears only when a match is currently in play */}
+      {liveMatch ? (
+        <Link
+          href={`/partido/${liveMatch.id}`}
+          className="group relative block overflow-hidden rounded-2xl border-2 border-[var(--color-arena)]/60 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))] shadow-[var(--shadow-arena)] transition-all hover:-translate-y-0.5"
+        >
+          <RealtimeRefresher
+            channelKey={`live-hud:${liveMatch.id}`}
+            subscriptions={[
+              { table: "matches", filter: `id=eq.${liveMatch.id}` },
+              { table: "match_scorers", filter: `match_id=eq.${liveMatch.id}` },
+            ]}
+          />
+          <div className="halftone pointer-events-none absolute inset-0 opacity-[0.06]" aria-hidden />
+          <div className="relative space-y-4 p-5 sm:p-7">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70" />
+                  <span className="relative inline-flex size-2 rounded-full bg-[var(--color-arena)]" />
+                </span>
+                <span className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+                  En vivo · {liveMatch.code}
+                </span>
+              </div>
+              {liveMinute != null ? (
+                <span className="font-display tabular text-2xl text-[var(--color-arena)] glow-arena">
+                  {liveMinute}
+                  <span className="text-base">′</span>
+                </span>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
+              <LiveTeam team={liveHome} />
+              <span className="font-display tabular text-5xl leading-none tracking-tighter sm:text-7xl">
+                {liveMatch.homeScore ?? 0}
+                <span className="mx-1 text-[var(--color-muted-foreground)] opacity-60 sm:mx-2">·</span>
+                {liveMatch.awayScore ?? 0}
+              </span>
+              <LiveTeam team={liveAway} align="end" />
+            </div>
+            {liveScorerRows.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-[var(--color-arena)]/30 pt-3">
+                <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                  Goles
+                </span>
+                {[...liveScorerRows]
+                  .sort((a, b) => (a.minute ?? 999) - (b.minute ?? 999))
+                  .map((s) => {
+                    const p = livePlayerById.get(s.playerId);
+                    const t = teamById.get(s.teamId);
+                    return (
+                      <span
+                        key={s.id}
+                        className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1 text-xs"
+                      >
+                        <Badge variant="outline" className="text-[0.55rem]">
+                          {t?.code ?? "?"}
+                        </Badge>
+                        <span className="font-medium">{p?.name ?? "Jugador"}</span>
+                        {s.minute != null ? (
+                          <span className="font-mono text-[0.6rem] text-[var(--color-muted-foreground)]">
+                            {s.minute}′
+                          </span>
+                        ) : null}
+                      </span>
+                    );
+                  })}
+              </div>
+            ) : null}
+          </div>
+        </Link>
+      ) : null}
 
       {/* Hero */}
       <section className="rise-in relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -507,6 +620,29 @@ function PreCheck({
       </div>
       <ArrowRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1" />
     </Link>
+  );
+}
+
+function LiveTeam({
+  team,
+  align,
+}: {
+  team: { code: string; name: string; flagUrl: string | null } | null;
+  align?: "start" | "end";
+}) {
+  const cls = align === "end" ? "flex-row-reverse text-right" : "";
+  return (
+    <div className={`flex min-w-0 items-center gap-2.5 ${cls}`}>
+      <Flag flag={team?.flagUrl ?? null} code={team?.code} size={40} />
+      <div className="min-w-0">
+        <p className="truncate font-display text-lg leading-none tracking-tight sm:text-2xl">
+          {team?.name ?? "TBD"}
+        </p>
+        <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+          {team?.code ?? "—"}
+        </p>
+      </div>
+    </div>
   );
 }
 

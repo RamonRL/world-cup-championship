@@ -15,9 +15,9 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV, NAV_ITEMS, type NavItem } from "./nav-data";
 
-type Props = { isAdmin: boolean };
+type Props = { isAdmin: boolean; pendingCount?: number };
 
-export function MobileBottomNav({ isAdmin }: Props) {
+export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
   const pathname = usePathname();
   const primary = NAV_ITEMS.filter((i) => i.primaryMobile);
   const overflow = NAV_ITEMS.filter((i) => !i.primaryMobile).concat(isAdmin ? ADMIN_NAV : []);
@@ -46,7 +46,14 @@ export function MobileBottomNav({ isAdmin }: Props) {
                 className="absolute top-0 h-0.5 w-12 rounded-b bg-[var(--color-arena)]"
               />
             ) : null}
-            <item.icon className="size-5" />
+            <span className="relative">
+              <item.icon className="size-5" />
+              {item.href === "/predicciones" && pendingCount > 0 ? (
+                <span className="absolute -right-2 -top-1 grid min-w-[1rem] place-items-center rounded-full bg-[var(--color-arena)] px-1 font-mono text-[0.55rem] font-semibold tabular text-white shadow-[var(--shadow-arena)]">
+                  {pendingCount > 99 ? "99+" : pendingCount}
+                </span>
+              ) : null}
+            </span>
             <span>{item.label}</span>
           </Link>
         );
