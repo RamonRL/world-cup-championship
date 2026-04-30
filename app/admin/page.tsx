@@ -28,7 +28,6 @@ import { PageHeader } from "@/components/shell/page-header";
 import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin" };
-export const dynamic = "force-dynamic";
 
 export default async function AdminHome() {
   const [
