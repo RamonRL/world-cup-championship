@@ -6,9 +6,11 @@ import { db } from "@/lib/db";
 import { matchdays, matches, predMatchResult, teams } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
+import { Lock } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
-import { isPredictionOpen } from "@/lib/visibility";
 import { formatDateTime } from "@/lib/utils";
+import { getMatchdayState, type Stage } from "@/lib/matchday-state";
+import { EmptyState } from "@/components/shell/empty-state";
 import { MatchdayPredictionForm } from "./matchday-form";
 
 export default async function PredictMatchdayPage({
@@ -26,6 +28,35 @@ export default async function PredictMatchdayPage({
     .where(eq(matchdays.id, matchdayId))
     .limit(1);
   if (!day) notFound();
+
+  const status = await getMatchdayState({
+    stage: day.stage as Stage,
+    predictionDeadlineAt: day.predictionDeadlineAt,
+  });
+
+  if (status.state === "waiting") {
+    return (
+      <div className="space-y-6">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="px-0 text-[var(--color-muted-foreground)]"
+        >
+          <Link href="/predicciones/jornada">
+            <ArrowLeft />
+            Volver a jornadas
+          </Link>
+        </Button>
+        <PageHeader eyebrow={day.stage.toUpperCase()} title={day.name} description={status.reason} />
+        <EmptyState
+          icon={<Lock className="size-5" />}
+          title="Bloqueada"
+          description={`${status.reason} Cuando se desbloquee tendrás hasta ${formatDateTime(day.predictionDeadlineAt)} para predecir.`}
+        />
+      </div>
+    );
+  }
 
   const matchRows = await db
     .select()
@@ -56,7 +87,7 @@ export default async function PredictMatchdayPage({
     );
   const predByMatch = new Map(myPreds.map((p) => [p.matchId, p]));
 
-  const open = isPredictionOpen(day.predictionDeadlineAt);
+  const open = status.state === "open";
 
   return (
     <div className="space-y-6">

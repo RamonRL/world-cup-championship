@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { matchdays, matches, predMatchResult } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/guards";
+import { getMatchdayState, type Stage } from "@/lib/matchday-state";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -40,14 +41,24 @@ export async function saveMatchdayPredictions(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
-  // Enforce deadline.
+  // Enforce matchday state: must be open (predecessor stage finished + deadline future).
   const [day] = await db
     .select()
     .from(matchdays)
     .where(eq(matchdays.id, parsed.data.matchdayId))
     .limit(1);
   if (!day) return { ok: false, error: "Jornada no encontrada." };
-  if (new Date(day.predictionDeadlineAt).getTime() <= Date.now()) {
+  const status = await getMatchdayState({
+    stage: day.stage as Stage,
+    predictionDeadlineAt: day.predictionDeadlineAt,
+  });
+  if (status.state === "waiting") {
+    return {
+      ok: false,
+      error: status.reason ?? "Esta jornada todavía no se ha desbloqueado.",
+    };
+  }
+  if (status.state === "closed") {
     return { ok: false, error: "La predicción para esta jornada ya está cerrada." };
   }
 
