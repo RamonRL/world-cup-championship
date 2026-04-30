@@ -4,13 +4,24 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { chatMessages, matchScorers, matches, players, profiles, teams } from "@/lib/db/schema";
+import {
+  chatMessages,
+  matchScorers,
+  matches,
+  players,
+  predMatchResult,
+  predMatchScorer,
+  profiles,
+  teams,
+} from "@/lib/db/schema";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChatThread } from "@/app/(app)/chat/chat-thread";
+import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { requireUser } from "@/lib/auth/guards";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, initials } from "@/lib/utils";
 
 const STAGE_LABEL: Record<string, string> = {
   group: "Fase de grupos",
@@ -42,8 +53,11 @@ export default async function MatchDetailPage({
     db.select().from(matchScorers).where(eq(matchScorers.matchId, matchId)),
   ]);
 
+  // Predictions become public from kickoff (per visibility rules).
+  const predsPublic = new Date(match.scheduledAt) <= new Date();
+
   const playerIds = scorerRows.map((s) => s.playerId);
-  const [playerRows, chatRows] = await Promise.all([
+  const [playerRows, chatRows, resultPreds, scorerPreds] = await Promise.all([
     playerIds.length > 0
       ? db.select().from(players).where(inArray(players.id, playerIds))
       : Promise.resolve([]),
@@ -63,8 +77,46 @@ export default async function MatchDetailPage({
       .where(eq(chatMessages.matchId, matchId))
       .orderBy(desc(chatMessages.createdAt))
       .limit(100),
+    predsPublic
+      ? db
+          .select({
+            userId: predMatchResult.userId,
+            homeScore: predMatchResult.homeScore,
+            awayScore: predMatchResult.awayScore,
+            willGoToPens: predMatchResult.willGoToPens,
+            winnerTeamId: predMatchResult.winnerTeamId,
+            authorEmail: profiles.email,
+            authorNickname: profiles.nickname,
+            authorAvatar: profiles.avatarUrl,
+          })
+          .from(predMatchResult)
+          .leftJoin(profiles, eq(predMatchResult.userId, profiles.id))
+          .where(eq(predMatchResult.matchId, matchId))
+      : Promise.resolve([]),
+    predsPublic
+      ? db
+          .select({
+            userId: predMatchScorer.userId,
+            playerId: predMatchScorer.playerId,
+          })
+          .from(predMatchScorer)
+          .where(eq(predMatchScorer.matchId, matchId))
+      : Promise.resolve([]),
   ]);
-  const playerById = new Map(playerRows.map((p) => [p.id, p]));
+
+  // Player rows for the goalscorer predictions
+  const predScorerPlayerIds = (scorerPreds as { playerId: number }[]).map((p) => p.playerId);
+  const allRelevantPlayerIds = Array.from(
+    new Set([...playerIds, ...predScorerPlayerIds]),
+  );
+  const allPlayerRows =
+    allRelevantPlayerIds.length > 0
+      ? await db.select().from(players).where(inArray(players.id, allRelevantPlayerIds))
+      : [];
+  const playerById = new Map(allPlayerRows.map((p) => [p.id, p]));
+  // Keep a backward-compat reference for the goleadores section using only the
+  // scorer player rows so the rest of the page works unchanged.
+  void playerRows;
   const teamById = new Map(allTeams.map((t) => [t.id, t]));
 
   const home = match.homeTeamId ? teamById.get(match.homeTeamId) : null;
@@ -77,8 +129,85 @@ export default async function MatchDetailPage({
   const status =
     match.status === "finished" ? "FINAL" : match.status === "live" ? "EN VIVO" : "PROGRAMADO";
 
+  // Combine result + scorer predictions per user
+  type Combined = {
+    userId: string;
+    nickname: string | null;
+    email: string;
+    avatarUrl: string | null;
+    homeScore: number | null;
+    awayScore: number | null;
+    willGoToPens: boolean;
+    winnerTeamId: number | null;
+    scorerPlayerId: number | null;
+  };
+  const byUser = new Map<string, Combined>();
+  for (const r of resultPreds) {
+    byUser.set(r.userId, {
+      userId: r.userId,
+      nickname: r.authorNickname,
+      email: r.authorEmail ?? "",
+      avatarUrl: r.authorAvatar,
+      homeScore: r.homeScore,
+      awayScore: r.awayScore,
+      willGoToPens: r.willGoToPens,
+      winnerTeamId: r.winnerTeamId ?? null,
+      scorerPlayerId: null,
+    });
+  }
+  for (const s of scorerPreds) {
+    const existing = byUser.get(s.userId);
+    if (existing) {
+      existing.scorerPlayerId = s.playerId;
+    } else {
+      byUser.set(s.userId, {
+        userId: s.userId,
+        nickname: null,
+        email: "",
+        avatarUrl: null,
+        homeScore: null,
+        awayScore: null,
+        willGoToPens: false,
+        winnerTeamId: null,
+        scorerPlayerId: s.playerId,
+      });
+    }
+  }
+  // Backfill missing identities for scorer-only rows
+  if (scorerPreds.length > 0) {
+    const missingIds = scorerPreds
+      .map((s) => s.userId)
+      .filter((id) => byUser.get(id)?.email === "");
+    if (missingIds.length > 0) {
+      const fill = await db
+        .select()
+        .from(profiles)
+        .where(inArray(profiles.id, missingIds));
+      for (const p of fill) {
+        const existing = byUser.get(p.id);
+        if (existing) {
+          existing.email = p.email;
+          existing.nickname = p.nickname;
+          existing.avatarUrl = p.avatarUrl;
+        }
+      }
+    }
+  }
+  const allCombined = Array.from(byUser.values()).sort((a, b) => {
+    const an = (a.nickname || a.email).toLowerCase();
+    const bn = (b.nickname || b.email).toLowerCase();
+    return an.localeCompare(bn);
+  });
+
   return (
     <div className="space-y-8">
+      <RealtimeRefresher
+        channelKey={`partido:${matchId}`}
+        subscriptions={[
+          { table: "matches", filter: `id=eq.${matchId}` },
+          { table: "match_scorers", filter: `match_id=eq.${matchId}` },
+        ]}
+      />
       <Button asChild variant="ghost" size="sm" className="px-0 text-[var(--color-muted-foreground)]">
         <Link href="/calendario">
           <ArrowLeft />
@@ -209,6 +338,112 @@ export default async function MatchDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Predictions reveal */}
+      {predsPublic ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Predicciones de la peña</CardTitle>
+            <CardDescription>
+              Públicas desde el pitido inicial. {allCombined.length}{" "}
+              {allCombined.length === 1 ? "participante apostó" : "participantes apostaron"} por
+              este partido.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {allCombined.length === 0 ? (
+              <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+                Nadie predijo este partido a tiempo. ¡Os habéis dejado puntos!
+              </p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-[var(--color-border)]">
+                <div className="grid grid-cols-[1fr_120px_1fr] items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+                  <span>Participante</span>
+                  <span className="text-center">Resultado</span>
+                  <span>Goleador</span>
+                </div>
+                <ul>
+                  {allCombined.map((c) => {
+                    const display = c.nickname || c.email.split("@")[0];
+                    const player = c.scorerPlayerId ? playerById.get(c.scorerPlayerId) : null;
+                    const playerScored =
+                      player &&
+                      sortedScorers.some((s) => s.playerId === player.id);
+                    const exactScore =
+                      match.homeScore != null &&
+                      match.awayScore != null &&
+                      c.homeScore === match.homeScore &&
+                      c.awayScore === match.awayScore;
+                    return (
+                      <li
+                        key={c.userId}
+                        className={`grid grid-cols-[1fr_120px_1fr] items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5 last:border-b-0 ${
+                          c.userId === me.id
+                            ? "bg-[color-mix(in_oklch,var(--color-arena)_5%,transparent)]"
+                            : ""
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <Avatar className="size-7 border border-[var(--color-border)]">
+                            {c.avatarUrl ? <AvatarImage src={c.avatarUrl} alt="" /> : null}
+                            <AvatarFallback className="text-[0.6rem]">
+                              {initials(display)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate text-sm font-medium">
+                            {display}
+                            {c.userId === me.id ? (
+                              <span className="ml-1.5 font-mono text-[0.55rem] uppercase tracking-[0.3em] text-[var(--color-arena)]">
+                                Tú
+                              </span>
+                            ) : null}
+                          </span>
+                        </span>
+                        <span
+                          className={`text-center font-display tabular text-xl ${
+                            exactScore ? "text-[var(--color-success)] glow-pitch" : ""
+                          }`}
+                        >
+                          {c.homeScore != null && c.awayScore != null ? (
+                            <>
+                              {c.homeScore}
+                              <span className="mx-1 opacity-60">·</span>
+                              {c.awayScore}
+                            </>
+                          ) : (
+                            <span className="text-[var(--color-muted-foreground)]">—</span>
+                          )}
+                          {c.willGoToPens ? (
+                            <span className="ml-1 font-mono text-[0.55rem] uppercase text-[var(--color-muted-foreground)]">
+                              pen
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="flex items-center gap-1.5 truncate text-sm">
+                          {player ? (
+                            <>
+                              <span
+                                className={`size-1.5 rounded-full ${
+                                  playerScored
+                                    ? "bg-[var(--color-success)]"
+                                    : "bg-[var(--color-muted-foreground)]"
+                                }`}
+                              />
+                              <span className="truncate">{player.name}</span>
+                            </>
+                          ) : (
+                            <span className="text-[var(--color-muted-foreground)]">—</span>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Match thread */}
       <Card>

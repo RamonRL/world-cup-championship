@@ -5,6 +5,7 @@ import { Send, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { formatTime, initials } from "@/lib/utils";
 import { deleteMessage, sendMessage, type FormState } from "./actions";
 
@@ -50,6 +51,15 @@ export function ChatThread({
 
   return (
     <div className="flex h-[60dvh] flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+      <RealtimeRefresher
+        channelKey={`chat:${scope}:${matchId ?? "global"}`}
+        subscriptions={[
+          {
+            table: "chat_messages",
+            filter: scope === "match" ? `match_id=eq.${matchId}` : undefined,
+          },
+        ]}
+      />
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <p className="py-12 text-center font-editorial text-base italic text-[var(--color-muted-foreground)]">

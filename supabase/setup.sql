@@ -96,6 +96,7 @@ create policy "ledger read" on public.points_ledger
 -- 7) Realtime publication for chat_messages and matches (live results).
 alter publication supabase_realtime add table public.chat_messages;
 alter publication supabase_realtime add table public.matches;
+alter publication supabase_realtime add table public.match_scorers;
 
 -- ─────────────────────────────────────────────────────────────────────
 -- Storage buckets
