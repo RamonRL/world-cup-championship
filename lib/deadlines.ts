@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matchdays, matches, predMatchResult } from "@/lib/db/schema";
 import { computeMatchdayStates, type Stage } from "@/lib/matchday-state";
@@ -49,19 +49,52 @@ export async function loadDeadlineSummary(userId: string): Promise<{
     })),
   );
 
+  // Aggregate counts in two queries instead of 2*N (this runs in the (app)
+  // layout on every navigation; the N+1 was a real load issue with 9
+  // matchdays open at once pre-tournament).
+  const openIds = annotated.filter((m) => m.state === "open").map((m) => m.id);
+  const [totalsByDay, filledByDay] =
+    openIds.length === 0
+      ? [new Map<number, number>(), new Map<number, number>()]
+      : await Promise.all([
+          db
+            .select({
+              matchdayId: matches.matchdayId,
+              total: sql<number>`count(*)::int`,
+            })
+            .from(matches)
+            .where(inArray(matches.matchdayId, openIds))
+            .groupBy(matches.matchdayId)
+            .then(
+              (rows) =>
+                new Map(rows.map((r) => [r.matchdayId ?? 0, r.total])),
+            ),
+          db
+            .select({
+              matchdayId: matches.matchdayId,
+              filled: sql<number>`count(*)::int`,
+            })
+            .from(predMatchResult)
+            .innerJoin(matches, eq(matches.id, predMatchResult.matchId))
+            .where(
+              and(
+                eq(predMatchResult.userId, userId),
+                inArray(matches.matchdayId, openIds),
+              ),
+            )
+            .groupBy(matches.matchdayId)
+            .then(
+              (rows) =>
+                new Map(rows.map((r) => [r.matchdayId ?? 0, r.filled])),
+            ),
+        ]);
+
   const matchdayMissing: { matchday: typeof annotated[number]; missing: number }[] = [];
   for (const m of annotated) {
     if (m.state !== "open") continue;
-    const [{ total }] = await db
-      .select({ total: sql<number>`count(*)::int` })
-      .from(matches)
-      .where(eq(matches.matchdayId, m.id));
-    const myFilledForDay = await db
-      .select({ matchId: predMatchResult.matchId })
-      .from(predMatchResult)
-      .innerJoin(matches, eq(matches.id, predMatchResult.matchId))
-      .where(and(eq(predMatchResult.userId, userId), eq(matches.matchdayId, m.id)));
-    const missing = total - myFilledForDay.length;
+    const total = totalsByDay.get(m.id) ?? 0;
+    const filled = filledByDay.get(m.id) ?? 0;
+    const missing = total - filled;
     if (missing > 0) {
       matchdayMissing.push({ matchday: m, missing });
     }
