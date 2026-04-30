@@ -1,14 +1,16 @@
 import Image from "next/image";
+import Link from "next/link";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches, predBracketSlot, teams } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { Swords, Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
+import { BracketTree, type BracketMatch } from "@/components/bracket/bracket-tree";
 
 export const metadata = { title: "Bracket" };
 
@@ -45,15 +47,17 @@ export default async function BracketPage() {
     .select()
     .from(predBracketSlot)
     .where(eq(predBracketSlot.userId, me.id));
+
   const myByStage = new Map<string, Set<number>>();
   for (const p of myPreds) {
     if (!p.predictedTeamId) continue;
-    if (p.stage === "final" && p.slotPosition === 0) continue; // champion handled separately
+    if (p.stage === "final" && p.slotPosition === 0) continue;
     const set = myByStage.get(p.stage) ?? new Set<number>();
     set.add(p.predictedTeamId);
     myByStage.set(p.stage, set);
   }
-  const myChampion = myPreds.find((m) => m.stage === "final" && m.slotPosition === 0)?.predictedTeamId ?? null;
+  const myChampion =
+    myPreds.find((m) => m.stage === "final" && m.slotPosition === 0)?.predictedTeamId ?? null;
 
   if (koMatches.length === 0) {
     return (
@@ -72,29 +76,82 @@ export default async function BracketPage() {
     );
   }
 
+  // Build matches map for the BracketTree component
+  const treeMap = new Map<string, BracketMatch>();
+  for (const m of koMatches) {
+    const home = m.homeTeamId ? teamById.get(m.homeTeamId) ?? null : null;
+    const away = m.awayTeamId ? teamById.get(m.awayTeamId) ?? null : null;
+    treeMap.set(m.code, {
+      id: m.id,
+      code: m.code,
+      scheduledAt: m.scheduledAt,
+      homeTeam: home
+        ? { id: home.id, code: home.code, name: home.name, flagUrl: home.flagUrl }
+        : null,
+      awayTeam: away
+        ? { id: away.id, code: away.code, name: away.name, flagUrl: away.flagUrl }
+        : null,
+      winnerTeamId: m.winnerTeamId ?? null,
+      homeScore: m.homeScore ?? null,
+      awayScore: m.awayScore ?? null,
+      status: m.status,
+      wentToPens: m.wentToPens,
+      homeScorePen: m.homeScorePen ?? null,
+      awayScorePen: m.awayScorePen ?? null,
+    });
+  }
+
+  const myPicks = {
+    r16: myByStage.get("r16") ?? new Set<number>(),
+    qf: myByStage.get("qf") ?? new Set<number>(),
+    sf: myByStage.get("sf") ?? new Set<number>(),
+    finalists: myByStage.get("final") ?? new Set<number>(),
+    championTeamId: myChampion,
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         eyebrow="Eliminación directa"
         title="Bracket del torneo"
-        description="Tus predicciones se resaltan en cada ronda. Las verdes son tus aciertos confirmados."
+        description="32 → 16 → 8 → 4 → 2 → 1. El árbol oficial de FIFA con tus picks resaltados (●) y los aciertos en verde."
+        actions={
+          <Link
+            href="/predicciones/bracket"
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-2)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-foreground)] transition hover:border-[var(--color-arena)]/50"
+          >
+            Editar mi bracket
+          </Link>
+        }
       />
-      <div className="space-y-6">
+
+      <Legend />
+
+      {/* Desktop tree */}
+      <div className="hidden lg:block">
+        <BracketTree matches={treeMap} myPicks={myPicks} />
+      </div>
+
+      {/* Mobile list fallback */}
+      <div className="space-y-6 lg:hidden">
         {KO_STAGES.filter((s) => s !== "third").map((stage) => {
           const stageMatches = koMatches.filter((m) => m.stage === stage);
           if (stageMatches.length === 0) return null;
           const myPicksHere = myByStage.get(stage) ?? new Set();
           return (
             <section key={stage} className="space-y-2">
-              <h2 className="font-display text-2xl">{STAGE_LABEL[stage]}</h2>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <h2 className="font-display text-2xl tracking-tight">
+                {STAGE_LABEL[stage]}
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2">
                 {stageMatches.map((m) => {
                   const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
                   const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
                   return (
                     <Card key={m.id}>
                       <CardHeader className="flex flex-row items-center justify-between p-3">
-                        <span className="text-xs text-[var(--color-muted-foreground)]">
+                        <span className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+                          {m.code} ·{" "}
                           {formatDateTime(m.scheduledAt, {
                             day: "2-digit",
                             month: "short",
@@ -104,19 +161,18 @@ export default async function BracketPage() {
                         </span>
                         <Badge
                           variant={m.status === "finished" ? "success" : "outline"}
-                          className="text-[0.6rem]"
                         >
                           {m.status}
                         </Badge>
                       </CardHeader>
                       <CardContent className="space-y-1.5 p-3 pt-0">
-                        <BracketTeam
+                        <MobileTeamRow
                           team={home}
                           score={m.homeScore}
                           isWinner={m.winnerTeamId === m.homeTeamId}
                           isMyPick={home ? myPicksHere.has(home.id) : false}
                         />
-                        <BracketTeam
+                        <MobileTeamRow
                           team={away}
                           score={m.awayScore}
                           isWinner={m.winnerTeamId === m.awayTeamId}
@@ -135,44 +191,65 @@ export default async function BracketPage() {
             </section>
           );
         })}
-
-        <section className="space-y-2">
-          <h2 className="font-display text-2xl">Tu campeón</h2>
-          {myChampion ? (
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <Trophy className="size-6 text-[var(--color-primary)]" />
-                <span className="grid size-10 place-items-center overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                  {teamById.get(myChampion)?.flagUrl ? (
-                    <Image
-                      src={teamById.get(myChampion)!.flagUrl!}
-                      alt={teamById.get(myChampion)!.code}
-                      width={40}
-                      height={40}
-                    />
-                  ) : null}
-                </span>
-                <span className="font-display text-2xl">
-                  {teamById.get(myChampion)?.name ?? "—"}
-                </span>
-              </CardContent>
-            </Card>
-          ) : (
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              Aún no has elegido campeón. Hazlo en{" "}
-              <a className="underline" href="/predicciones/bracket">
-                Predicciones · Bracket
-              </a>
-              .
-            </p>
-          )}
-        </section>
       </div>
+
+      {/* Champion strip */}
+      <section className="rounded-xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))] p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <span className="grid size-12 place-items-center rounded-md bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]">
+              <Trophy className="size-5" />
+            </span>
+            <div>
+              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Tu campeón
+              </p>
+              <p className="font-display text-3xl tracking-tight">
+                {myChampion ? teamById.get(myChampion)?.name ?? "—" : "Sin elegir"}
+              </p>
+            </div>
+          </div>
+          {myChampion && teamById.get(myChampion)?.flagUrl ? (
+            <span className="grid size-12 place-items-center overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
+              <Image
+                src={teamById.get(myChampion)!.flagUrl!}
+                alt={teamById.get(myChampion)!.code}
+                width={48}
+                height={48}
+              />
+            </span>
+          ) : (
+            <Link
+              href="/predicciones/bracket"
+              className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-arena)]"
+            >
+              Elegir campeón →
+            </Link>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
 
-function BracketTeam({
+function Legend() {
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs text-[var(--color-muted-foreground)]">
+      <span className="flex items-center gap-1.5">
+        <span className="size-2 rounded-full bg-[var(--color-success)]" />
+        Equipo que avanzó
+      </span>
+      <span className="flex items-center gap-1.5 font-mono text-[0.7rem] text-[var(--color-arena)]">
+        ● Tu pick
+      </span>
+      <span className="ml-auto hidden font-mono text-[0.6rem] uppercase tracking-[0.32em] sm:inline">
+        Tap any match for details
+      </span>
+    </div>
+  );
+}
+
+function MobileTeamRow({
   team,
   score,
   isWinner,
@@ -197,17 +274,12 @@ function BracketTeam({
             <Image src={team.flagUrl} alt={team.code} width={20} height={20} />
           ) : null}
         </span>
-        <span className="truncate text-sm font-medium">{team?.name ?? "—"}</span>
+        <span className="truncate text-sm font-medium">{team?.name ?? "TBD"}</span>
         {isMyPick ? (
-          <Badge
-            variant={isWinner ? "success" : "outline"}
-            className="ml-1 text-[0.55rem]"
-          >
-            Mi pick
-          </Badge>
+          <span className="font-mono text-[0.65rem] text-[var(--color-arena)]">●</span>
         ) : null}
       </div>
-      <span className="font-display tabular-nums">
+      <span className="font-display tabular text-base">
         {score != null ? score : "·"}
       </span>
     </div>

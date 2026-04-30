@@ -273,4 +273,50 @@
   .rise-in {
     animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
+
+  /* Bracket connectors — "]" between two siblings, "—" stub before parent */
+  .bracket-pair {
+    position: relative;
+  }
+  .bracket-pair::after {
+    content: "";
+    position: absolute;
+    right: calc(var(--bracket-gap, 20px) * -0.5);
+    top: 25%;
+    bottom: 25%;
+    width: calc(var(--bracket-gap, 20px) * 0.5);
+    border-top: 1px solid var(--color-border-strong);
+    border-right: 1px solid var(--color-border-strong);
+    border-bottom: 1px solid var(--color-border-strong);
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    pointer-events: none;
+  }
+  .bracket-incoming {
+    position: relative;
+  }
+  .bracket-incoming::before {
+    content: "";
+    position: absolute;
+    left: calc(var(--bracket-gap, 20px) * -0.5);
+    top: 50%;
+    width: calc(var(--bracket-gap, 20px) * 0.5);
+    border-top: 1px solid var(--color-border-strong);
+    pointer-events: none;
+  }
+  /* Mirrored variant for the right-half of the bracket */
+  .bracket-pair-right::after {
+    right: auto;
+    left: calc(var(--bracket-gap, 20px) * -0.5);
+    border-right: none;
+    border-left: 1px solid var(--color-border-strong);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+  }
+  .bracket-incoming-right::before {
+    left: auto;
+    right: calc(var(--bracket-gap, 20px) * -0.5);
+  }
 }
