@@ -1,20 +1,28 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Bebas_Neue, JetBrains_Mono } from "next/font/google";
+import { Big_Shoulders, DM_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const inter = Inter({
+const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-sans-loaded",
   display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
-const bebas = Bebas_Neue({
+const bigShoulders = Big_Shoulders({
   subsets: ["latin"],
-  weight: "400",
+  weight: ["500", "700", "800", "900"],
   variable: "--font-display-loaded",
   display: "swap",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-editorial-loaded",
+  display: "swap",
+  axes: ["SOFT", "WONK"],
 });
 
 const jetbrains = JetBrains_Mono({
@@ -37,8 +45,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#15171c" },
+    { media: "(prefers-color-scheme: light)", color: "#f5efe6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1014" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -50,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${inter.variable} ${bebas.variable} ${jetbrains.variable}`}
+      className={`${dmSans.variable} ${bigShoulders.variable} ${fraunces.variable} ${jetbrains.variable}`}
     >
       <body>
         <ThemeProvider>

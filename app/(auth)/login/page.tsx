@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Trophy } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
@@ -10,6 +9,8 @@ export const metadata: Metadata = {
 };
 
 const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z";
+
+const HOSTS = ["CANADÁ", "MÉXICO", "USA"];
 
 export default async function LoginPage({
   searchParams,
@@ -30,73 +31,113 @@ export default async function LoginPage({
   );
 
   return (
-    <div className="relative grid min-h-dvh lg:grid-cols-2">
-      <aside className="relative hidden overflow-hidden bg-[var(--color-surface)] lg:block">
-        <div className="pitch-grid absolute inset-0 opacity-60" />
-        <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/30 via-transparent to-[var(--color-accent)]/20" />
-        <div className="relative flex h-full flex-col justify-between p-12">
-          <div className="flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-foreground)] shadow-[var(--shadow-pitch)]">
-              <Trophy className="size-5" />
+    <div className="relative grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
+      <aside className="spotlight relative hidden overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
+        <div className="pitch-grid absolute inset-0 opacity-50" aria-hidden />
+        <span
+          aria-hidden
+          className="halftone pointer-events-none absolute inset-x-0 top-0 h-40 opacity-[0.08]"
+        />
+
+        <div className="relative flex h-full flex-col justify-between p-14">
+          <header className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="grid size-11 place-items-center rounded-md bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]">
+                <Trophy className="size-5" />
+              </span>
+              <div className="leading-tight">
+                <p className="text-[0.7rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                  {process.env.NEXT_PUBLIC_APP_NAME ?? "World Cup Championship"}
+                </p>
+                <p className="font-display text-xl tracking-tight">
+                  La quiniela del Mundial 26
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-                {process.env.NEXT_PUBLIC_APP_NAME ?? "World Cup Championship"}
+            <span className="hidden font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] xl:inline">
+              MMXXVI
+            </span>
+          </header>
+
+          <div className="space-y-8">
+            <div className="flex items-center gap-3">
+              <span className="grid size-2 place-items-center rounded-full bg-[var(--color-arena)]">
+                <span className="absolute size-2 animate-ping rounded-full bg-[var(--color-arena)] opacity-60" />
+              </span>
+              <p className="font-mono text-xs uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                T-{daysLeft.toString().padStart(2, "0")} días al kickoff
               </p>
-              <p className="font-display text-xl">Mundial 2026 · La quiniela</p>
             </div>
-          </div>
 
-          <div className="space-y-6">
-            <Badge variant="success" className="gap-2 text-[0.7rem] uppercase tracking-wider">
-              <span className="size-1.5 rounded-full bg-[var(--color-success)]" /> Faltan{" "}
-              {daysLeft} días
-            </Badge>
-            <h1 className="font-display text-5xl leading-[0.95] sm:text-6xl">
-              Predice cada gol.
-              <br />
-              <span className="text-[var(--color-primary)]">Discútelo con tus amigos.</span>
+            <h1 className="font-display text-[6.5rem] leading-[0.85] tracking-tight">
+              <span className="block">Predice</span>
+              <span className="block">
+                cada{" "}
+                <span className="font-editorial italic font-light text-[var(--color-arena)]">
+                  gol
+                </span>
+                .
+              </span>
+              <span className="block opacity-90">Discútelo</span>
+              <span className="block opacity-70">con los tuyos.</span>
             </h1>
-            <p className="max-w-sm text-sm text-[var(--color-muted-foreground)]">
-              48 selecciones, 104 partidos y 6 categorías de predicción. Quien mejor lea el
-              torneo, gana.
+
+            <p className="max-w-md font-editorial text-lg italic leading-relaxed text-[var(--color-muted-foreground)]">
+              48 selecciones · 104 partidos · 6 categorías de predicción.
+              <br />
+              Quien mejor lea el torneo, gana.
             </p>
-            <ul className="grid gap-2 text-sm">
-              <Bullet>Resultados exactos jornada a jornada</Bullet>
-              <Bullet>Bracket eliminatorio interactivo</Bullet>
-              <Bullet>Bota de Oro, Balón de Oro, Guante de Oro</Bullet>
-              <Bullet>Goleador por partido y predicciones especiales</Bullet>
-            </ul>
           </div>
 
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            Cualquiera con el enlace puede unirse. Tus predicciones permanecen privadas hasta el
-            inicio de cada partido o ronda.
-          </p>
+          <footer className="space-y-6">
+            <div className="flex items-center gap-3 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
+              {HOSTS.map((host, i) => (
+                <span key={host} className="flex items-center gap-3">
+                  {i > 0 ? (
+                    <span className="size-1 rounded-full bg-[var(--color-border-strong)]" />
+                  ) : null}
+                  <span className="font-display text-sm tracking-[0.16em] text-[var(--color-muted-foreground)]">
+                    {host}
+                  </span>
+                </span>
+              ))}
+              <span className="ml-auto font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Anfitriones
+              </span>
+            </div>
+            <p className="text-xs text-[var(--color-muted-foreground)]">
+              Cualquiera con el enlace puede unirse. Tus predicciones quedan privadas hasta el
+              kickoff de cada partido o ronda.
+            </p>
+          </footer>
         </div>
       </aside>
 
-      <main className="flex items-center justify-center px-6 py-12 sm:px-10">
-        <div className="w-full max-w-sm space-y-8">
+      <main className="relative flex items-center justify-center overflow-hidden px-6 py-12 sm:px-10">
+        <div className="halftone pointer-events-none absolute right-0 top-0 h-40 w-40 opacity-[0.05]" aria-hidden />
+        <div className="w-full max-w-md space-y-10">
           <div className="space-y-3 lg:hidden">
-            <div className="grid size-11 place-items-center rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-foreground)]">
+            <span className="grid size-11 place-items-center rounded-md bg-[var(--color-arena)] text-white">
               <Trophy className="size-5" />
-            </div>
-            <p className="font-display text-3xl">Mundial 2026</p>
+            </span>
+            <p className="font-display text-4xl tracking-tight">Mundial 26</p>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-              Acceso
-            </p>
-            <h2 className="font-display text-4xl">Entrar a la quiniela</h2>
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              Magic link a tu email — sin contraseñas que olvidar.
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="h-px w-8 bg-[var(--color-arena)]" />
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Acceso
+              </p>
+            </div>
+            <h2 className="font-display text-5xl tracking-tight">Entra a la quiniela</h2>
+            <p className="font-editorial text-base italic text-[var(--color-muted-foreground)]">
+              Sin contraseñas. Magic link al email o login con Google y dentro.
             </p>
           </div>
 
           {params.reason === "banned" ? (
-            <div className="rounded-lg border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 p-3 text-sm text-[var(--color-danger)]">
+            <div className="rounded-md border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 p-3 text-sm text-[var(--color-danger)]">
               Tu cuenta ha sido suspendida por el admin.
             </div>
           ) : null}
@@ -105,14 +146,5 @@ export default async function LoginPage({
         </div>
       </main>
     </div>
-  );
-}
-
-function Bullet({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-2 text-[var(--color-muted-foreground)]">
-      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--color-accent)]" />
-      <span>{children}</span>
-    </li>
   );
 }

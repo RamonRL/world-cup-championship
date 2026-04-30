@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, CalendarClock, ClipboardList, ListOrdered, Trophy } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, ArrowUpRight, Flame } from "lucide-react";
 import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
@@ -13,13 +14,22 @@ import {
   teams,
 } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
 
 const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z";
+
+const MARQUEE_TOKENS = [
+  "MUNDIAL FIFA 26",
+  "CANADÁ",
+  "MÉXICO",
+  "USA",
+  "11 JUN — 19 JUL",
+  "48 SELECCIONES",
+  "104 PARTIDOS",
+];
 
 export default async function DashboardPage() {
   const me = await requireUser();
@@ -89,7 +99,6 @@ export default async function DashboardPage() {
       ? sorted.findIndex((r) => r.user.id === me.id) + 1
       : null;
 
-  // Next deadline
   const upcomingMatchdays = await db
     .select()
     .from(matchdays)
@@ -97,7 +106,6 @@ export default async function DashboardPage() {
     .orderBy(asc(matchdays.predictionDeadlineAt))
     .limit(1);
 
-  // Pending matches that haven't kicked off and the user hasn't predicted scorer for
   const pendingScorerCount = await db
     .select({ c: sql<number>`count(*)::int` })
     .from(matches)
@@ -111,8 +119,7 @@ export default async function DashboardPage() {
     .where(and(gt(matches.scheduledAt, new Date()), sql`${predMatchScorer.matchId} is null`));
   const pendingScorers = pendingScorerCount[0]?.c ?? 0;
 
-  // Pre-tournament forms still pending?
-  const [groupCount, topScorerSet, recentMatch] = await Promise.all([
+  const [groupCount, topScorerSet, recentMatch, nextMatch] = await Promise.all([
     db
       .select({ c: sql<number>`count(*)::int` })
       .from(predGroupRanking)
@@ -128,111 +135,234 @@ export default async function DashboardPage() {
       .where(eq(matches.status, "finished"))
       .orderBy(desc(matches.scheduledAt))
       .limit(3),
+    db
+      .select()
+      .from(matches)
+      .where(gt(matches.scheduledAt, new Date()))
+      .orderBy(asc(matches.scheduledAt))
+      .limit(1),
   ]);
 
-  // Resolve recent match team names
-  const teamIds = recentMatch
+  const teamIds = [...recentMatch, ...nextMatch]
     .flatMap((m) => [m.homeTeamId, m.awayTeamId])
     .filter((x): x is number => x != null);
-  const recentTeams =
+  const teamRows =
     teamIds.length > 0
       ? await db.select().from(teams).where(sql`id = ANY(${sql.raw(`ARRAY[${teamIds.join(",")}]::int[]`)})`)
       : [];
-  const teamById = new Map(recentTeams.map((t) => [t.id, t]));
+  const teamById = new Map(teamRows.map((t) => [t.id, t]));
+  const next = nextMatch[0];
+  const nextHome = next?.homeTeamId ? teamById.get(next.homeTeamId) ?? null : null;
+  const nextAway = next?.awayTeamId ? teamById.get(next.awayTeamId) ?? null : null;
+
+  const greeting = me.nickname || me.email.split("@")[0];
+  const podium = sorted.slice(0, 3);
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-2">
-          <Badge variant="success" className="gap-1.5 text-[0.7rem] uppercase tracking-wider">
-            <span className="size-1.5 rounded-full bg-[var(--color-success)]" /> Faltan {days}{" "}
-            días
-          </Badge>
-          <h1 className="font-display text-4xl tracking-tight sm:text-5xl">
-            Hola, {me.nickname || me.email.split("@")[0]}
-          </h1>
-          <p className="text-sm text-[var(--color-muted-foreground)]">
-            Tu vista rápida de la quiniela: posición, próximos cierres y resultados recientes.
-          </p>
+    <div className="space-y-10">
+      {/* Marquee strip */}
+      <div className="-mx-4 overflow-hidden border-y border-[var(--color-border)] bg-[var(--color-surface)] py-2 lg:-mx-8">
+        <div className="marquee flex w-max items-center gap-8 whitespace-nowrap font-display text-xs uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+          {[...Array(2)].map((_, dup) => (
+            <div key={dup} className="flex items-center gap-8 pr-8">
+              {MARQUEE_TOKENS.map((t, i) => (
+                <span key={`${dup}-${i}`} className="flex items-center gap-8">
+                  <span>{t}</span>
+                  <span className="size-1 rounded-full bg-[var(--color-arena)]" />
+                </span>
+              ))}
+            </div>
+          ))}
         </div>
-      </header>
+      </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <DashboardStat
-          icon={<ListOrdered className="size-4" />}
-          label="Tu posición"
-          value={myPosition != null ? `#${myPosition}` : "—"}
-          hint={
-            myPosition != null
-              ? `de ${sorted.length} participantes`
-              : "Sin puntos en juego todavía"
-          }
+      {/* Hero */}
+      <section className="rise-in relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="spotlight absolute inset-0" aria-hidden />
+        <div className="pitch-grid absolute inset-0 opacity-30" aria-hidden />
+        <div className="relative grid gap-8 p-6 sm:p-10 lg:grid-cols-[1.4fr_1fr]">
+          <div className="flex flex-col justify-between gap-8">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="h-px w-8 bg-[var(--color-arena)]" />
+                <span className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                  Hola · {greeting}
+                </span>
+              </div>
+              <p className="font-editorial text-lg italic leading-snug text-[var(--color-muted-foreground)]">
+                Faltan
+              </p>
+            </div>
+            <div className="-my-2 flex items-end gap-4">
+              <span className="font-display glow-arena text-[8rem] leading-[0.85] tracking-tighter sm:text-[11rem]">
+                {days.toString().padStart(2, "0")}
+              </span>
+              <div className="mb-4 flex flex-col gap-1">
+                <span className="font-display text-3xl tracking-tight">
+                  DÍAS
+                </span>
+                <span className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                  AL KICKOFF
+                </span>
+              </div>
+            </div>
+            <p className="font-editorial text-base italic text-[var(--color-muted-foreground)] sm:text-lg">
+              {formatDateTime(kickoff, {
+                weekday: "long",
+                day: "2-digit",
+                month: "long",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+              <span className="mx-2 opacity-60">·</span>
+              Estadio Azteca <span className="opacity-60">/ MÉX</span> vs RSA
+            </p>
+          </div>
+
+          {/* Right column — next match & up next deadline */}
+          <div className="flex flex-col gap-4">
+            {next ? (
+              <Link
+                href={`/partido/${next.id}`}
+                className="group block overflow-hidden rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface-2)] transition-colors hover:border-[var(--color-arena)]/60"
+              >
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-3)]/40 px-4 py-2">
+                  <span className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                    Próximo partido · {next.code}
+                  </span>
+                  <ArrowUpRight className="size-3.5 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                </div>
+                <div className="space-y-4 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <TeamCell team={nextHome} align="start" />
+                    <span className="font-display text-2xl text-[var(--color-muted-foreground)]">
+                      vs
+                    </span>
+                    <TeamCell team={nextAway} align="end" />
+                  </div>
+                  <div className="flex items-center justify-between border-t border-dashed border-[var(--color-border)] pt-3 text-xs text-[var(--color-muted-foreground)]">
+                    <span>
+                      {formatDateTime(next.scheduledAt, {
+                        weekday: "short",
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {next.venue ? (
+                      <span className="truncate">{next.venue.split("·")[0].trim()}</span>
+                    ) : null}
+                  </div>
+                </div>
+              </Link>
+            ) : (
+              <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] p-6 text-center text-sm text-[var(--color-muted-foreground)]">
+                Sin partidos próximos.
+              </div>
+            )}
+
+            <Link
+              href={
+                upcomingMatchdays[0]
+                  ? `/predicciones/jornada/${upcomingMatchdays[0].id}`
+                  : "/predicciones"
+              }
+              className="group flex items-center justify-between rounded-xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] p-4 transition hover:border-[var(--color-arena)]"
+            >
+              <div className="flex items-center gap-3">
+                <Flame className="size-5 text-[var(--color-arena)]" />
+                <div>
+                  <p className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                    Próximo cierre
+                  </p>
+                  <p className="font-display text-xl tracking-tight">
+                    {upcomingMatchdays[0]?.name ?? "Sin jornada activa"}
+                  </p>
+                  {upcomingMatchdays[0] ? (
+                    <p className="text-xs text-[var(--color-muted-foreground)]">
+                      {formatDateTime(upcomingMatchdays[0].predictionDeadlineAt, {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <ArrowRight className="size-4 text-[var(--color-arena)] transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Scoreboard stats */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          label="TU POSICIÓN"
+          value={myPosition != null ? `${myPosition.toString().padStart(2, "0")}` : "--"}
+          prefix={myPosition != null ? "#" : null}
+          hint={myPosition != null ? `de ${sorted.length}` : "Sin puntos aún"}
+          accent
         />
-        <DashboardStat
-          icon={<Trophy className="size-4" />}
-          label="Puntos totales"
-          value={myPoints.toString()}
-          hint="Acumulados durante el torneo"
-        />
-        <DashboardStat
-          icon={<ClipboardList className="size-4" />}
-          label="Goleadores pendientes"
+        <Stat label="PUNTOS" value={myPoints.toString()} hint="acumulados" />
+        <Stat
+          label="GOLEADORES PEND."
           value={pendingScorers.toString()}
-          hint="Partidos próximos sin tu pick"
+          hint="próximos sin pick"
         />
-        <DashboardStat
-          icon={<CalendarClock className="size-4" />}
-          label="Próximo cierre"
-          value={
-            upcomingMatchdays[0]
-              ? formatDateTime(upcomingMatchdays[0].predictionDeadlineAt, {
-                  day: "2-digit",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "—"
-          }
-          hint={upcomingMatchdays[0]?.name ?? "Sin jornadas activas"}
+        <Stat
+          label="EXACTOS"
+          value={(stats.get(me.id)?.exactScoresCount ?? 0).toString()}
+          hint="marcadores clavados"
         />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      {/* Body — checklist + recent + podium */}
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Predicciones pre-torneo</CardTitle>
+            <CardTitle>Pre-torneo</CardTitle>
             <CardDescription>
-              Cierra todo antes del kickoff ({formatDateTime(kickoff)}).
+              Cierra todo antes del kickoff ({formatDateTime(kickoff, {
+                day: "2-digit",
+                month: "short",
+              })}).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <PreCheck
               done={(groupCount[0]?.c ?? 0) === 12}
-              label="Posiciones de grupo (12 grupos)"
+              label="Posiciones de grupo"
+              hint="12 grupos × 4 selecciones"
               href="/predicciones/grupos"
             />
             <PreCheck
               done={topScorerSet.length > 0}
               label="Bota de Oro"
+              hint="Tu candidato al máximo goleador"
               href="/predicciones/goleador-torneo"
             />
             <PreCheck
               done={false}
               label="Predicciones especiales"
+              hint="Balón / Guante / Anfitrión / África…"
               href="/predicciones/especiales"
-              soft
             />
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Resultados recientes</CardTitle>
-            <CardDescription>Lo último que ha cargado el admin.</CardDescription>
+            <CardDescription>Lo último de la cancha.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          <CardContent className="space-y-2">
             {recentMatch.length === 0 ? (
-              <p className="text-[var(--color-muted-foreground)]">
-                Sin resultados todavía. Cuando termine el primer partido lo verás aquí.
+              <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+                Sin resultados todavía. Cuando termine el primer partido, aparecerá aquí como
+                marcador encendido.
               </p>
             ) : (
               recentMatch.map((m) => {
@@ -242,13 +372,18 @@ export default async function DashboardPage() {
                   <Link
                     key={m.id}
                     href={`/partido/${m.id}`}
-                    className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2 transition hover:border-[var(--color-primary)]/40"
+                    className="group flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2.5 text-sm transition hover:border-[var(--color-arena)]/40"
                   >
-                    <span className="truncate">
-                      {home?.name ?? "—"} vs {away?.name ?? "—"}
+                    <span className="flex items-center gap-2 truncate">
+                      <Flag flag={home?.flagUrl} code={home?.code} />
+                      <span className="truncate">{home?.name ?? "—"}</span>
                     </span>
-                    <span className="font-display tabular-nums">
-                      {m.homeScore} – {m.awayScore}
+                    <span className="font-display tabular text-xl">
+                      {m.homeScore} <span className="opacity-50">·</span> {m.awayScore}
+                    </span>
+                    <span className="flex items-center gap-2 truncate text-right">
+                      <span className="truncate">{away?.name ?? "—"}</span>
+                      <Flag flag={away?.flagUrl} code={away?.code} />
                     </span>
                   </Link>
                 );
@@ -256,67 +391,167 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Cabeza de tabla</CardTitle>
+            <CardDescription>El podio en directo.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {podium.length === 0 || podium[0].totalPoints === 0 ? (
+              <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+                Aún no hay puntos en juego. Empezad fuerte la J1.
+              </p>
+            ) : (
+              podium.map((p, i) => {
+                const display = p.user.nickname || p.user.email.split("@")[0];
+                const isMe = p.user.id === me.id;
+                return (
+                  <div
+                    key={p.user.id}
+                    className={`flex items-center gap-3 rounded-md border border-[var(--color-border)] p-2.5 ${
+                      isMe ? "bg-[var(--color-arena)]/10 border-[var(--color-arena)]/40" : "bg-[var(--color-surface-2)]"
+                    }`}
+                  >
+                    <span className="font-display text-2xl tabular text-[var(--color-arena)]">
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 truncate text-sm font-medium">{display}</span>
+                    <span className="font-display tabular text-xl">{p.totalPoints}</span>
+                  </div>
+                );
+              })
+            )}
+            <Link
+              href="/ranking"
+              className="mt-2 flex items-center justify-end gap-1 text-xs uppercase tracking-[0.2em] text-[var(--color-muted-foreground)] hover:text-[var(--color-arena)]"
+            >
+              Ver ranking <ArrowRight className="size-3.5" />
+            </Link>
+          </CardContent>
+        </Card>
       </section>
     </div>
   );
 }
 
-function DashboardStat({
-  icon,
+function Stat({
   label,
   value,
+  prefix,
   hint,
+  accent,
 }: {
-  icon: React.ReactNode;
   label: string;
   value: string;
-  hint: string;
+  prefix?: string | null;
+  hint?: string;
+  accent?: boolean;
 }) {
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-2 p-5">
-        <div className="flex items-center gap-2 text-[var(--color-muted-foreground)]">
-          {icon}
-          <span className="text-xs uppercase tracking-wider">{label}</span>
-        </div>
-        <div className="font-display text-3xl">{value}</div>
-        <div className="text-xs text-[var(--color-muted-foreground)]">{hint}</div>
-      </CardContent>
-    </Card>
+    <div
+      className={`relative overflow-hidden rounded-xl border ${
+        accent
+          ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface))]"
+          : "border-[var(--color-border)] bg-[var(--color-surface)]"
+      } p-5`}
+    >
+      <p className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+        {label}
+      </p>
+      <div className="mt-2 flex items-baseline gap-1">
+        {prefix ? (
+          <span className="font-display text-2xl text-[var(--color-muted-foreground)]">
+            {prefix}
+          </span>
+        ) : null}
+        <span
+          className={`font-display tabular text-5xl tracking-tight ${
+            accent ? "text-[var(--color-arena)] glow-arena" : ""
+          }`}
+        >
+          {value}
+        </span>
+      </div>
+      {hint ? (
+        <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{hint}</p>
+      ) : null}
+    </div>
   );
 }
 
 function PreCheck({
   done,
   label,
+  hint,
   href,
-  soft,
 }: {
   done: boolean;
   label: string;
+  hint?: string;
   href: string;
-  soft?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="flex items-center justify-between rounded-md border border-[var(--color-border)] p-2 transition hover:border-[var(--color-primary)]/40"
+      className="group flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 transition hover:border-[var(--color-arena)]/40"
     >
-      <div className="flex items-center gap-2">
-        <Badge
-          variant={done ? "success" : soft ? "outline" : "warning"}
-          className="text-[0.6rem]"
-        >
-          {done ? "Hecho" : "Pendiente"}
-        </Badge>
-        <span className="text-sm">{label}</span>
+      <div className="flex items-center gap-3">
+        <Badge variant={done ? "success" : "warning"}>{done ? "Hecho" : "Pendiente"}</Badge>
+        <div className="leading-tight">
+          <p className="text-sm font-medium">{label}</p>
+          {hint ? (
+            <p className="text-[0.7rem] text-[var(--color-muted-foreground)]">{hint}</p>
+          ) : null}
+        </div>
       </div>
-      <ArrowRight className="size-4 text-[var(--color-muted-foreground)]" />
+      <ArrowRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1" />
     </Link>
   );
 }
 
-function _unused() {
-  // Placeholder to silence unused import warnings if we trim later
-  return Button;
+function TeamCell({
+  team,
+  align,
+}: {
+  team: { code: string; name: string; flagUrl: string | null } | null;
+  align: "start" | "end";
+}) {
+  const cls = align === "end" ? "flex-row-reverse text-right" : "";
+  return (
+    <div className={`flex min-w-0 items-center gap-3 ${cls}`}>
+      <Flag flag={team?.flagUrl ?? null} code={team?.code} size={36} />
+      <div className="min-w-0">
+        <p className="truncate font-display text-lg leading-none">{team?.name ?? "TBD"}</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+          {team?.code ?? "—"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Flag({
+  flag,
+  code,
+  size = 24,
+}: {
+  flag: string | null | undefined;
+  code: string | null | undefined;
+  size?: number;
+}) {
+  return (
+    <span
+      className="grid shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]"
+      style={{ width: size, height: size }}
+    >
+      {flag ? (
+        <Image src={flag} alt={code ?? ""} width={size} height={size} />
+      ) : (
+        <span className="font-mono text-[0.55rem] text-[var(--color-muted-foreground)]">
+          {code ?? "—"}
+        </span>
+      )}
+    </span>
+  );
 }

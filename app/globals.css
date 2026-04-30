@@ -4,18 +4,21 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens — quiniela del Mundial 2026
- * Identidad: deportiva, contemporánea, alta legibilidad. Inspirada en pintada de cancha
- * de los anfitriones (rojo/blanco/azul) sin caer en el cliché. Acento principal:
- * verde césped (Pitch). Acento secundario: ámbar de tarjeta (Card). Tonos neutros densos
- * para superficies tipo "tablero". Soporta dark mode por defecto, que es lo deportivo.
+ * Stadium Editorial — design tokens for the World Cup 2026 quiniela.
+ *
+ * Mood: late-night match under stadium lights. Heavy condensed display
+ * type, an italic editorial serif as counterweight, and a scoreboard
+ * palette (pitch green, arena red, referee gold) layered over deep ink.
+ * Default theme is dark; light theme reads like newsprint.
  */
 
 @theme inline {
   --color-bg: var(--color-bg-token);
   --color-surface: var(--color-surface-token);
   --color-surface-2: var(--color-surface-2-token);
+  --color-surface-3: var(--color-surface-3-token);
   --color-border: var(--color-border-token);
+  --color-border-strong: var(--color-border-strong-token);
   --color-muted: var(--color-muted-token);
   --color-muted-foreground: var(--color-muted-foreground-token);
   --color-foreground: var(--color-foreground-token);
@@ -23,6 +26,7 @@
   --color-primary-foreground: var(--color-primary-foreground-token);
   --color-accent: var(--color-accent-token);
   --color-accent-foreground: var(--color-accent-foreground-token);
+  --color-arena: var(--color-arena-token);
   --color-success: var(--color-success-token);
   --color-warning: var(--color-warning-token);
   --color-danger: var(--color-danger-token);
@@ -30,59 +34,83 @@
   --color-card-yellow: var(--color-card-yellow-token);
   --color-card-red: var(--color-card-red-token);
 
-  --font-display: "Bebas Neue", "Oswald", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: var(--font-display-loaded), "Bebas Neue", Impact, ui-sans-serif, sans-serif;
+  --font-editorial: var(--font-editorial-loaded), Georgia, ui-serif, serif;
+  --font-sans: var(--font-sans-loaded), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-loaded), ui-monospace, monospace;
 
   --radius-xs: 0.25rem;
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
 
-  --shadow-elev-1: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.08);
-  --shadow-elev-2: 0 4px 12px rgb(0 0 0 / 0.08), 0 2px 4px rgb(0 0 0 / 0.06);
-  --shadow-pitch: 0 0 0 1px color-mix(in oklch, var(--color-pitch-token) 30%, transparent), 0 12px 30px -12px color-mix(in oklch, var(--color-pitch-token) 40%, transparent);
+  --shadow-elev-1: 0 1px 2px rgb(0 0 0 / 0.10), 0 1px 3px rgb(0 0 0 / 0.18);
+  --shadow-elev-2: 0 8px 24px -8px rgb(0 0 0 / 0.35), 0 2px 4px rgb(0 0 0 / 0.18);
+  --shadow-pitch:
+    0 0 0 1px color-mix(in oklch, var(--color-pitch-token) 35%, transparent),
+    0 22px 50px -22px color-mix(in oklch, var(--color-pitch-token) 50%, transparent);
+  --shadow-arena:
+    0 0 0 1px color-mix(in oklch, var(--color-arena-token) 35%, transparent),
+    0 22px 50px -22px color-mix(in oklch, var(--color-arena-token) 50%, transparent);
+
+  /* Editorial / scoreboard accents */
+  --stripe: repeating-linear-gradient(
+    -8deg,
+    color-mix(in oklch, var(--color-arena-token) 70%, black 15%) 0 12px,
+    color-mix(in oklch, var(--color-arena-token) 90%, white 8%) 12px 24px
+  );
 }
 
+/* Light — newsprint */
 :root {
-  --color-bg-token: oklch(0.99 0 0);
-  --color-surface-token: oklch(1 0 0);
-  --color-surface-2-token: oklch(0.97 0.005 250);
-  --color-border-token: oklch(0.9 0.01 250);
-  --color-muted-token: oklch(0.95 0.005 250);
-  --color-muted-foreground-token: oklch(0.5 0.02 250);
-  --color-foreground-token: oklch(0.16 0.02 260);
-  --color-primary-token: oklch(0.45 0.18 145);
+  --color-bg-token: oklch(0.97 0.012 80);
+  --color-surface-token: oklch(0.995 0.005 80);
+  --color-surface-2-token: oklch(0.95 0.008 80);
+  --color-surface-3-token: oklch(0.92 0.012 80);
+  --color-border-token: oklch(0.88 0.015 80);
+  --color-border-strong-token: oklch(0.78 0.02 80);
+  --color-muted-token: oklch(0.93 0.008 80);
+  --color-muted-foreground-token: oklch(0.46 0.025 70);
+  --color-foreground-token: oklch(0.16 0.02 60);
+
+  --color-primary-token: oklch(0.55 0.20 28);            /* arena red */
   --color-primary-foreground-token: oklch(0.99 0 0);
-  --color-accent-token: oklch(0.78 0.18 70);
-  --color-accent-foreground-token: oklch(0.18 0.04 70);
-  --color-success-token: oklch(0.65 0.17 145);
-  --color-warning-token: oklch(0.78 0.18 70);
-  --color-danger-token: oklch(0.58 0.22 25);
-  --color-pitch-token: oklch(0.45 0.18 145);
-  --color-card-yellow-token: oklch(0.85 0.2 95);
-  --color-card-red-token: oklch(0.58 0.22 25);
+  --color-accent-token: oklch(0.78 0.16 80);             /* referee gold */
+  --color-accent-foreground-token: oklch(0.20 0.04 70);
+  --color-arena-token: oklch(0.55 0.20 28);
+  --color-success-token: oklch(0.55 0.16 145);
+  --color-warning-token: oklch(0.74 0.18 80);
+  --color-danger-token: oklch(0.55 0.22 25);
+  --color-pitch-token: oklch(0.40 0.14 145);
+  --color-card-yellow-token: oklch(0.82 0.20 90);
+  --color-card-red-token: oklch(0.55 0.22 25);
 }
 
+/* Dark — stadium under the lights (default) */
 .dark {
-  --color-bg-token: oklch(0.13 0.02 260);
-  --color-surface-token: oklch(0.17 0.02 260);
-  --color-surface-2-token: oklch(0.21 0.02 260);
-  --color-border-token: oklch(0.27 0.02 260);
-  --color-muted-token: oklch(0.22 0.02 260);
-  --color-muted-foreground-token: oklch(0.72 0.02 260);
-  --color-foreground-token: oklch(0.97 0 0);
-  --color-primary-token: oklch(0.7 0.18 145);
-  --color-primary-foreground-token: oklch(0.13 0.02 260);
-  --color-accent-token: oklch(0.82 0.18 75);
-  --color-accent-foreground-token: oklch(0.18 0.04 70);
-  --color-success-token: oklch(0.72 0.17 145);
-  --color-warning-token: oklch(0.82 0.18 75);
-  --color-danger-token: oklch(0.65 0.22 25);
-  --color-pitch-token: oklch(0.55 0.18 145);
-  --color-card-yellow-token: oklch(0.85 0.2 95);
-  --color-card-red-token: oklch(0.62 0.22 25);
+  --color-bg-token: oklch(0.13 0.018 260);
+  --color-surface-token: oklch(0.165 0.020 260);
+  --color-surface-2-token: oklch(0.205 0.022 260);
+  --color-surface-3-token: oklch(0.245 0.025 260);
+  --color-border-token: oklch(0.28 0.025 260);
+  --color-border-strong-token: oklch(0.38 0.030 260);
+  --color-muted-token: oklch(0.22 0.022 260);
+  --color-muted-foreground-token: oklch(0.74 0.018 260);
+  --color-foreground-token: oklch(0.96 0.008 80);
+
+  --color-primary-token: oklch(0.70 0.20 28);            /* arena red glow */
+  --color-primary-foreground-token: oklch(0.10 0.02 260);
+  --color-accent-token: oklch(0.83 0.18 80);             /* warm gold */
+  --color-accent-foreground-token: oklch(0.16 0.04 70);
+  --color-arena-token: oklch(0.68 0.22 28);
+  --color-success-token: oklch(0.74 0.18 145);
+  --color-warning-token: oklch(0.83 0.18 80);
+  --color-danger-token: oklch(0.68 0.22 25);
+  --color-pitch-token: oklch(0.58 0.18 145);
+  --color-card-yellow-token: oklch(0.85 0.20 92);
+  --color-card-red-token: oklch(0.65 0.22 25);
 }
 
 @layer base {
@@ -99,38 +127,150 @@
     background: var(--color-bg);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
+    font-feature-settings: "ss01", "cv11", "ss03";
+    font-optical-sizing: auto;
     min-height: 100dvh;
   }
 
+  /* Subtle film grain over the whole app — anchors the editorial vibe */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    z-index: 1;
+  }
+
   ::selection {
-    background: color-mix(in oklch, var(--color-primary) 35%, transparent);
+    background: color-mix(in oklch, var(--color-arena) 70%, transparent);
     color: var(--color-foreground);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
 }
 
 @layer utilities {
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: 0.01em;
+    font-weight: 800;
+    font-stretch: condensed;
+    letter-spacing: -0.01em;
+    line-height: 0.92;
+    text-transform: uppercase;
+  }
+  .font-editorial {
+    font-family: var(--font-editorial);
+    font-weight: 500;
+    font-style: italic;
+    letter-spacing: -0.005em;
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum";
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 
+  /* Field grid — diagonal pitch lines */
   .pitch-grid {
-    background-image: linear-gradient(
+    background-image:
+      linear-gradient(
         to right,
-        color-mix(in oklch, var(--color-pitch) 18%, transparent) 1px,
+        color-mix(in oklch, var(--color-pitch) 22%, transparent) 1px,
         transparent 1px
       ),
       linear-gradient(
         to bottom,
-        color-mix(in oklch, var(--color-pitch) 14%, transparent) 1px,
+        color-mix(in oklch, var(--color-pitch) 18%, transparent) 1px,
         transparent 1px
       );
-    background-size: 32px 32px;
+    background-size: 36px 36px;
+  }
+
+  /* Stadium spotlight — radial gradient lighting from a corner */
+  .spotlight {
+    background:
+      radial-gradient(
+        ellipse 60% 80% at 30% 20%,
+        color-mix(in oklch, var(--color-arena) 22%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 80% 60% at 80% 100%,
+        color-mix(in oklch, var(--color-pitch) 22%, transparent),
+        transparent 60%
+      );
+  }
+
+  /* Halftone dots */
+  .halftone {
+    background-image: radial-gradient(
+      color-mix(in oklch, var(--color-foreground) 35%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 6px 6px;
+  }
+
+  /* Diagonal hazard stripes (used as decorative dividers) */
+  .stripe {
+    background: var(--stripe);
+  }
+
+  /* Marquee — for "MUNDIAL FIFA 2026" tickers */
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .marquee {
+    animation: marquee 32s linear infinite;
+  }
+  .marquee-fast {
+    animation: marquee 18s linear infinite;
+  }
+
+  /* Scoreboard glow */
+  .glow-arena {
+    text-shadow: 0 0 1px color-mix(in oklch, var(--color-arena) 60%, transparent),
+      0 0 24px color-mix(in oklch, var(--color-arena) 30%, transparent);
+  }
+  .glow-pitch {
+    text-shadow: 0 0 1px color-mix(in oklch, var(--color-pitch) 60%, transparent),
+      0 0 24px color-mix(in oklch, var(--color-pitch) 30%, transparent);
+  }
+
+  /* "Cut" corner cards — clipped corner like trading-card stamp */
+  .cut-corner {
+    clip-path: polygon(
+      0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)
+    );
   }
 
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;
+  }
+
+  /* Stagger reveal */
+  @keyframes rise {
+    0% { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .rise-in {
+    animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 }
