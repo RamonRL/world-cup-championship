@@ -2,7 +2,7 @@ import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   chatMessages,
@@ -22,6 +22,8 @@ import { ChatThread } from "@/app/(app)/chat/chat-thread";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime, initials } from "@/lib/utils";
+import { formatRemaining } from "@/lib/deadlines";
+import { Edit3 } from "lucide-react";
 
 const STAGE_LABEL: Record<string, string> = {
   group: "Fase de grupos",
@@ -46,12 +48,34 @@ export default async function MatchDetailPage({
   if (!match) notFound();
 
   const teamIds = [match.homeTeamId, match.awayTeamId].filter((x): x is number => x != null);
-  const [allTeams, scorerRows] = await Promise.all([
+  const [allTeams, scorerRows, myResultRows, myScorerRows] = await Promise.all([
     teamIds.length > 0
       ? db.select().from(teams).where(inArray(teams.id, teamIds))
       : Promise.resolve([]),
     db.select().from(matchScorers).where(eq(matchScorers.matchId, matchId)),
+    db
+      .select()
+      .from(predMatchResult)
+      .where(
+        and(
+          eq(predMatchResult.userId, me.id),
+          eq(predMatchResult.matchId, matchId),
+        ),
+      )
+      .limit(1),
+    db
+      .select()
+      .from(predMatchScorer)
+      .where(
+        and(
+          eq(predMatchScorer.userId, me.id),
+          eq(predMatchScorer.matchId, matchId),
+        ),
+      )
+      .limit(1),
   ]);
+  const myResult = myResultRows[0] ?? null;
+  const myScorer = myScorerRows[0] ?? null;
 
   // Predictions become public from kickoff (per visibility rules).
   const predsPublic = new Date(match.scheduledAt) <= new Date();
@@ -104,10 +128,11 @@ export default async function MatchDetailPage({
       : Promise.resolve([]),
   ]);
 
-  // Player rows for the goalscorer predictions
+  // Player rows for the goalscorer predictions (mine + everyone's once revealed)
   const predScorerPlayerIds = (scorerPreds as { playerId: number }[]).map((p) => p.playerId);
+  const myScorerIds = myScorer ? [myScorer.playerId] : [];
   const allRelevantPlayerIds = Array.from(
-    new Set([...playerIds, ...predScorerPlayerIds]),
+    new Set([...playerIds, ...predScorerPlayerIds, ...myScorerIds]),
   );
   const allPlayerRows =
     allRelevantPlayerIds.length > 0
@@ -228,17 +253,19 @@ export default async function MatchDetailPage({
                 {STAGE_LABEL[match.stage]} · {match.code}
               </span>
             </div>
-            <Badge
-              variant={
-                match.status === "finished"
-                  ? "success"
-                  : match.status === "live"
-                    ? "warning"
-                    : "outline"
-              }
-            >
-              {status}
-            </Badge>
+            {match.status === "live" ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-arena)]/60 bg-[color-mix(in_oklch,var(--color-arena)_14%,transparent)] px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70" />
+                  <span className="relative inline-flex size-2 rounded-full bg-[var(--color-arena)]" />
+                </span>
+                En vivo
+              </span>
+            ) : (
+              <Badge variant={match.status === "finished" ? "success" : "outline"}>
+                {status}
+              </Badge>
+            )}
           </header>
 
           <div className="grid items-center gap-6 sm:grid-cols-[1fr_auto_1fr]">
@@ -251,9 +278,7 @@ export default async function MatchDetailPage({
                   {match.awayScore}
                 </span>
               ) : (
-                <span className="font-display text-6xl text-[var(--color-muted-foreground)]">
-                  vs
-                </span>
+                <KickoffCountdown scheduledAt={match.scheduledAt} />
               )}
               {match.wentToPens ? (
                 <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
@@ -270,6 +295,15 @@ export default async function MatchDetailPage({
           </footer>
         </div>
       </section>
+
+      {/* My pick */}
+      <MyPickPanel
+        match={match}
+        myResult={myResult}
+        myScorerPlayer={myScorer ? playerById.get(myScorer.playerId) ?? null : null}
+        actualScorers={sortedScorers}
+        teamById={teamById}
+      />
 
       {/* Scorers timeline */}
       <Card>
@@ -357,7 +391,7 @@ export default async function MatchDetailPage({
               </p>
             ) : (
               <div className="overflow-hidden rounded-lg border border-[var(--color-border)]">
-                <div className="grid grid-cols-[1fr_120px_1fr] items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+                <div className="hidden grid-cols-[1fr_110px_1fr] items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)] sm:grid">
                   <span>Participante</span>
                   <span className="text-center">Resultado</span>
                   <span>Goleador</span>
@@ -377,7 +411,7 @@ export default async function MatchDetailPage({
                     return (
                       <li
                         key={c.userId}
-                        className={`grid grid-cols-[1fr_120px_1fr] items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5 last:border-b-0 ${
+                        className={`flex flex-col gap-1.5 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0 sm:grid sm:grid-cols-[1fr_110px_1fr] sm:items-center sm:gap-2 sm:py-2.5 ${
                           c.userId === me.id
                             ? "bg-[color-mix(in_oklch,var(--color-arena)_5%,transparent)]"
                             : ""
@@ -400,10 +434,13 @@ export default async function MatchDetailPage({
                           </span>
                         </span>
                         <span
-                          className={`text-center font-display tabular text-xl ${
+                          className={`flex items-baseline gap-2 font-display tabular text-xl sm:justify-center ${
                             exactScore ? "text-[var(--color-success)] glow-pitch" : ""
                           }`}
                         >
+                          <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] sm:hidden">
+                            Resultado
+                          </span>
                           {c.homeScore != null && c.awayScore != null ? (
                             <>
                               {c.homeScore}
@@ -414,12 +451,15 @@ export default async function MatchDetailPage({
                             <span className="text-[var(--color-muted-foreground)]">—</span>
                           )}
                           {c.willGoToPens ? (
-                            <span className="ml-1 font-mono text-[0.55rem] uppercase text-[var(--color-muted-foreground)]">
+                            <span className="font-mono text-[0.55rem] uppercase text-[var(--color-muted-foreground)]">
                               pen
                             </span>
                           ) : null}
                         </span>
-                        <span className="flex items-center gap-1.5 truncate text-sm">
+                        <span className="flex items-center gap-2 truncate text-sm">
+                          <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] sm:hidden">
+                            Goleador
+                          </span>
                           {player ? (
                             <>
                               <span
@@ -474,6 +514,205 @@ export default async function MatchDetailPage({
           />
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function MyPickPanel({
+  match,
+  myResult,
+  myScorerPlayer,
+  actualScorers,
+  teamById,
+}: {
+  match: typeof matches.$inferSelect;
+  myResult: typeof predMatchResult.$inferSelect | null;
+  myScorerPlayer: typeof players.$inferSelect | null;
+  actualScorers: (typeof matchScorers.$inferSelect)[];
+  teamById: Map<number, typeof teams.$inferSelect>;
+}) {
+  const open = new Date(match.scheduledAt).getTime() > Date.now();
+  const finished = match.status === "finished";
+  const hasPick = myResult != null || myScorerPlayer != null;
+  const exactScore =
+    finished &&
+    myResult != null &&
+    match.homeScore != null &&
+    match.awayScore != null &&
+    myResult.homeScore === match.homeScore &&
+    myResult.awayScore === match.awayScore;
+  const winnerCorrect =
+    finished &&
+    myResult != null &&
+    match.homeScore != null &&
+    match.awayScore != null &&
+    Math.sign(myResult.homeScore - myResult.awayScore) ===
+      Math.sign(match.homeScore - match.awayScore);
+  const scorerHit =
+    finished &&
+    myScorerPlayer != null &&
+    actualScorers.some((s) => s.playerId === myScorerPlayer.id);
+  const firstGoalHit =
+    finished &&
+    myScorerPlayer != null &&
+    actualScorers.find((s) => s.isFirstGoal)?.playerId === myScorerPlayer.id;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle>Tu pick</CardTitle>
+          <CardDescription>
+            {hasPick
+              ? open
+                ? "Editable hasta el cierre de la jornada."
+                : finished
+                  ? "Resultado y aciertos para este partido."
+                  : "Tus picks ya están bloqueados."
+              : open
+                ? "Aún no has predicho este partido."
+                : "Te has dejado puntos en este partido."}
+          </CardDescription>
+        </div>
+        {open && match.matchdayId != null ? (
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/predicciones/jornada/${match.matchdayId}`}>
+              <Edit3 className="size-3.5" />
+              {hasPick ? "Editar" : "Predecir"}
+            </Link>
+          </Button>
+        ) : null}
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <PickRow
+            label="Marcador"
+            primary={
+              myResult != null
+                ? `${myResult.homeScore} · ${myResult.awayScore}`
+                : null
+            }
+            extra={
+              myResult?.willGoToPens ? "predigo penaltis" : null
+            }
+            badges={
+              finished
+                ? [
+                    exactScore
+                      ? { variant: "success" as const, text: "Exacto +5" }
+                      : winnerCorrect
+                        ? { variant: "success" as const, text: "Ganador +2" }
+                        : { variant: "outline" as const, text: "Falló" },
+                    ...(myResult?.willGoToPens && match.wentToPens
+                      ? [{ variant: "success" as const, text: "Penaltis +2" }]
+                      : []),
+                  ]
+                : []
+            }
+            winnerHint={
+              finished &&
+              myResult?.winnerTeamId != null &&
+              match.winnerTeamId != null
+                ? myResult.winnerTeamId === match.winnerTeamId
+                  ? `Clasificado: ${teamById.get(myResult.winnerTeamId)?.name ?? "—"} ✓ +3`
+                  : `Clasificado: ${teamById.get(myResult.winnerTeamId)?.name ?? "—"} ✗`
+                : myResult?.winnerTeamId != null
+                  ? `Clasificado: ${teamById.get(myResult.winnerTeamId)?.name ?? "—"}`
+                  : null
+            }
+          />
+          <PickRow
+            label="Goleador"
+            primary={myScorerPlayer?.name ?? null}
+            extra={
+              myScorerPlayer
+                ? `#${myScorerPlayer.jerseyNumber ?? "—"} · ${
+                    teamById.get(myScorerPlayer.teamId)?.code ?? ""
+                  }`
+                : null
+            }
+            badges={
+              finished && myScorerPlayer
+                ? [
+                    scorerHit
+                      ? { variant: "success" as const, text: "Marcó +4" }
+                      : { variant: "outline" as const, text: "No marcó" },
+                    ...(firstGoalHit
+                      ? [{ variant: "success" as const, text: "Primer gol +2" }]
+                      : []),
+                  ]
+                : []
+            }
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PickRow({
+  label,
+  primary,
+  extra,
+  badges,
+  winnerHint,
+}: {
+  label: string;
+  primary: string | null;
+  extra?: string | null;
+  badges?: { variant: "success" | "outline"; text: string }[];
+  winnerHint?: string | null;
+}) {
+  return (
+    <div className="space-y-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+        {label}
+      </p>
+      <p
+        className={`font-display tabular text-3xl tracking-tight ${
+          primary ? "" : "text-[var(--color-muted-foreground)]"
+        }`}
+      >
+        {primary ?? "Sin pick"}
+      </p>
+      {extra ? (
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+          {extra}
+        </p>
+      ) : null}
+      {winnerHint ? (
+        <p className="text-[0.7rem] text-[var(--color-muted-foreground)]">{winnerHint}</p>
+      ) : null}
+      {badges && badges.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {badges.map((b, i) => (
+            <Badge key={i} variant={b.variant} className="text-[0.55rem]">
+              {b.text}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function KickoffCountdown({ scheduledAt }: { scheduledAt: Date | string }) {
+  const ms = new Date(scheduledAt).getTime() - Date.now();
+  if (ms <= 0) {
+    return (
+      <span className="font-display text-6xl text-[var(--color-muted-foreground)]">
+        vs
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+        Empieza en
+      </span>
+      <span className="font-display tabular text-5xl leading-none tracking-tighter text-[var(--color-arena)] glow-arena sm:text-7xl">
+        {formatRemaining(ms)}
+      </span>
     </div>
   );
 }
