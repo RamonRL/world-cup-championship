@@ -2,7 +2,7 @@ import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   chatMessages,
@@ -10,6 +10,7 @@ import {
   matchScorers,
   matches,
   players,
+  pointsLedger,
   predMatchResult,
   predMatchScorer,
   profiles,
@@ -49,7 +50,8 @@ export default async function MatchDetailPage({
   if (!match) notFound();
 
   const teamIds = [match.homeTeamId, match.awayTeamId].filter((x): x is number => x != null);
-  const [allTeams, scorerRows, myResultRows, myScorerRows] = await Promise.all([
+  const matchSourceKeyPrefix = `match:${matchId}:`;
+  const [allTeams, scorerRows, myResultRows, myScorerRows, myLedgerRows] = await Promise.all([
     teamIds.length > 0
       ? db.select().from(teams).where(inArray(teams.id, teamIds))
       : Promise.resolve([]),
@@ -74,6 +76,15 @@ export default async function MatchDetailPage({
         ),
       )
       .limit(1),
+    db
+      .select()
+      .from(pointsLedger)
+      .where(
+        and(
+          eq(pointsLedger.userId, me.id),
+          sql`${pointsLedger.sourceKey} like ${matchSourceKeyPrefix + "%"}`,
+        ),
+      ),
   ]);
   const myResult = myResultRows[0] ?? null;
   const myScorer = myScorerRows[0] ?? null;
@@ -317,7 +328,7 @@ export default async function MatchDetailPage({
         away={away ?? null}
         myResult={myResult}
         myScorerPlayer={myScorer ? playerById.get(myScorer.playerId) ?? null : null}
-        actualScorers={sortedScorers}
+        myLedger={myLedgerRows}
         teamById={teamById}
       />
 
@@ -534,13 +545,34 @@ export default async function MatchDetailPage({
   );
 }
 
+const MARKER_SOURCES = new Set([
+  "match_exact_score",
+  "match_outcome",
+  "knockout_score_90",
+  "knockout_qualifier",
+  "knockout_pens_bonus",
+]);
+const SCORER_SOURCES = new Set(["match_scorer", "match_first_scorer"]);
+
+const SOURCE_LABEL: Record<string, string> = {
+  match_exact_score: "Marcador exacto",
+  match_outcome: "Ganador acertado",
+  knockout_score_90: "Resultado en 90'",
+  knockout_qualifier: "Clasificado",
+  knockout_pens_bonus: "Penaltis",
+  match_scorer: "Goleador",
+  match_first_scorer: "Primer gol",
+};
+
+type LedgerEntry = typeof pointsLedger.$inferSelect;
+
 function MyPickPanel({
   match,
   home,
   away,
   myResult,
   myScorerPlayer,
-  actualScorers,
+  myLedger,
   teamById,
 }: {
   match: typeof matches.$inferSelect;
@@ -548,60 +580,18 @@ function MyPickPanel({
   away: typeof teams.$inferSelect | null;
   myResult: typeof predMatchResult.$inferSelect | null;
   myScorerPlayer: typeof players.$inferSelect | null;
-  actualScorers: (typeof matchScorers.$inferSelect)[];
+  myLedger: LedgerEntry[];
   teamById: Map<number, typeof teams.$inferSelect>;
 }) {
   const open = new Date(match.scheduledAt).getTime() > Date.now();
   const finished = match.status === "finished";
   const hasPick = myResult != null || myScorerPlayer != null;
-  const exactScore =
-    finished &&
-    myResult != null &&
-    match.homeScore != null &&
-    match.awayScore != null &&
-    myResult.homeScore === match.homeScore &&
-    myResult.awayScore === match.awayScore;
-  const winnerCorrect =
-    finished &&
-    myResult != null &&
-    match.homeScore != null &&
-    match.awayScore != null &&
-    Math.sign(myResult.homeScore - myResult.awayScore) ===
-      Math.sign(match.homeScore - match.awayScore);
-  const scorerHit =
-    finished &&
-    myScorerPlayer != null &&
-    actualScorers.some((s) => s.playerId === myScorerPlayer.id);
-  const firstGoalHit =
-    finished &&
-    myScorerPlayer != null &&
-    actualScorers.find((s) => s.isFirstGoal)?.playerId === myScorerPlayer.id;
 
-  const scoreBadges =
-    finished && myResult != null
-      ? [
-          exactScore
-            ? { variant: "success" as const, text: "Exacto +5" }
-            : winnerCorrect
-              ? { variant: "success" as const, text: "Ganador +2" }
-              : { variant: "outline" as const, text: "Falló" },
-          ...(myResult.willGoToPens && match.wentToPens
-            ? [{ variant: "success" as const, text: "Penaltis +2" }]
-            : []),
-        ]
-      : [];
-
-  const scorerBadges =
-    finished && myScorerPlayer
-      ? [
-          scorerHit
-            ? { variant: "success" as const, text: "Marcó +4" }
-            : { variant: "outline" as const, text: "No marcó" },
-          ...(firstGoalHit
-            ? [{ variant: "success" as const, text: "Primer gol +2" }]
-            : []),
-        ]
-      : [];
+  const markerEntries = myLedger.filter((e) => MARKER_SOURCES.has(e.source));
+  const scorerEntries = myLedger.filter((e) => SCORER_SOURCES.has(e.source));
+  const markerPoints = markerEntries.reduce((s, e) => s + e.points, 0);
+  const scorerPoints = scorerEntries.reduce((s, e) => s + e.points, 0);
+  const totalPoints = markerPoints + scorerPoints;
 
   return (
     <Card>
@@ -620,14 +610,17 @@ function MyPickPanel({
                 : "Te has dejado puntos en este partido."}
           </CardDescription>
         </div>
-        {open && match.matchdayId != null ? (
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/predicciones/jornada/${match.matchdayId}`}>
-              <Edit3 className="size-3.5" />
-              {hasPick ? "Editar" : "Predecir"}
-            </Link>
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-3">
+          {finished && hasPick ? <TotalEarned points={totalPoints} /> : null}
+          {open && match.matchdayId != null ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/predicciones/jornada/${match.matchdayId}`}>
+                <Edit3 className="size-3.5" />
+                {hasPick ? "Editar" : "Predecir"}
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
@@ -649,18 +642,43 @@ function MyPickPanel({
                 ? myResult.winnerTeamId === match.winnerTeamId
                 : null
             }
-            badges={scoreBadges}
+            entries={markerEntries}
+            totalPoints={markerPoints}
+            finished={finished}
+            hasPrediction={myResult != null}
           />
           <ScorerPick
             player={myScorerPlayer}
             teamCode={
               myScorerPlayer ? teamById.get(myScorerPlayer.teamId)?.code ?? null : null
             }
-            badges={scorerBadges}
+            entries={scorerEntries}
+            totalPoints={scorerPoints}
+            finished={finished}
           />
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function TotalEarned({ points }: { points: number }) {
+  const positive = points > 0;
+  return (
+    <div
+      className={`flex items-baseline gap-1 rounded-md border px-2.5 py-1.5 font-display tabular leading-none ${
+        positive
+          ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_12%,transparent)] text-[var(--color-arena)] glow-arena"
+          : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted-foreground)]"
+      }`}
+      title="Puntos sumados a tu ranking por este partido"
+    >
+      {positive ? <span className="text-xs opacity-70">+</span> : null}
+      <span className="text-xl">{points}</span>
+      <span className="text-[0.55rem] uppercase tracking-[0.18em] opacity-70">
+        {points === 1 ? "pt" : "pts"}
+      </span>
+    </div>
   );
 }
 
@@ -672,7 +690,10 @@ function ScoreboardPick({
   willGoToPens,
   winnerName,
   winnerCorrect,
-  badges,
+  entries,
+  totalPoints,
+  finished,
+  hasPrediction,
 }: {
   home: typeof teams.$inferSelect | null;
   away: typeof teams.$inferSelect | null;
@@ -681,14 +702,22 @@ function ScoreboardPick({
   willGoToPens: boolean;
   winnerName: string | null;
   winnerCorrect: boolean | null;
-  badges: { variant: "success" | "outline"; text: string }[];
+  entries: LedgerEntry[];
+  totalPoints: number;
+  finished: boolean;
+  hasPrediction: boolean;
 }) {
   const noPick = homeScore == null || awayScore == null;
   return (
     <div className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-        Marcador
-      </p>
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+          Marcador
+        </p>
+        {finished && hasPrediction ? (
+          <PointsTag points={totalPoints} />
+        ) : null}
+      </div>
       {noPick ? (
         <p className="font-display tabular text-2xl tracking-tight text-[var(--color-muted-foreground)]">
           Sin pick
@@ -714,17 +743,14 @@ function ScoreboardPick({
       {winnerName ? (
         <p className="border-t border-dashed border-[var(--color-border)] pt-2 text-center text-[0.7rem] text-[var(--color-muted-foreground)]">
           Clasificado: <span className="font-medium text-[var(--color-foreground)]">{winnerName}</span>
-          {winnerCorrect === true ? " ✓ +3" : winnerCorrect === false ? " ✗" : ""}
+          {winnerCorrect === true ? " ✓" : winnerCorrect === false ? " ✗" : ""}
         </p>
       ) : null}
-      {badges.length > 0 ? (
-        <div className="flex flex-wrap justify-center gap-1.5 border-t border-dashed border-[var(--color-border)] pt-2">
-          {badges.map((b, i) => (
-            <Badge key={i} variant={b.variant} className="text-[0.55rem]">
-              {b.text}
-            </Badge>
-          ))}
-        </div>
+      {finished && hasPrediction ? (
+        <PointsBreakdown
+          entries={entries}
+          emptyLabel="Sin puntos por marcador"
+        />
       ) : null}
     </div>
   );
@@ -761,17 +787,24 @@ function ScoreboardSide({
 function ScorerPick({
   player,
   teamCode,
-  badges,
+  entries,
+  totalPoints,
+  finished,
 }: {
   player: typeof players.$inferSelect | null;
   teamCode: string | null;
-  badges: { variant: "success" | "outline"; text: string }[];
+  entries: LedgerEntry[];
+  totalPoints: number;
+  finished: boolean;
 }) {
   return (
     <div className="space-y-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-        Goleador
-      </p>
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+          Goleador
+        </p>
+        {finished && player ? <PointsTag points={totalPoints} /> : null}
+      </div>
       <p
         className={`font-display tabular text-2xl leading-tight tracking-tight ${
           player ? "" : "text-[var(--color-muted-foreground)]"
@@ -786,16 +819,62 @@ function ScorerPick({
           {player.position ? ` · ${player.position}` : ""}
         </p>
       ) : null}
-      {badges.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5 border-t border-dashed border-[var(--color-border)] pt-2">
-          {badges.map((b, i) => (
-            <Badge key={i} variant={b.variant} className="text-[0.55rem]">
-              {b.text}
-            </Badge>
-          ))}
-        </div>
+      {finished && player ? (
+        <PointsBreakdown entries={entries} emptyLabel="No marcó · 0 pts" />
       ) : null}
     </div>
+  );
+}
+
+function PointsTag({ points }: { points: number }) {
+  const positive = points > 0;
+  return (
+    <span
+      className={`inline-flex items-baseline gap-0.5 rounded font-display tabular leading-none ${
+        positive
+          ? "bg-[color-mix(in_oklch,var(--color-arena)_14%,transparent)] px-1.5 py-1 text-base text-[var(--color-arena)]"
+          : "bg-transparent px-0 py-0 text-sm text-[var(--color-muted-foreground)]"
+      }`}
+    >
+      {positive ? <span className="text-xs opacity-70">+</span> : null}
+      <span>{points}</span>
+      <span className="text-[0.55rem] uppercase tracking-[0.18em] opacity-70">
+        {points === 1 ? "pt" : "pts"}
+      </span>
+    </span>
+  );
+}
+
+function PointsBreakdown({
+  entries,
+  emptyLabel,
+}: {
+  entries: LedgerEntry[];
+  emptyLabel: string;
+}) {
+  if (entries.length === 0) {
+    return (
+      <p className="border-t border-dashed border-[var(--color-border)] pt-2 text-[0.7rem] italic text-[var(--color-muted-foreground)]">
+        {emptyLabel}
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-1 border-t border-dashed border-[var(--color-border)] pt-2">
+      {entries.map((e) => (
+        <li
+          key={e.id}
+          className="flex items-baseline justify-between gap-2 text-[0.7rem]"
+        >
+          <span className="text-[var(--color-foreground)]">
+            {SOURCE_LABEL[e.source] ?? e.source}
+          </span>
+          <span className="font-display tabular text-sm text-[var(--color-arena)]">
+            +{e.points}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
