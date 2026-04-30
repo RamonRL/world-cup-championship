@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { useActionState, useState } from "react";
 import { Lock, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -283,11 +283,7 @@ function playerLabel(p: PlayerLite): string {
 function TeamSide({ team }: { team: TeamLite | null }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-        {team?.flagUrl ? (
-          <Image src={team.flagUrl} alt={team.code} width={28} height={28} />
-        ) : null}
-      </span>
+      <TeamFlag code={team?.code} size={28} />
       <span className="truncate text-sm font-medium">{team?.name ?? "—"}</span>
     </div>
   );

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -165,11 +165,7 @@ export default async function GroupDetailPage({
                   {pos}
                 </span>
                 <span className="flex items-center gap-2 truncate">
-                  <span className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                    {t.flagUrl ? (
-                      <Image src={t.flagUrl} alt={t.code} width={20} height={20} />
-                    ) : null}
-                  </span>
+                  <TeamFlag code={t.code} size={20} />
                   <span className="truncate text-sm font-medium">{t.name}</span>
                 </span>
                 <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
@@ -293,11 +289,7 @@ export default async function GroupDetailPage({
                     <span className="font-display text-2xl tabular text-[var(--color-arena)]">
                       {i + 1}
                     </span>
-                    <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                      {team?.flagUrl ? (
-                        <Image src={team.flagUrl} alt={team.code} width={28} height={28} />
-                      ) : null}
-                    </span>
+                    <TeamFlag code={team?.code} size={28} />
                     <span className="flex-1 truncate text-sm font-medium">
                       {team?.name ?? "—"}
                     </span>
@@ -379,11 +371,7 @@ function TeamLine({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="grid size-6 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-          {team?.flagUrl ? (
-            <Image src={team.flagUrl} alt={team.code} width={24} height={24} />
-          ) : null}
-        </span>
+        <TeamFlag code={team?.code} size={24} />
         <span
           className={`truncate text-sm font-medium ${
             winner ? "text-[var(--color-success)]" : ""

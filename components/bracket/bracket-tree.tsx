@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { cn } from "@/lib/utils";
 
 export type TeamLite = {
@@ -329,11 +329,7 @@ function TeamLine({
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className="grid size-4 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-          {team?.flagUrl ? (
-            <Image src={team.flagUrl} alt={team.code} width={16} height={16} />
-          ) : null}
-        </span>
+        <TeamFlag code={team?.code} size={16} />
         <span
           className={cn(
             "truncate text-[0.7rem] font-medium",

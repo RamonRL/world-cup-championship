@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { desc, eq, inArray } from "drizzle-orm";
@@ -493,21 +493,15 @@ function TeamHero({
         side === "home" ? "sm:items-end sm:text-right" : "sm:items-start sm:text-left"
       }`}
     >
-      <span
-        className={`grid size-20 place-items-center overflow-hidden rounded-lg border ${
+      <TeamFlag
+        code={team?.code}
+        size={80}
+        className={
           winner
-            ? "border-[var(--color-arena)] shadow-[var(--shadow-arena)]"
-            : "border-[var(--color-border-strong)]"
-        } bg-[var(--color-surface-2)]`}
-      >
-        {team?.flagUrl ? (
-          <Image src={team.flagUrl} alt={team.code} width={80} height={80} />
-        ) : (
-          <span className="font-mono text-xs text-[var(--color-muted-foreground)]">
-            {team?.code ?? "?"}
-          </span>
-        )}
-      </span>
+            ? "ring-2 ring-[var(--color-arena)] shadow-[var(--shadow-arena)]"
+            : "ring-1 ring-[var(--color-border-strong)]"
+        }
+      />
       <div>
         <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
           {team?.code ?? "—"}

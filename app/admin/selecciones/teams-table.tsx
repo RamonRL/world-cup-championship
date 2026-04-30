@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,19 +61,7 @@ export function TeamsTable({ teams, groups }: { teams: Team[]; groups: Group[] }
             {teams.map((t) => (
               <TableRow key={t.id}>
                 <TableCell>
-                  <span className="grid size-9 place-items-center overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                    {t.flagUrl ? (
-                      <Image
-                        src={t.flagUrl}
-                        alt={t.code}
-                        width={36}
-                        height={36}
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs text-[var(--color-muted-foreground)]">—</span>
-                    )}
-                  </span>
+                  <TeamFlag code={t.code} size={36} />
                 </TableCell>
                 <TableCell className="font-mono text-sm">{t.code}</TableCell>
                 <TableCell className="font-medium">{t.name}</TableCell>

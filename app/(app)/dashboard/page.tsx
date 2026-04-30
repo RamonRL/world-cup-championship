@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { ArrowRight, ArrowUpRight, Flame } from "lucide-react";
 import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -526,7 +526,7 @@ export default async function DashboardPage() {
                     className="group flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2.5 text-sm transition hover:border-[var(--color-arena)]/40"
                   >
                     <span className="flex items-center gap-2 truncate">
-                      <Flag flag={home?.flagUrl} code={home?.code} />
+                      <TeamFlag code={home?.code} size={24} />
                       <span className="truncate">{home?.name ?? "—"}</span>
                     </span>
                     <span className="font-display tabular text-xl">
@@ -534,7 +534,7 @@ export default async function DashboardPage() {
                     </span>
                     <span className="flex items-center gap-2 truncate text-right">
                       <span className="truncate">{away?.name ?? "—"}</span>
-                      <Flag flag={away?.flagUrl} code={away?.code} />
+                      <TeamFlag code={away?.code} size={24} />
                     </span>
                   </Link>
                 );
@@ -671,7 +671,7 @@ function LiveTeam({
   const cls = align === "end" ? "flex-row-reverse text-right" : "";
   return (
     <div className={`flex min-w-0 items-center gap-2.5 ${cls}`}>
-      <Flag flag={team?.flagUrl ?? null} code={team?.code} size={40} />
+      <TeamFlag code={team?.code} size={40} />
       <div className="min-w-0">
         <p className="truncate font-display text-lg leading-none tracking-tight sm:text-2xl">
           {team?.name ?? "TBD"}
@@ -694,7 +694,7 @@ function TeamCell({
   const cls = align === "end" ? "flex-row-reverse text-right" : "";
   return (
     <div className={`flex min-w-0 items-center gap-3 ${cls}`}>
-      <Flag flag={team?.flagUrl ?? null} code={team?.code} size={36} />
+      <TeamFlag code={team?.code} size={36} />
       <div className="min-w-0">
         <p className="truncate font-display text-lg leading-none">{team?.name ?? "TBD"}</p>
         <p className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
@@ -705,27 +705,3 @@ function TeamCell({
   );
 }
 
-function Flag({
-  flag,
-  code,
-  size = 24,
-}: {
-  flag: string | null | undefined;
-  code: string | null | undefined;
-  size?: number;
-}) {
-  return (
-    <span
-      className="grid shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]"
-      style={{ width: size, height: size }}
-    >
-      {flag ? (
-        <Image src={flag} alt={code ?? ""} width={size} height={size} />
-      ) : (
-        <span className="font-mono text-[0.55rem] text-[var(--color-muted-foreground)]">
-          {code ?? "—"}
-        </span>
-      )}
-    </span>
-  );
-}

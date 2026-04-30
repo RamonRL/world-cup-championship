@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
 import { asc, eq, inArray, ne, or } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -269,9 +269,7 @@ function ParticipantColumn({
           </span>
           {t ? (
             <>
-              <span className="grid size-4 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                {t.flagUrl ? <Image src={t.flagUrl} alt={t.code} width={16} height={16} /> : null}
-              </span>
+              <TeamFlag code={t.code} size={16} />
               <span className="truncate">{t.name}</span>
             </>
           ) : (

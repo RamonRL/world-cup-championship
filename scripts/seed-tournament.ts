@@ -1,19 +1,21 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, matches, matchdays, teams } from "@/lib/db/schema";
-import { createSupabaseServiceClient } from "@/lib/supabase/server";
 
 /**
- * Carga las 48 selecciones del Mundial 2026 (con su bandera descargada de
- * flagcdn.com y subida al bucket "flags") y los 104 partidos según el
+ * Carga las 48 selecciones del Mundial 2026 y los 104 partidos según el
  * calendario oficial publicado por FIFA / Wikipedia.
+ *
+ * Las banderas NO se descargan ni almacenan en Supabase: el front-end
+ * (`<TeamFlag />`) las renderiza directamente desde HatScripts circle-flags
+ * usando el código FIFA del equipo. La columna `flag_url` se mantiene como
+ * override opcional para banderas custom subidas por el admin.
  *
  * Idempotente: si una selección o un partido ya existen (por code), los
  * actualiza en lugar de duplicar.
  *
  * Requiere:
- *  - .env.local con DATABASE_URL + SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL.
- *  - Bucket público "flags" creado en Supabase Storage (lo crea supabase/setup.sql).
+ *  - .env.local con DATABASE_URL + NEXT_PUBLIC_SUPABASE_URL.
  *  - 9 jornadas creadas (corre `pnpm db:seed-fixtures` antes).
  */
 
@@ -293,37 +295,6 @@ const KO_MATCHES: KOMatchSeed[] = [
   { code: "M104", stage: "final", date: "2026-07-19", hour: 15, minute: 0, venue: "MetLife Stadium" },
 ];
 
-// ─────────────────── flag upload ───────────────────
-
-async function uploadFlag(code: string, slug: string): Promise<string | null> {
-  try {
-    const url = `https://flagcdn.com/w320/${slug}.png`;
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      console.warn(`  ⚠ no se pudo descargar bandera ${slug} (${resp.status})`);
-      return null;
-    }
-    const buffer = await resp.arrayBuffer();
-    const supabase = createSupabaseServiceClient();
-    const path = `${code}.png`;
-    const { error } = await supabase.storage.from("flags").upload(path, buffer, {
-      contentType: "image/png",
-      upsert: true,
-    });
-    if (error) {
-      console.warn(`  ⚠ upload bandera ${code}: ${error.message}`);
-      return null;
-    }
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("flags").getPublicUrl(path);
-    return publicUrl;
-  } catch (err) {
-    console.warn(`  ⚠ error con bandera ${code}: ${err}`);
-    return null;
-  }
-}
-
 // ─────────────────── main ───────────────────
 
 async function main() {
@@ -372,20 +343,12 @@ async function main() {
       .where(eq(teams.code, seed.code))
       .limit(1);
 
-    let flagUrl = existing?.flagUrl ?? null;
-    if (!flagUrl) {
-      process.stdout.write(`  · ${seed.code} ${seed.name}… `);
-      flagUrl = await uploadFlag(seed.code, seed.flagSlug);
-      console.log(flagUrl ? "✓" : "(sin bandera)");
-    }
-
     if (existing) {
       await db
         .update(teams)
         .set({
           name: seed.name,
           groupId: group.id,
-          flagUrl: flagUrl ?? existing.flagUrl,
         })
         .where(eq(teams.id, existing.id));
     } else {
@@ -393,7 +356,7 @@ async function main() {
         code: seed.code,
         name: seed.name,
         groupId: group.id,
-        flagUrl,
+        flagUrl: null,
       });
     }
   }

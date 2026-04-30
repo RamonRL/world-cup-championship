@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { useActionState, useState } from "react";
 import {
   DndContext,
@@ -214,11 +214,7 @@ function SortableRow({
         <GripVertical className="size-4" />
       </button>
       <span className="grid w-9 text-center font-display text-lg">{positionLabel}</span>
-      <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface)]">
-        {team.flagUrl ? (
-          <Image src={team.flagUrl} alt={team.code} width={28} height={28} />
-        ) : null}
-      </span>
+      <TeamFlag code={team.code} size={28} />
       <span className="flex-1 truncate text-sm font-medium">{team.name}</span>
       {advances ? (
         <Badge variant="success" className="text-[0.6rem]">

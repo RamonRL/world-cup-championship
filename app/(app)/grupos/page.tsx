@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -107,11 +107,7 @@ export default async function GroupsPage() {
                             {pos}
                           </span>
                           <span className="flex items-center gap-2 truncate">
-                            <span className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                              {t.flagUrl ? (
-                                <Image src={t.flagUrl} alt={t.code} width={20} height={20} />
-                              ) : null}
-                            </span>
+                            <TeamFlag code={t.code} size={20} />
                             <span className="truncate text-sm font-medium">{t.name}</span>
                           </span>
                           <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">

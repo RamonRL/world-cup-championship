@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -209,15 +209,8 @@ export default async function BracketPage() {
               </p>
             </div>
           </div>
-          {myChampion && teamById.get(myChampion)?.flagUrl ? (
-            <span className="grid size-12 place-items-center overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
-              <Image
-                src={teamById.get(myChampion)!.flagUrl!}
-                alt={teamById.get(myChampion)!.code}
-                width={48}
-                height={48}
-              />
-            </span>
+          {myChampion && teamById.get(myChampion) ? (
+            <TeamFlag code={teamById.get(myChampion)!.code} size={48} />
           ) : (
             <Link
               href="/predicciones/bracket"
@@ -269,11 +262,7 @@ function MobileTeamRow({
       }`}
     >
       <div className="flex min-w-0 items-center gap-2">
-        <span className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-          {team?.flagUrl ? (
-            <Image src={team.flagUrl} alt={team.code} width={20} height={20} />
-          ) : null}
-        </span>
+        <TeamFlag code={team?.code} size={20} />
         <span className="truncate text-sm font-medium">{team?.name ?? "TBD"}</span>
         {isMyPick ? (
           <span className="font-mono text-[0.65rem] text-[var(--color-arena)]">●</span>

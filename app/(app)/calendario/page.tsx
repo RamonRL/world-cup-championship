@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { CalendarDays } from "lucide-react";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -170,11 +170,7 @@ function TeamRow({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-          {team?.flagUrl ? (
-            <Image src={team.flagUrl} alt={team.code} width={28} height={28} />
-          ) : null}
-        </span>
+        <TeamFlag code={team?.code} size={28} />
         <div className="min-w-0">
           <p className="truncate font-display text-base leading-none tracking-tight">
             {team?.name ?? "TBD"}

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { useActionState, useMemo, useState } from "react";
 import { Lock, Save, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -158,11 +158,7 @@ export function BracketBuilder({
                                 : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-primary)]/50"
                             }`}
                           >
-                            <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                              {t.flagUrl ? (
-                                <Image src={t.flagUrl} alt={t.code} width={28} height={28} />
-                              ) : null}
-                            </span>
+                            <TeamFlag code={t.code} size={28} />
                             <span className="text-sm font-medium">{t.name}</span>
                           </button>
                         );
@@ -205,11 +201,7 @@ export function BracketBuilder({
                             : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-primary)]/50"
                         }`}
                       >
-                        <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                          {t.flagUrl ? (
-                            <Image src={t.flagUrl} alt={t.code} width={36} height={36} />
-                          ) : null}
-                        </span>
+                        <TeamFlag code={t.code} size={36} />
                         <div className="flex-1">
                           <p className="font-medium">{t.name}</p>
                           <p className="text-[0.65rem] uppercase tracking-wider text-[var(--color-muted-foreground)]">
