@@ -319,4 +319,20 @@
     left: auto;
     right: calc(var(--bracket-gap, 20px) * -0.5);
   }
+
+  /* Highlight de slots cuando el simulador del bracket está activo. Las
+     tarjetas que cumplen el filtro reciben "highlight" (resaltado arena),
+     las que no, "dim" (atenuadas para que el resaltado destaque). */
+  .bracket-card {
+    transition: box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+  }
+  .bracket-slot-highlight {
+    border-color: var(--color-arena) !important;
+    box-shadow:
+      0 0 0 1px var(--color-arena),
+      0 0 24px -8px color-mix(in oklch, var(--color-arena) 60%, transparent);
+  }
+  .bracket-slot-dim {
+    opacity: 0.35;
+  }
 }

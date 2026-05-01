@@ -12,6 +12,8 @@ import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
 import { getBracketStatus } from "@/lib/bracket-state";
 import { BracketTree, type BracketMatch } from "@/components/bracket/bracket-tree";
+import { BracketSlotHighlighter } from "@/components/bracket/bracket-slot-highlighter";
+import { KO_FEEDS, R32_SLOTS, formatSlotSource } from "@/lib/bracket-format";
 
 export const metadata = { title: "Bracket" };
 
@@ -80,34 +82,7 @@ export default async function BracketPage() {
     );
   }
 
-  // Pre-fase eliminatoria: las llaves existen pero los equipos no están
-  // asignados todavía. En vez de pintar 32 cuadros con TBD, damos un
-  // mensaje claro y un atajo a /predicciones/bracket.
-  if (bracketStatus.state === "waiting") {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          eyebrow="Eliminación directa"
-          title="Bracket del torneo"
-          description="Disponible cuando termine la fase de grupos. Se rellena con los 32 clasificados (top-2 de cada grupo + 8 mejores terceros)."
-        />
-        <EmptyState
-          icon={<Lock className="size-5" />}
-          title="Aún no hay clasificados"
-          description="El árbol oficial se construye al cierre de la fase de grupos. Mientras tanto, ya puedes prepararlo desde tus predicciones."
-        />
-        <div className="flex justify-center">
-          <Link
-            href="/predicciones/bracket"
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-arena)] transition hover:border-[var(--color-arena)]"
-          >
-            <Swords className="size-3.5" />
-            Ir a tus predicciones
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const isPreview = bracketStatus.state === "waiting";
 
   // Build matches map for the BracketTree component
   const treeMap = new Map<string, BracketMatch>();
@@ -147,7 +122,11 @@ export default async function BracketPage() {
       <PageHeader
         eyebrow="Eliminación directa"
         title="Bracket del torneo"
-        description="El árbol oficial de eliminación directa: dieciseisavos, octavos, cuartos, semifinales y final. Tus picks aparecen resaltados (●) y los aciertos en verde."
+        description={
+          isPreview
+            ? "Vista previa del cuadro FIFA 2026. Los slots aparecen con la fuente del clasificado (1ºA, 2ºB, mejor 3º…). Al cerrar la fase de grupos se rellenarán con las selecciones reales."
+            : "El árbol oficial de eliminación directa: dieciseisavos, octavos, cuartos, semifinales y final. Tus picks aparecen resaltados (●) y los aciertos en verde."
+        }
         actions={
           <Link
             href="/predicciones/bracket"
@@ -158,7 +137,25 @@ export default async function BracketPage() {
         }
       />
 
-      <Legend />
+      {isPreview ? (
+        <>
+          <div className="flex items-start gap-3 rounded-xl border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))] p-4">
+            <Lock className="mt-0.5 size-4 shrink-0 text-[var(--color-arena)]" />
+            <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)]">
+              La fase de grupos sigue abierta. Se muestran las llaves oficiales
+              de FIFA con los slots vacíos identificados como{" "}
+              <strong className="font-semibold not-italic">1ºX</strong>,{" "}
+              <strong className="font-semibold not-italic">2ºX</strong> o{" "}
+              <strong className="font-semibold not-italic">3º A·B·…</strong>{" "}
+              (pool de los mejores terceros). Usa el simulador para ver dónde
+              caería un equipo según su posición final.
+            </p>
+          </div>
+          <BracketSlotHighlighter />
+        </>
+      ) : (
+        <Legend />
+      )}
 
       {/* Desktop tree */}
       <div className="hidden lg:block">
@@ -180,6 +177,8 @@ export default async function BracketPage() {
                 {stageMatches.map((m) => {
                   const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
                   const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
+                  const homePh = mobilePlaceholder(stage, m.code, "home");
+                  const awayPh = mobilePlaceholder(stage, m.code, "away");
                   return (
                     <Card key={m.id}>
                       <CardHeader className="flex flex-row items-center justify-between p-3">
@@ -210,12 +209,14 @@ export default async function BracketPage() {
                           score={m.homeScore}
                           isWinner={m.winnerTeamId === m.homeTeamId}
                           isMyPick={home ? myPicksHere.has(home.id) : false}
+                          placeholderLabel={homePh}
                         />
                         <MobileTeamRow
                           team={away}
                           score={m.awayScore}
                           isWinner={m.winnerTeamId === m.awayTeamId}
                           isMyPick={away ? myPicksHere.has(away.id) : false}
+                          placeholderLabel={awayPh}
                         />
                         {m.wentToPens ? (
                           <p className="text-[0.65rem] text-[var(--color-muted-foreground)]">
@@ -292,12 +293,16 @@ function MobileTeamRow({
   score,
   isWinner,
   isMyPick,
+  placeholderLabel,
 }: {
   team: { name: string; code: string; flagUrl: string | null } | null | undefined;
   score: number | null;
   isWinner: boolean;
   isMyPick: boolean;
+  placeholderLabel?: string | null;
 }) {
+  const isPlaceholder = team == null;
+  const label = team?.name ?? placeholderLabel ?? "TBD";
   return (
     <div
       className={`flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 ${
@@ -308,7 +313,15 @@ function MobileTeamRow({
     >
       <div className="flex min-w-0 items-center gap-2">
         <TeamFlag code={team?.code} size={20} />
-        <span className="truncate text-sm font-medium">{team?.name ?? "TBD"}</span>
+        <span
+          className={
+            isPlaceholder
+              ? "truncate font-mono text-[0.7rem] uppercase tracking-[0.16em] text-[var(--color-muted-foreground)]"
+              : "truncate text-sm font-medium"
+          }
+        >
+          {label}
+        </span>
         {isMyPick ? (
           <span className="font-mono text-[0.65rem] text-[var(--color-arena)]">●</span>
         ) : null}
@@ -318,4 +331,20 @@ function MobileTeamRow({
       </span>
     </div>
   );
+}
+
+function mobilePlaceholder(
+  stage: keyof typeof STAGE_LABEL,
+  code: string,
+  side: "home" | "away",
+): string | null {
+  if (stage === "r32") {
+    const slot = R32_SLOTS[code];
+    if (!slot) return null;
+    return formatSlotSource(side === "home" ? slot.home : slot.away);
+  }
+  const feed = KO_FEEDS[code];
+  if (!feed) return null;
+  const f = side === "home" ? feed.home : feed.away;
+  return f.loser ? `Pierde ${f.code}` : `Gana ${f.code}`;
 }

@@ -3,6 +3,12 @@ import { Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { cn } from "@/lib/utils";
+import {
+  KO_FEEDS,
+  R32_SLOTS,
+  encodeSlotSource,
+  formatSlotSource,
+} from "@/lib/bracket-format";
 
 export type TeamLite = {
   id: number;
@@ -266,8 +272,22 @@ function BracketCard({
   const away = match?.awayTeam ?? null;
   const winnerId = match?.winnerTeamId ?? null;
 
+  // Placeholder labels: cuando el slot todavía no tiene equipo, mostramos
+  // de dónde viene (p.ej. "1º A", "3º A·B·C·D·F", "Gana M74"). Para R32 lo
+  // sacamos del mapa FIFA; para rondas posteriores, del feeder. data-slot-*
+  // habilita el resaltado interactivo desde BracketSlotHighlighter.
+  const homePlaceholder = computePlaceholder(stage, code, "home");
+  const awayPlaceholder = computePlaceholder(stage, code, "away");
+  const dataSlotHome = stage === "r32" ? encodeSlotSource(R32_SLOTS[code].home) : undefined;
+  const dataSlotAway = stage === "r32" ? encodeSlotSource(R32_SLOTS[code].away) : undefined;
+
   const inner = (
-    <div className="w-full overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] transition-colors hover:border-[var(--color-arena)]/40">
+    <div
+      data-bracket-card="true"
+      data-slot-home={dataSlotHome}
+      data-slot-away={dataSlotAway}
+      className="bracket-card w-full overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] transition-colors hover:border-[var(--color-arena)]/40"
+    >
       <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
         <span>{code}</span>
         {match?.status === "finished" ? (
@@ -281,6 +301,7 @@ function BracketCard({
         score={match?.homeScore ?? null}
         isWinner={winnerId != null && home?.id === winnerId}
         isMyPick={home != null && advancePool?.has(home.id) === true}
+        placeholderLabel={homePlaceholder}
         compact
       />
       <div className="border-t border-dashed border-[var(--color-border)]" />
@@ -289,6 +310,7 @@ function BracketCard({
         score={match?.awayScore ?? null}
         isWinner={winnerId != null && away?.id === winnerId}
         isMyPick={away != null && advancePool?.has(away.id) === true}
+        placeholderLabel={awayPlaceholder}
         compact
       />
       {match?.wentToPens ? (
@@ -307,19 +329,39 @@ function BracketCard({
   );
 }
 
+function computePlaceholder(
+  stage: "r32" | "r16" | "qf" | "sf",
+  code: string,
+  side: "home" | "away",
+): string | null {
+  if (stage === "r32") {
+    const slots = R32_SLOTS[code];
+    if (!slots) return null;
+    return formatSlotSource(side === "home" ? slots.home : slots.away);
+  }
+  const feed = KO_FEEDS[code];
+  if (!feed) return null;
+  const f = side === "home" ? feed.home : feed.away;
+  return f.loser ? `Pierde ${f.code}` : `Gana ${f.code}`;
+}
+
 function TeamLine({
   team,
   score,
   isWinner,
   isMyPick,
+  placeholderLabel,
   compact,
 }: {
   team: TeamLite | null;
   score: number | null;
   isWinner: boolean;
   isMyPick: boolean;
+  placeholderLabel?: string | null;
   compact?: boolean;
 }) {
+  const isPlaceholder = team == null;
+  const label = team?.name ?? placeholderLabel ?? "TBD";
   return (
     <div
       className={cn(
@@ -334,9 +376,11 @@ function TeamLine({
           className={cn(
             "truncate text-[0.7rem] font-medium",
             isWinner && "text-[var(--color-success)]",
+            isPlaceholder &&
+              "font-mono text-[0.6rem] uppercase tracking-[0.16em] text-[var(--color-muted-foreground)]",
           )}
         >
-          {team?.name ?? "TBD"}
+          {label}
         </span>
         {isMyPick ? (
           <span className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-[var(--color-arena)]">
@@ -358,6 +402,8 @@ function FinalCard({
   match: BracketMatch;
   championTeamId: number | null;
 }) {
+  const homeFeed = KO_FEEDS[match.code]?.home;
+  const awayFeed = KO_FEEDS[match.code]?.away;
   return (
     <div className="overflow-hidden rounded-lg border-2 border-[var(--color-arena)]/50 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))] shadow-[var(--shadow-arena)]">
       <div className="flex items-center justify-between border-b border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_15%,transparent)] px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.32em]">
@@ -369,6 +415,7 @@ function FinalCard({
         score={match.homeScore}
         isWinner={match.winnerTeamId != null && match.homeTeam?.id === match.winnerTeamId}
         isMyPick={match.homeTeam != null && match.homeTeam.id === championTeamId}
+        placeholderLabel={homeFeed ? `Gana ${homeFeed.code}` : null}
       />
       <div className="border-t border-dashed border-[var(--color-border)]" />
       <TeamLine
@@ -376,12 +423,15 @@ function FinalCard({
         score={match.awayScore}
         isWinner={match.winnerTeamId != null && match.awayTeam?.id === match.winnerTeamId}
         isMyPick={match.awayTeam != null && match.awayTeam.id === championTeamId}
+        placeholderLabel={awayFeed ? `Gana ${awayFeed.code}` : null}
       />
     </div>
   );
 }
 
 function ThirdCard({ match }: { match: BracketMatch }) {
+  const homeFeed = KO_FEEDS[match.code]?.home;
+  const awayFeed = KO_FEEDS[match.code]?.away;
   return (
     <div className="overflow-hidden rounded-md border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface)]">
       <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-1 text-center font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
@@ -392,6 +442,7 @@ function ThirdCard({ match }: { match: BracketMatch }) {
         score={match.homeScore}
         isWinner={match.winnerTeamId != null && match.homeTeam?.id === match.winnerTeamId}
         isMyPick={false}
+        placeholderLabel={homeFeed ? `Pierde ${homeFeed.code}` : null}
       />
       <div className="border-t border-dashed border-[var(--color-border)]" />
       <TeamLine
@@ -399,6 +450,7 @@ function ThirdCard({ match }: { match: BracketMatch }) {
         score={match.awayScore}
         isWinner={match.winnerTeamId != null && match.awayTeam?.id === match.winnerTeamId}
         isMyPick={false}
+        placeholderLabel={awayFeed ? `Pierde ${awayFeed.code}` : null}
       />
     </div>
   );
