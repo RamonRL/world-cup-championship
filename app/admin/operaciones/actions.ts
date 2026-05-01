@@ -161,3 +161,31 @@ export async function recomputeEverything(): Promise<FormState> {
   revalidatePath("/ranking");
   return { ok: true, message: "Recalculado todo el sistema de puntos." };
 }
+
+/**
+ * Borrón total del points_ledger: pone a cero las puntuaciones de todos
+ * los participantes. Las predicciones siguen ahí; los puntos se pueden
+ * recalcular con "Recalcular todo" o se irán reasignando a medida que
+ * el admin guarde resultados.
+ *
+ * Útil sobre todo en pruebas: dejar el ranking limpio antes de empezar
+ * el torneo, o entre pruebas E2E. NO afecta a group_standings (que
+ * refleja resultados de partidos, no puntos de usuario).
+ */
+export async function resetAllPoints(): Promise<FormState> {
+  const me = await requireAdmin();
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(pointsLedger);
+  await db.delete(pointsLedger);
+  await logAdminAction({
+    adminId: me.id,
+    action: "ops.reset_all_points",
+    payload: { wiped: count },
+  });
+  revalidatePath("/", "layout");
+  return {
+    ok: true,
+    message: `Puntuaciones a cero. ${count} entradas borradas del ledger.`,
+  };
+}

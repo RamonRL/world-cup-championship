@@ -90,7 +90,7 @@ export default async function RankingPage() {
   const leader = ranked[0] ?? null;
   const lead = leader ? leader.totalPoints - (myEntry?.totalPoints ?? 0) : 0;
 
-  if (ranked.length === 0 || ranked.every((r) => r.totalPoints === 0)) {
+  if (ranked.length === 0) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -100,13 +100,14 @@ export default async function RankingPage() {
         />
         <EmptyState
           icon={<ListOrdered className="size-5" />}
-          title="Sin puntos todavía"
-          description="Cuando se cargue el primer resultado del torneo, el ranking arrancará."
+          title="Sin participantes todavía"
+          description="Cuando alguien se una a tu liga aparecerá aquí."
         />
       </div>
     );
   }
 
+  const allZero = ranked.every((r) => r.totalPoints === 0);
   const top3 = ranked.slice(0, 3);
   const rest = ranked.slice(3);
 
@@ -117,6 +118,13 @@ export default async function RankingPage() {
         title="Clasificación general"
         description="Empates: marcadores exactos · puntos en eliminatorias · campeón acertado."
       />
+
+      {allZero ? (
+        <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]/60 px-4 py-3 text-center font-editorial text-xs italic text-[var(--color-muted-foreground)]">
+          Todavía no se ha cerrado ningún resultado — el orden cambiará en cuanto
+          empiece el torneo.
+        </div>
+      ) : null}
 
       {/* Podium · DOM order [#1, #2, #3] (mobile stack natural). En sm+
           aplicamos sm:order-{1,2,3} a [#2, #1, #3] respectivamente y

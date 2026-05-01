@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, Play } from "lucide-react";
+import { Loader2, Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,6 +24,7 @@ import {
   closeKnockoutStage,
   closeTopScorer,
   recomputeEverything,
+  resetAllPoints,
   type FormState,
 } from "./actions";
 
@@ -178,6 +179,38 @@ export function OperationsActions() {
           >
             {pending ? <Loader2 className="animate-spin" /> : <Play />}
             Recalcular
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Card className="border-[var(--color-danger)]/40 bg-[color-mix(in_oklch,var(--color-danger)_3%,var(--color-surface))]">
+        <CardHeader>
+          <CardTitle className="text-[var(--color-danger)]">
+            Resetear puntuaciones
+          </CardTitle>
+          <CardDescription>
+            Pone TODAS las puntuaciones a cero borrando el `points_ledger`. Las
+            predicciones se mantienen — sólo se borran los puntos. Útil para
+            arrancar limpio antes de un torneo de prueba o resetear una
+            simulación. Después, &quot;Recalcular todo&quot; reaplica los
+            resultados ya guardados.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button
+            variant="outline"
+            className="border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:border-[var(--color-danger)] hover:bg-[color-mix(in_oklch,var(--color-danger)_8%,transparent)] hover:text-[var(--color-danger)]"
+            onClick={() =>
+              run(
+                resetAllPoints,
+                "Reset puntuaciones",
+                "Vas a poner TODAS las puntuaciones a cero. Se borran las entradas del points_ledger; las predicciones de los participantes se conservan. ¿Seguro?",
+              )
+            }
+            disabled={pending}
+          >
+            {pending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+            Resetear a cero
           </Button>
         </CardFooter>
       </Card>
