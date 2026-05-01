@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Pencil } from "lucide-react";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, matches, matchdays, teams } from "@/lib/db/schema";
@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { formatDateTime } from "@/lib/utils";
 import { MatchDialog } from "./match-dialog";
@@ -82,11 +83,21 @@ export default async function AdminMatchdayDetailPage({
               return (
                 <TableRow key={m.id}>
                   <TableCell className="font-mono text-xs">{m.code}</TableCell>
-                  <TableCell className="font-medium">{home?.name ?? "—"}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-2 font-medium">
+                      <TeamFlag code={home?.code} size={20} />
+                      <span className="truncate">{home?.name ?? "—"}</span>
+                    </span>
+                  </TableCell>
                   <TableCell className="text-center text-[var(--color-muted-foreground)]">
                     vs
                   </TableCell>
-                  <TableCell className="font-medium">{away?.name ?? "—"}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-2 font-medium">
+                      <TeamFlag code={away?.code} size={20} />
+                      <span className="truncate">{away?.name ?? "—"}</span>
+                    </span>
+                  </TableCell>
                   <TableCell className="space-y-0.5 text-xs">
                     <div className="text-[var(--color-foreground)]">
                       {formatDateTime(m.scheduledAt)}
@@ -104,6 +115,27 @@ export default async function AdminMatchdayDetailPage({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <MatchDialog
+                        matchdayId={day.id}
+                        stage={day.stage}
+                        teams={allTeams}
+                        groups={allGroups}
+                        match={{
+                          id: m.id,
+                          code: m.code,
+                          stage: m.stage,
+                          groupId: m.groupId,
+                          homeTeamId: m.homeTeamId,
+                          awayTeamId: m.awayTeamId,
+                          scheduledAt: m.scheduledAt,
+                          venue: m.venue,
+                        }}
+                        trigger={
+                          <Button variant="ghost" size="icon" aria-label={`Editar ${m.code}`}>
+                            <Pencil className="size-4" />
+                          </Button>
+                        }
+                      />
                       <Button asChild variant="ghost" size="icon">
                         <Link href={`/admin/partidos/${m.id}`} aria-label="Resultado">
                           <ClipboardCheck className="size-4" />
