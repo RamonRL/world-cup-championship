@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Calendario" };
+export const dynamic = "force-dynamic";
 
 const STAGE_LABEL: Record<string, string> = {
   group: "Fase de grupos",

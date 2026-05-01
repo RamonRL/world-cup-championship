@@ -18,6 +18,7 @@ import { formatDateTime } from "@/lib/utils";
 import { deleteMatch } from "@/app/admin/calendario/actions";
 
 export const metadata = { title: "Resultados · Admin" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminMatchesPage() {
   const [matchRows, allTeams] = await Promise.all([

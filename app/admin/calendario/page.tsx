@@ -13,6 +13,7 @@ import { MatchdayDialog } from "./matchday-dialog";
 import { deleteMatchday } from "./actions";
 
 export const metadata = { title: "Calendario · Admin" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminCalendarioPage() {
   const [days, matchRows] = await Promise.all([

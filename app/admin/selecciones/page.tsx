@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { TeamsTable } from "./teams-table";
 
 export const metadata = { title: "Selecciones · Admin" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminTeamsPage() {
   const [allTeams, allGroups] = await Promise.all([

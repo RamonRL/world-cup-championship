@@ -5,11 +5,6 @@ import { MobileBottomNav } from "@/components/shell/mobile-nav";
 import { DeadlineBanner } from "@/components/shell/deadline-banner";
 import { loadDeadlineSummary } from "@/lib/deadlines";
 
-// Toda la app vive detrás de auth (requireUser) y enseña datos en vivo
-// (predicciones, marcadores, ranking). Saltamos la prerender estática:
-// cada hit es server-rendered con los datos del usuario que pega.
-export const dynamic = "force-dynamic";
-
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireUser();
   const isAdmin = me.role === "admin";

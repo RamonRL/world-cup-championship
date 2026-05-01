@@ -2,13 +2,6 @@ import { requireAdmin } from "@/lib/auth/guards";
 import { AppHeader } from "@/components/shell/header";
 import { AdminSidebar } from "./admin-sidebar";
 
-// Todas las páginas /admin requieren admin logueado y consumen datos en
-// vivo (resultados, jugadores, jornadas…). No tiene sentido prerenderlas
-// en build — además, intentarlo en Vercel da timeout porque las queries
-// no terminan en 60s contra Supabase desde el build. Saltar la fase
-// estática.
-export const dynamic = "force-dynamic";
-
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const me = await requireAdmin();
   return (
