@@ -84,14 +84,21 @@ export async function upsertMatch(
   formData: FormData,
 ): Promise<FormState> {
   const me = await requireAdmin();
+  // Los Selects de equipos / grupo usan el centinela "none" para representar
+  // "sin definir" — necesario para que en eliminatorias el admin pueda
+  // crear partidos sin saber aún quién juega. Lo mapeamos a null antes de
+  // llegar al schema zod.
+  const optionalRef = (raw: FormDataEntryValue | null) =>
+    raw == null || raw === "" || raw === "none" ? null : raw;
+
   const parsed = matchSchema.safeParse({
     id: formData.get("id") ?? undefined,
     code: formData.get("code"),
     stage: formData.get("stage"),
-    matchdayId: formData.get("matchdayId") || null,
-    groupId: formData.get("groupId") || null,
-    homeTeamId: formData.get("homeTeamId") || null,
-    awayTeamId: formData.get("awayTeamId") || null,
+    matchdayId: optionalRef(formData.get("matchdayId")),
+    groupId: optionalRef(formData.get("groupId")),
+    homeTeamId: optionalRef(formData.get("homeTeamId")),
+    awayTeamId: optionalRef(formData.get("awayTeamId")),
     scheduledAt: formData.get("scheduledAt"),
     venue: formData.get("venue") ?? "",
   });
