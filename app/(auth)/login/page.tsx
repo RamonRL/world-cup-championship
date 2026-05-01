@@ -121,14 +121,14 @@ export default async function LoginPage({
       <main className="relative flex items-center justify-center overflow-hidden px-6 py-12 sm:px-10">
         <div className="halftone pointer-events-none absolute right-0 top-0 h-40 w-40 opacity-[0.05]" aria-hidden />
         <div className="w-full max-w-md space-y-10">
-          <div className="space-y-3 lg:hidden">
+          <div className="flex flex-col items-center space-y-3 text-center lg:hidden">
             <Image
               src="/logo.png"
               alt="Copa Mundial de la FIFA 2026"
-              width={44}
-              height={44}
+              width={66}
+              height={66}
               priority
-              className="size-11 rounded-md object-cover"
+              className="size-[66px] rounded-md object-cover"
             />
             <p className="font-display text-4xl tracking-tight">Copa Mundial de la FIFA 2026</p>
           </div>
