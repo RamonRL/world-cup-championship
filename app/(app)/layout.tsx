@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ]);
   return (
     <div className="flex min-h-dvh">
-      <Sidebar isAdmin={isAdmin} pendingCount={pendingCount} />
+      <Sidebar isAdmin={isAdmin} myId={me.id} pendingCount={pendingCount} />
       <div className="flex min-w-0 flex-1 flex-col">
         <DeadlineBanner deadline={imminent} />
         <AppHeader
@@ -38,7 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+6rem)] pt-6 lg:px-8 lg:pb-12">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
-        <MobileBottomNav isAdmin={isAdmin} pendingCount={pendingCount} />
+        <MobileBottomNav isAdmin={isAdmin} myId={me.id} pendingCount={pendingCount} />
       </div>
     </div>
   );

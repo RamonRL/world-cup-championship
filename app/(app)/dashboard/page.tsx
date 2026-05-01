@@ -490,6 +490,7 @@ export default async function DashboardPage() {
                 : "Esperando primer resultado"
           }
           accent
+          href={`/ranking/${me.id}`}
         />
         <Stat label="PUNTOS" value={myPoints.toString()} hint="acumulados" />
         {tournamentStarted ? (
@@ -845,21 +846,26 @@ function Stat({
   prefix,
   hint,
   accent,
+  href,
 }: {
   label: string;
   value: string;
   prefix?: string | null;
   hint?: string;
   accent?: boolean;
+  href?: string;
 }) {
-  return (
-    <div
-      className={`relative overflow-hidden rounded-xl border ${
-        accent
-          ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface))]"
-          : "border-[var(--color-border)] bg-[var(--color-surface)]"
-      } p-5`}
-    >
+  const className = `group relative overflow-hidden rounded-xl border ${
+    accent
+      ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface))]"
+      : "border-[var(--color-border)] bg-[var(--color-surface)]"
+  } p-5 ${
+    href
+      ? "transition hover:-translate-y-0.5 hover:border-[var(--color-arena)]/70 hover:shadow-[var(--shadow-elev-2)]"
+      : ""
+  }`;
+  const inner = (
+    <>
       <p className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
         {label}
       </p>
@@ -880,7 +886,19 @@ function Stat({
       {hint ? (
         <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{hint}</p>
       ) : null}
-    </div>
+      {href ? (
+        <span className="mt-2 flex items-center gap-1 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-arena)] transition group-hover:translate-x-0.5">
+          Ver mis resultados <ArrowRight className="size-3" />
+        </span>
+      ) : null}
+    </>
+  );
+  return href ? (
+    <Link href={href} className={className}>
+      {inner}
+    </Link>
+  ) : (
+    <div className={className}>{inner}</div>
   );
 }
 

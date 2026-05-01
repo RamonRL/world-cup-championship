@@ -4,16 +4,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV, NAV_ITEMS, type NavItem } from "./nav-data";
+import { ADMIN_NAV, buildNavItems, type NavItem } from "./nav-data";
 
-type Props = { isAdmin: boolean; pendingCount?: number };
+type Props = { isAdmin: boolean; myId: string; pendingCount?: number };
 
-export function Sidebar({ isAdmin, pendingCount = 0 }: Props) {
+export function Sidebar({ isAdmin, myId, pendingCount = 0 }: Props) {
   const pathname = usePathname();
-  const main = NAV_ITEMS.filter((i) => i.group === "main");
-  const preds = NAV_ITEMS.filter((i) => i.group === "predicciones");
-  const social = NAV_ITEMS.filter((i) => i.group === "social");
+  const items = buildNavItems(myId);
+  const main = items.filter((i) => i.group === "main");
+  const preds = items.filter((i) => i.group === "predicciones");
+  const social = items.filter((i) => i.group === "social");
   const admin = isAdmin ? ADMIN_NAV : [];
+  const activeHref = pickActiveHref(pathname, [...items, ...admin]);
 
   return (
     <aside className="hidden w-64 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
@@ -38,17 +40,17 @@ export function Sidebar({ isAdmin, pendingCount = 0 }: Props) {
           </span>
         </Link>
         <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-5">
-          <NavGroup title="Torneo" items={main} pathname={pathname} />
+          <NavGroup title="Torneo" items={main} activeHref={activeHref} />
           <NavGroup
             title="Predicciones"
             items={preds}
-            pathname={pathname}
+            activeHref={activeHref}
             badgeFor="/predicciones"
             badgeCount={pendingCount}
           />
-          <NavGroup title="Comunidad" items={social} pathname={pathname} />
+          <NavGroup title="Comunidad" items={social} activeHref={activeHref} />
           {admin.length > 0 ? (
-            <NavGroup title="Admin" items={admin} pathname={pathname} />
+            <NavGroup title="Admin" items={admin} activeHref={activeHref} />
           ) : null}
         </nav>
         <div className="border-t border-[var(--color-border)] px-5 py-4">
@@ -65,13 +67,13 @@ export function Sidebar({ isAdmin, pendingCount = 0 }: Props) {
 function NavGroup({
   title,
   items,
-  pathname,
+  activeHref,
   badgeFor,
   badgeCount = 0,
 }: {
   title: string;
   items: NavItem[];
-  pathname: string;
+  activeHref: string | null;
   badgeFor?: string;
   badgeCount?: number;
 }) {
@@ -84,10 +86,7 @@ function NavGroup({
         </p>
       </div>
       {items.map((item) => {
-        const active =
-          item.href === "/dashboard"
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = item.href === activeHref;
         const showBadge = badgeFor === item.href && badgeCount > 0;
         return (
           <Link
@@ -123,4 +122,23 @@ function NavGroup({
       })}
     </div>
   );
+}
+
+// Resuelve el item "activo" eligiendo el match más largo. Necesario porque
+// "/ranking/[myId]" (Mis resultados) tiene que ganarle a "/ranking" (Ranking)
+// cuando el usuario está en su propio perfil, y al revés cuando está en
+// otro perfil ningún hijo gana — vuelve a marcarse "/ranking".
+function pickActiveHref(pathname: string, items: NavItem[]): string | null {
+  let best: { href: string; len: number } | null = null;
+  for (const item of items) {
+    const matches =
+      item.href === "/dashboard"
+        ? pathname === item.href
+        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (!matches) continue;
+    if (!best || item.href.length > best.len) {
+      best = { href: item.href, len: item.href.length };
+    }
+  }
+  return best?.href ?? null;
 }

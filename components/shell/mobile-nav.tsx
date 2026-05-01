@@ -14,14 +14,16 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV, NAV_ITEMS, type NavItem } from "./nav-data";
+import { ADMIN_NAV, buildNavItems, type NavItem } from "./nav-data";
 
-type Props = { isAdmin: boolean; pendingCount?: number };
+type Props = { isAdmin: boolean; myId: string; pendingCount?: number };
 
-export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
+export function MobileBottomNav({ isAdmin, myId, pendingCount = 0 }: Props) {
   const pathname = usePathname();
-  const primary = NAV_ITEMS.filter((i) => i.primaryMobile);
-  const overflow = NAV_ITEMS.filter((i) => !i.primaryMobile).concat(isAdmin ? ADMIN_NAV : []);
+  const items = buildNavItems(myId);
+  const primary = items.filter((i) => i.primaryMobile);
+  const overflow = items.filter((i) => !i.primaryMobile).concat(isAdmin ? ADMIN_NAV : []);
+  const activeHref = pickActiveHref(pathname, [...items, ...ADMIN_NAV]);
 
   // Sheet de "Más" controlado para poder cerrarlo cuando se navega.
   // Sin esto, el bottom-sheet se queda abierto por encima de la página
@@ -41,10 +43,7 @@ export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
       className="fixed inset-x-0 bottom-0 z-30 flex border-t border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-surface)_92%,transparent)] pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
     >
       {primary.map((item) => {
-        const active =
-          item.href === "/dashboard"
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = item.href === activeHref;
         return (
           <Link
             key={item.href}
@@ -90,7 +89,7 @@ export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
               <OverflowLink
                 key={item.href}
                 item={item}
-                pathname={pathname}
+                active={item.href === activeHref}
                 onSelect={() => setMoreOpen(false)}
               />
             ))}
@@ -103,14 +102,13 @@ export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
 
 function OverflowLink({
   item,
-  pathname,
+  active,
   onSelect,
 }: {
   item: NavItem;
-  pathname: string;
+  active: boolean;
   onSelect: () => void;
 }) {
-  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
   return (
     <Link
       href={item.href}
@@ -126,4 +124,22 @@ function OverflowLink({
       <span>{item.label}</span>
     </Link>
   );
+}
+
+// Active route picker — el match más largo gana, así "/ranking/[myId]"
+// (Mis resultados) sobreescribe a "/ranking" (Ranking) cuando estamos en
+// el propio perfil. Reproducido aquí porque el sidebar usa la misma lógica.
+function pickActiveHref(pathname: string, items: NavItem[]): string | null {
+  let best: { href: string; len: number } | null = null;
+  for (const item of items) {
+    const matches =
+      item.href === "/dashboard"
+        ? pathname === item.href
+        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (!matches) continue;
+    if (!best || item.href.length > best.len) {
+      best = { href: item.href, len: item.href.length };
+    }
+  }
+  return best?.href ?? null;
 }
