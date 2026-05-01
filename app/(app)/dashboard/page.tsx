@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
-import { ArrowRight, ArrowUpRight, Flame } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CheckCircle2, Flame, Sparkles } from "lucide-react";
 import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
@@ -245,6 +245,22 @@ export default async function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Onboarding — solo cuando hay pre-torneo pendiente y el torneo no
+          ha empezado. Hace de wayfinder para participantes nuevos: les
+          señala dónde ir a hacer su próximo pick. Desaparece al completar
+          las 3 categorías. */}
+      {!tournamentStarted && preTorneoComplete < preTorneoTotal ? (
+        <OnboardingPanel
+          groupsDone={groupsDone}
+          topScorerDone={topScorerDone}
+          specialsDone={specialsDone}
+          totalSpecials={totalSpecials}
+          mySpecials={mySpecials}
+          daysToKickoff={days}
+          nickname={me.nickname}
+        />
+      ) : null}
 
       {/* Live HUD — appears only when a match is currently in play */}
       {liveMatch ? (
@@ -544,43 +560,57 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      {/* Body — checklist + recent + podium */}
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pre-torneo</CardTitle>
-            <CardDescription>
-              Cierra todo antes del kickoff ({formatDateTime(kickoff, {
-                day: "2-digit",
-                month: "short",
-              })}).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <PreCheck
-              done={groupsDone}
-              label="Posiciones de grupo"
-              hint={`${groupCount[0]?.c ?? 0}/12 grupos`}
-              href="/predicciones/grupos"
-            />
-            <PreCheck
-              done={topScorerDone}
-              label="Bota de Oro"
-              hint="Tu candidato al máximo goleador"
-              href="/predicciones/goleador-torneo"
-            />
-            <PreCheck
-              done={specialsDone}
-              label="Predicciones especiales"
-              hint={
-                totalSpecials > 0
-                  ? `${mySpecials}/${totalSpecials} respondidas`
-                  : "Balón / Guante / Anfitrión / África…"
-              }
-              href="/predicciones/especiales"
-            />
-          </CardContent>
-        </Card>
+      {/* Body — checklist + recent + podium. La tarjeta "Pre-torneo"
+          sólo aparece cuando ya está cerrado o el torneo arrancó; antes,
+          el OnboardingPanel arriba ya hace ese trabajo y duplicar
+          redundaría. */}
+      {(() => {
+        const showPreTorneoCard =
+          tournamentStarted || preTorneoComplete === preTorneoTotal;
+        return (
+          <section
+            className={`grid gap-4 ${
+              showPreTorneoCard
+                ? "lg:grid-cols-[1.2fr_1fr_1fr]"
+                : "lg:grid-cols-2"
+            }`}
+          >
+            {showPreTorneoCard ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pre-torneo</CardTitle>
+                  <CardDescription>
+                    {tournamentStarted
+                      ? "Tus picks de antes del kickoff."
+                      : "Listo para el inicio."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <PreCheck
+                    done={groupsDone}
+                    label="Posiciones de grupo"
+                    hint={`${groupCount[0]?.c ?? 0}/12 grupos`}
+                    href="/predicciones/grupos"
+                  />
+                  <PreCheck
+                    done={topScorerDone}
+                    label="Bota de Oro"
+                    hint="Tu candidato al máximo goleador"
+                    href="/predicciones/goleador-torneo"
+                  />
+                  <PreCheck
+                    done={specialsDone}
+                    label="Predicciones especiales"
+                    hint={
+                      totalSpecials > 0
+                        ? `${mySpecials}/${totalSpecials} respondidas`
+                        : "Balón / Guante / Anfitrión / África…"
+                    }
+                    href="/predicciones/especiales"
+                  />
+                </CardContent>
+              </Card>
+            ) : null}
 
         <Card>
           <CardHeader>
@@ -688,8 +718,118 @@ export default async function DashboardPage() {
             </Link>
           </CardContent>
         </Card>
-      </section>
+          </section>
+        );
+      })()}
     </div>
+  );
+}
+
+function OnboardingPanel({
+  groupsDone,
+  topScorerDone,
+  specialsDone,
+  totalSpecials,
+  mySpecials,
+  daysToKickoff,
+  nickname,
+}: {
+  groupsDone: boolean;
+  topScorerDone: boolean;
+  specialsDone: boolean;
+  totalSpecials: number;
+  mySpecials: number;
+  daysToKickoff: number;
+  nickname: string | null;
+}) {
+  const completed = [groupsDone, topScorerDone, specialsDone].filter(Boolean).length;
+  const isFresh = completed === 0;
+  // Pick the next undone category in canonical order.
+  const next = !groupsDone
+    ? { href: "/predicciones/grupos", label: "Posiciones de grupo" }
+    : !topScorerDone
+      ? { href: "/predicciones/goleador-torneo", label: "Bota de Oro" }
+      : { href: "/predicciones/especiales", label: "Especiales" };
+
+  return (
+    <section className="relative overflow-hidden rounded-2xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))]">
+      <div className="halftone pointer-events-none absolute inset-0 opacity-[0.06]" aria-hidden />
+      <div className="pitch-grid pointer-events-none absolute inset-0 opacity-20" aria-hidden />
+      <div className="relative grid gap-6 p-5 sm:p-7 lg:grid-cols-[1.4fr_auto] lg:items-center">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+            <Sparkles className="size-3.5" />
+            {isFresh ? "Bienvenido al Mundial" : "Continúa donde lo dejaste"}
+          </div>
+          <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
+            {isFresh
+              ? `Hola${nickname ? `, ${nickname}` : ""}. Cierra tus 3 picks pre-torneo`
+              : `${3 - completed} ${3 - completed === 1 ? "categoría" : "categorías"} sin cerrar`}
+          </h2>
+          <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-base">
+            {isFresh
+              ? "Tres apuestas que decides ahora y se cierran cuando arranque el torneo. El bracket llega después, ronda a ronda. Marcador y goleador se predicen jornada a jornada."
+              : `Tienes ${daysToKickoff} ${daysToKickoff === 1 ? "día" : "días"} hasta el kickoff para cerrarlas.`}
+          </p>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <OnboardingStep n="01" label="Grupos" done={groupsDone} />
+            <OnboardingStep n="02" label="Bota" done={topScorerDone} />
+            <OnboardingStep
+              n="03"
+              label={
+                totalSpecials > 0
+                  ? `Especiales ${mySpecials}/${totalSpecials}`
+                  : "Especiales"
+              }
+              done={specialsDone}
+            />
+            <span className="ml-1 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              {completed}/3 listo
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-col items-stretch gap-2 lg:items-end">
+          <Link
+            href={next.href}
+            className="group inline-flex items-center justify-center gap-2 rounded-md bg-[var(--color-arena)] px-5 py-3 font-display text-base text-white shadow-[var(--shadow-arena)] transition hover:scale-[1.02]"
+          >
+            {isFresh ? "Empezar por" : "Continuar con"}{" "}
+            <span className="font-medium">{next.label}</span>
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+          </Link>
+          <Link
+            href="/predicciones"
+            className="text-center font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] hover:text-[var(--color-arena)]"
+          >
+            Ver todas las categorías →
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OnboardingStep({
+  n,
+  label,
+  done,
+}: {
+  n: string;
+  label: string;
+  done: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] ${
+        done
+          ? "border-[var(--color-success)]/40 bg-[color-mix(in_oklch,var(--color-success)_10%,transparent)] text-[var(--color-success)]"
+          : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted-foreground)]"
+      }`}
+    >
+      <span className="font-display text-xs tracking-tight">{n}</span>
+      <span>{label}</span>
+      {done ? <CheckCircle2 className="size-3.5" /> : null}
+    </span>
   );
 }
 
