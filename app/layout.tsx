@@ -31,7 +31,7 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Copa Mundial de la FIFA 2026";
+const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "World Cup Championship";
 
 export const metadata: Metadata = {
   title: {

@@ -15,14 +15,14 @@ export function AppHeader({ email, nickname, avatarUrl, isAdmin }: Props) {
       <Link href="/dashboard" className="flex items-center gap-2.5 lg:hidden">
         <Image
           src="/logo.png"
-          alt="Mundial 26"
+          alt="Copa Mundial de la FIFA 2026"
           width={36}
           height={36}
           priority
           className="size-9 rounded-md object-cover"
         />
         <span className="leading-tight">
-          <span className="block font-display text-xl tracking-tight">Mundial 26</span>
+          <span className="block font-display text-xl tracking-tight">Copa Mundial de la FIFA 2026</span>
           <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
             Quiniela
           </span>
