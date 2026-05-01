@@ -8,6 +8,7 @@ import { matchScorers, matches } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
 import { logAdminAction } from "@/lib/admin/audit";
 import { recomputeMatchScoringForAllUsers } from "@/lib/scoring/persistence";
+import { recomputeAllGroupStandings } from "@/lib/scoring/group-standings";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -116,6 +117,22 @@ export async function saveMatchResult(
 
   // Always reconcile points so reverting wipes any stale ledger entries.
   await recomputeMatchScoringForAllUsers(parsed.data.matchId);
+
+  // Si el partido es de fase de grupos, refresca las clasificaciones live
+  // (idempotente: lee todos los group matches finished y reescribe). Así
+  // /grupos y /grupos/[code] se actualizan en cuanto se guarda el resultado,
+  // sin esperar al "Cerrar fase de grupos" del admin.
+  const [touched] = await db
+    .select({ stage: matches.stage })
+    .from(matches)
+    .where(eq(matches.id, parsed.data.matchId))
+    .limit(1);
+  if (touched?.stage === "group") {
+    await recomputeAllGroupStandings();
+    revalidatePath("/grupos");
+    revalidatePath("/grupos/[code]", "page");
+    revalidatePath("/bracket");
+  }
 
   revalidatePath(`/admin/partidos/${parsed.data.matchId}`);
   revalidatePath(`/partido/${parsed.data.matchId}`);

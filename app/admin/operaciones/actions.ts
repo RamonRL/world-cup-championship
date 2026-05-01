@@ -15,6 +15,7 @@ import {
 } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
 import { logAdminAction } from "@/lib/admin/audit";
+import { recomputeAllGroupStandings } from "@/lib/scoring/group-standings";
 import {
   recomputeAllScoring,
   recomputeBracketStageForAllUsers,
@@ -32,121 +33,38 @@ export type FormState = { ok: boolean; error?: string; message?: string };
  */
 export async function closeGroupStage(): Promise<FormState> {
   const me = await requireAdmin();
-  const groupMatches = await db
-    .select()
+  const finishedRows = await db
+    .select({ id: matches.id })
     .from(matches)
     .where(and(eq(matches.stage, "group"), eq(matches.status, "finished")));
-  if (groupMatches.length === 0) {
+  if (finishedRows.length === 0) {
     return { ok: false, error: "No hay partidos de fase de grupos finalizados." };
   }
 
-  // Aggregate per (groupId, teamId)
-  type Agg = {
-    played: number;
-    won: number;
-    drawn: number;
-    lost: number;
-    goalsFor: number;
-    goalsAgainst: number;
-    points: number;
-  };
-  const agg = new Map<string, Agg & { groupId: number; teamId: number }>();
-  function ensure(groupId: number, teamId: number) {
-    const key = `${groupId}-${teamId}`;
-    const existing = agg.get(key);
-    if (existing) return existing;
-    const fresh = {
-      groupId,
-      teamId,
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      points: 0,
-    };
-    agg.set(key, fresh);
-    return fresh;
-  }
+  // La construcción de la clasificación vive en lib/scoring/group-standings
+  // y la usa también `saveMatchResult` para refrescar tablas en vivo. Aquí
+  // basta con asegurarnos de que está al día y luego repartir los puntos
+  // de la categoría "Posiciones de grupo".
+  const { groupCount } = await recomputeAllGroupStandings();
 
-  for (const m of groupMatches) {
-    if (m.groupId == null || m.homeTeamId == null || m.awayTeamId == null) continue;
-    if (m.homeScore == null || m.awayScore == null) continue;
-    const home = ensure(m.groupId, m.homeTeamId);
-    const away = ensure(m.groupId, m.awayTeamId);
-    home.played += 1;
-    away.played += 1;
-    home.goalsFor += m.homeScore;
-    home.goalsAgainst += m.awayScore;
-    away.goalsFor += m.awayScore;
-    away.goalsAgainst += m.homeScore;
-    if (m.homeScore > m.awayScore) {
-      home.won += 1;
-      home.points += 3;
-      away.lost += 1;
-    } else if (m.homeScore < m.awayScore) {
-      away.won += 1;
-      away.points += 3;
-      home.lost += 1;
-    } else {
-      home.drawn += 1;
-      away.drawn += 1;
-      home.points += 1;
-      away.points += 1;
-    }
-  }
-
-  // Sort within each group: pts desc, GD desc, GF desc; assign 1..N positions.
-  const byGroup = new Map<number, (typeof agg extends Map<string, infer V> ? V : never)[]>();
-  for (const v of agg.values()) {
-    const arr = byGroup.get(v.groupId) ?? [];
-    arr.push(v);
-    byGroup.set(v.groupId, arr);
-  }
-
-  await db.transaction(async (tx) => {
-    for (const [groupId, arr] of byGroup) {
-      arr.sort((a, b) => {
-        if (b.points !== a.points) return b.points - a.points;
-        const gdA = a.goalsFor - a.goalsAgainst;
-        const gdB = b.goalsFor - b.goalsAgainst;
-        if (gdB !== gdA) return gdB - gdA;
-        return b.goalsFor - a.goalsFor;
-      });
-      await tx.delete(groupStandings).where(eq(groupStandings.groupId, groupId));
-      for (let i = 0; i < arr.length; i++) {
-        const v = arr[i];
-        await tx.insert(groupStandings).values({
-          groupId: v.groupId,
-          teamId: v.teamId,
-          position: i + 1,
-          played: v.played,
-          won: v.won,
-          drawn: v.drawn,
-          lost: v.lost,
-          goalsFor: v.goalsFor,
-          goalsAgainst: v.goalsAgainst,
-          points: v.points,
-          finalizedAt: new Date(),
-        });
-      }
-    }
-  });
-
-  for (const groupId of byGroup.keys()) {
+  const groupRows = await db
+    .selectDistinct({ groupId: groupStandings.groupId })
+    .from(groupStandings);
+  for (const { groupId } of groupRows) {
     await recomputeGroupScoringForAllUsers(groupId);
   }
 
   await logAdminAction({
     adminId: me.id,
     action: "ops.close_group_stage",
-    payload: { groupCount: byGroup.size },
+    payload: { groupCount },
   });
 
   revalidatePath("/grupos");
+  revalidatePath("/grupos/[code]", "page");
+  revalidatePath("/bracket");
   revalidatePath("/ranking");
-  return { ok: true, message: `Fase de grupos cerrada. ${byGroup.size} grupos calculados.` };
+  return { ok: true, message: `Fase de grupos cerrada. ${groupCount} grupos calculados.` };
 }
 
 const closeKnockoutSchema = z.object({
