@@ -189,3 +189,45 @@ export async function resetAllPoints(): Promise<FormState> {
     message: `Puntuaciones a cero. ${count} entradas borradas del ledger.`,
   };
 }
+
+/**
+ * Reset de la fase de grupos: limpia la clasificación calculada
+ * (`group_standings`) y los puntos de la categoría "Posiciones de
+ * grupo" (`group_position` + `group_top2_swap` en el ledger). El
+ * resto del ledger (bracket, marcadores, goleadores, especiales)
+ * queda intacto.
+ *
+ * Útil para borrar puntos residuales tras tests donde se ha cerrado
+ * la fase de grupos y luego se quieren reintroducir resultados.
+ * Para regenerar la clasificación basta con guardar cualquier
+ * resultado de grupos (saveMatchResult llama a
+ * recomputeAllGroupStandings) o ejecutar "Recalcular todo".
+ */
+export async function resetGroupStage(): Promise<FormState> {
+  const me = await requireAdmin();
+  const [{ standingsCount }] = await db
+    .select({ standingsCount: sql<number>`count(*)::int` })
+    .from(groupStandings);
+  const [{ ledgerCount }] = await db
+    .select({ ledgerCount: sql<number>`count(*)::int` })
+    .from(pointsLedger)
+    .where(inArray(pointsLedger.source, ["group_position", "group_top2_swap"]));
+
+  await db.delete(groupStandings);
+  await db
+    .delete(pointsLedger)
+    .where(inArray(pointsLedger.source, ["group_position", "group_top2_swap"]));
+
+  await logAdminAction({
+    adminId: me.id,
+    action: "ops.reset_group_stage",
+    payload: { standingsWiped: standingsCount, ledgerWiped: ledgerCount },
+  });
+  revalidatePath("/grupos");
+  revalidatePath("/grupos/[code]", "page");
+  revalidatePath("/ranking");
+  return {
+    ok: true,
+    message: `Fase de grupos a cero. ${standingsCount} filas de clasificación y ${ledgerCount} entradas de puntos borradas.`,
+  };
+}

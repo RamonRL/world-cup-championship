@@ -25,6 +25,7 @@ import {
   closeTopScorer,
   recomputeEverything,
   resetAllPoints,
+  resetGroupStage,
   type FormState,
 } from "./actions";
 
@@ -179,6 +180,38 @@ export function OperationsActions() {
           >
             {pending ? <Loader2 className="animate-spin" /> : <Play />}
             Recalcular
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Card className="border-[var(--color-danger)]/40 bg-[color-mix(in_oklch,var(--color-danger)_3%,var(--color-surface))]">
+        <CardHeader>
+          <CardTitle className="text-[var(--color-danger)]">
+            Resetear fase de grupos
+          </CardTitle>
+          <CardDescription>
+            Vacía la tabla de clasificación calculada (`group_standings`) y
+            borra del ledger los puntos de la categoría &ldquo;Posiciones de
+            grupo&rdquo;. El resto del ledger (bracket, marcadores, goleadores,
+            especiales) queda intacto. La clasificación se regenera al guardar
+            cualquier resultado de grupos o con &ldquo;Recalcular todo&rdquo;.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button
+            variant="outline"
+            className="border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:border-[var(--color-danger)] hover:bg-[color-mix(in_oklch,var(--color-danger)_8%,transparent)] hover:text-[var(--color-danger)]"
+            onClick={() =>
+              run(
+                resetGroupStage,
+                "Reset fase grupos",
+                "Vas a borrar la clasificación calculada de los grupos y los puntos de \"Posiciones de grupo\". El resto del ledger no se toca. ¿Continuar?",
+              )
+            }
+            disabled={pending}
+          >
+            {pending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+            Resetear fase grupos
           </Button>
         </CardFooter>
       </Card>
