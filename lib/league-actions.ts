@@ -9,7 +9,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { leagues, profiles } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { logAdminAction } from "@/lib/admin/audit";
 import { isAdminEmail } from "@/lib/auth/admins";
 import { ADMIN_LEAGUE_VIEW_COOKIE, PENDING_INVITE_COOKIE } from "@/lib/leagues";
@@ -120,6 +120,89 @@ export async function setLeagueView(formData: FormData) {
     });
   }
   // Refresca el shell entero — todas las páginas dynamic se reevalúan.
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Mueve a un usuario a otra liga. Llamado desde la pestaña de gestión de
+ * cada liga (/admin/ligas/[id]). leagueId puede ser un id válido o "none"
+ * para dejar al usuario sin liga (volverá a la principal en su próximo
+ * `currentLeagueId`).
+ */
+export async function moveUserToLeague(formData: FormData) {
+  const me = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const leagueRaw = formData.get("leagueId");
+  if (!userId) return;
+  let leagueId: number | null;
+  if (leagueRaw === "none" || leagueRaw === "" || leagueRaw == null) {
+    leagueId = null;
+  } else {
+    const n = Number(leagueRaw);
+    leagueId = Number.isFinite(n) ? n : null;
+  }
+
+  // Lee la liga anterior para revalidar también su path.
+  const [before] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
+  await db.update(profiles).set({ leagueId }).where(eq(profiles.id, userId));
+
+  await logAdminAction({
+    adminId: me.id,
+    action: "league.move_user",
+    payload: { userId, from: before?.leagueId ?? null, to: leagueId },
+  });
+
+  revalidatePath("/admin/ligas");
+  if (before?.leagueId != null) revalidatePath(`/admin/ligas/${before.leagueId}`);
+  if (leagueId != null) revalidatePath(`/admin/ligas/${leagueId}`);
+  // Las queries filtradas por liga en /ranking, /dashboard, etc. dependen
+  // del league_id del profile, así que revalidamos el shell entero.
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Hard-delete del usuario. Borra el profile (cascades wipe predicciones,
+ * puntos, chat) y borra también el `auth.users` row vía Supabase admin
+ * API para invalidar la sesión y forzar un login fresco. Está pensado
+ * para limpiar un participante por completo, no para suspender — si lo
+ * único que quieres es "echarlo y que vuelva a entrar como nuevo", da
+ * lo mismo: tras esto, el siguiente magic-link crea un profile vacío.
+ */
+export async function hardDeleteUser(formData: FormData) {
+  const me = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
+  // Salvaguarda: el admin no puede borrarse a sí mismo desde aquí.
+  if (userId === me.id) {
+    throw new Error("No puedes eliminar tu propia cuenta de admin desde aquí.");
+  }
+
+  const [before] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
+
+  // 1. Borra profile. ON DELETE CASCADE wipea predicciones, puntos, chat,
+  //    match_scorers (si aplica) — toda la huella del usuario.
+  await db.delete(profiles).where(eq(profiles.id, userId));
+
+  // 2. Borra el auth.users row vía Supabase admin API. Esto invalida
+  //    su sesión actual y obliga a re-autenticarse para volver a entrar.
+  try {
+    const supabase = createSupabaseServiceClient();
+    await supabase.auth.admin.deleteUser(userId);
+  } catch (err) {
+    // Si la ruta admin falla (p.ej. el user ya no existe), seguimos —
+    // lo importante era limpiar nuestros datos.
+    console.warn("supabase.auth.admin.deleteUser falló:", err);
+  }
+
+  await logAdminAction({
+    adminId: me.id,
+    action: "user.hard_delete",
+    payload: { userId, leagueId: before?.leagueId ?? null },
+  });
+
+  revalidatePath("/admin/ligas");
+  if (before?.leagueId != null) revalidatePath(`/admin/ligas/${before.leagueId}`);
+  revalidatePath("/admin/usuarios");
   revalidatePath("/", "layout");
 }
 

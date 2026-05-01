@@ -6,7 +6,8 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { formatDateTime } from "@/lib/utils";
-import { Trophy, Users } from "lucide-react";
+import { ArrowRight, Trophy, Users } from "lucide-react";
+import Link from "next/link";
 import { CreateLeagueDialog } from "./create-league-dialog";
 import { InviteLinkCopy } from "./invite-link-copy";
 import { deleteLeague } from "@/lib/league-actions";
@@ -99,6 +100,13 @@ export default async function AdminLeaguesPage() {
                   {!league.isPublic ? (
                     <InviteLinkCopy leagueId={league.id} token={league.inviteToken} />
                   ) : null}
+                  <Link
+                    href={`/admin/ligas/${league.id}`}
+                    className="mt-1 flex items-center justify-between gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-xs font-medium transition hover:border-[var(--color-arena)]/40"
+                  >
+                    Gestionar miembros
+                    <ArrowRight className="size-3.5" />
+                  </Link>
                 </div>
               </article>
             );
