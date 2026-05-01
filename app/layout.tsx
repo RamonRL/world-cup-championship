@@ -50,6 +50,12 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // Bloquea pinch-zoom en móvil para que la app se sienta nativa: la
+  // navegación bottom-bar y los controles tap-friendly ya están
+  // dimensionados para el tamaño real, y el zoom accidental rompe la
+  // composición (especialmente el live HUD y el bracket en mobile).
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
 };
 
