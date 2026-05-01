@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Trophy } from "lucide-react";
 import { UserMenu } from "./user-menu";
 
 type Props = {
@@ -13,9 +13,14 @@ export function AppHeader({ email, nickname, avatarUrl, isAdmin }: Props) {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-bg)_88%,transparent)] px-4 backdrop-blur-md lg:px-8">
       <Link href="/dashboard" className="flex items-center gap-2.5 lg:hidden">
-        <span className="grid size-9 place-items-center rounded-md bg-[var(--color-arena)] text-white">
-          <Trophy className="size-4" />
-        </span>
+        <Image
+          src="/logo.png"
+          alt="Mundial 26"
+          width={36}
+          height={36}
+          priority
+          className="size-9 rounded-md object-cover"
+        />
         <span className="leading-tight">
           <span className="block font-display text-xl tracking-tight">Mundial 26</span>
           <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">

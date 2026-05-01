@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV, NAV_ITEMS, type NavItem } from "./nav-data";
 
@@ -22,9 +22,14 @@ export function Sidebar({ isAdmin, pendingCount = 0 }: Props) {
           href="/dashboard"
           className="flex items-center gap-3 border-b border-[var(--color-border)] px-5 py-6 transition-colors hover:bg-[var(--color-surface-2)]"
         >
-          <span className="grid size-10 place-items-center rounded-md bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]">
-            <Trophy className="size-4" />
-          </span>
+          <Image
+            src="/logo.png"
+            alt="Mundial 26"
+            width={40}
+            height={40}
+            priority
+            className="size-10 rounded-md object-cover shadow-[var(--shadow-arena)]"
+          />
           <span className="leading-tight">
             <span className="block font-display text-2xl tracking-tight">Mundial 26</span>
             <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">

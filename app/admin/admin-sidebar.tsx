@@ -119,6 +119,18 @@ export function AdminMobileNav() {
           </Link>
         );
       })}
+
+      {/* Salir del modo admin · separado del resto con un divisor inline
+          y estilo discontinuo para que se note que es la salida de la
+          tira, no una sección más. */}
+      <span className="mx-1 self-center text-[var(--color-border)]">·</span>
+      <Link
+        href="/dashboard"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted-foreground)] transition hover:border-[var(--color-arena)]/40 hover:text-[var(--color-foreground)]"
+      >
+        <ArrowLeft className="size-3.5" />
+        <span className="whitespace-nowrap">Volver a la app</span>
+      </Link>
     </nav>
   );
 }
