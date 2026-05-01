@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CalendarPlus } from "lucide-react";
+import { ArrowRight, CalendarPlus, Lock } from "lucide-react";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matchdays, matches } from "@/lib/db/schema";
@@ -14,6 +14,16 @@ import { deleteMatchday } from "./actions";
 
 export const metadata = { title: "Calendario · Admin" };
 export const dynamic = "force-dynamic";
+
+const STAGE_LABEL: Record<string, string> = {
+  group: "Fase de grupos",
+  r32: "Dieciseisavos",
+  r16: "Octavos",
+  qf: "Cuartos",
+  sf: "Semifinales",
+  third: "Tercer puesto",
+  final: "Final",
+};
 
 export default async function AdminCalendarioPage() {
   const [days, matchRows] = await Promise.all([
@@ -45,25 +55,48 @@ export default async function AdminCalendarioPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {days.map((d) => {
             const count = countByMatchday.get(d.id) ?? 0;
+            const empty = count === 0;
+            const closed = new Date(d.predictionDeadlineAt).getTime() < Date.now();
             return (
-              <Card key={d.id}>
+              <Card
+                key={d.id}
+                className={empty ? "border-dashed" : undefined}
+              >
                 <CardHeader className="flex flex-row items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <Badge variant="outline" className="uppercase">
-                      {d.stage}
-                    </Badge>
-                    <CardTitle>{d.name}</CardTitle>
-                    <CardDescription>
-                      Cierre: {formatDateTime(d.predictionDeadlineAt)}
-                    </CardDescription>
+                  <div className="flex items-start gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] font-display tabular text-xl text-[var(--color-arena)] glow-arena">
+                      {d.orderIndex.toString().padStart(2, "0")}
+                    </span>
+                    <div className="space-y-1">
+                      <Badge variant="outline" className="text-[0.6rem] uppercase">
+                        {STAGE_LABEL[d.stage] ?? d.stage}
+                      </Badge>
+                      <CardTitle className="text-base">{d.name}</CardTitle>
+                      <CardDescription className="flex items-center gap-1.5 text-xs">
+                        {closed ? <Lock className="size-3" /> : null}
+                        Cierre: {formatDateTime(d.predictionDeadlineAt)}
+                      </CardDescription>
+                    </div>
                   </div>
-                  <span className="font-display text-3xl text-[var(--color-muted-foreground)]">
+                  <span
+                    className={`font-display tabular text-3xl ${
+                      empty
+                        ? "text-[var(--color-muted-foreground)]/40"
+                        : "text-[var(--color-muted-foreground)]"
+                    }`}
+                  >
                     {count}
                   </span>
                 </CardHeader>
-                <CardContent className="flex items-center justify-between text-sm">
-                  <span className="text-[var(--color-muted-foreground)]">
-                    {count} partidos
+                <CardContent className="flex items-center justify-between gap-2 text-sm">
+                  <span
+                    className={`font-mono text-[0.6rem] uppercase tracking-[0.18em] ${
+                      empty
+                        ? "text-[var(--color-warning)]"
+                        : "text-[var(--color-muted-foreground)]"
+                    }`}
+                  >
+                    {empty ? "Sin partidos · añade desde gestionar" : `${count} partidos cargados`}
                   </span>
                   <div className="flex items-center gap-1">
                     <DeleteButton

@@ -31,7 +31,8 @@ export function OperationsActions() {
   const [pending, start] = useTransition();
   const [stageKey, setStageKey] = useState<"r16" | "qf" | "sf" | "final" | "champion">("r16");
 
-  function run(fn: () => Promise<FormState>, label: string) {
+  function run(fn: () => Promise<FormState>, label: string, confirmText: string) {
+    if (!window.confirm(confirmText)) return;
     start(async () => {
       const res = await fn();
       if (res.ok) toast.success(res.message ?? `${label} ejecutada.`);
@@ -39,13 +40,27 @@ export function OperationsActions() {
     });
   }
 
-  function runWithFormData(fn: (fd: FormData) => Promise<FormState>, fd: FormData, label: string) {
+  function runWithFormData(
+    fn: (fd: FormData) => Promise<FormState>,
+    fd: FormData,
+    label: string,
+    confirmText: string,
+  ) {
+    if (!window.confirm(confirmText)) return;
     start(async () => {
       const res = await fn(fd);
       if (res.ok) toast.success(res.message ?? `${label} ejecutada.`);
       else toast.error(res.error ?? "Error.");
     });
   }
+
+  const KO_LABEL: Record<typeof stageKey, string> = {
+    r16: "octavos",
+    qf: "cuartos",
+    sf: "semifinales",
+    final: "la final",
+    champion: "el campeón",
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -58,7 +73,16 @@ export function OperationsActions() {
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <Button onClick={() => run(closeGroupStage, "Cierre fase grupos")} disabled={pending}>
+          <Button
+            onClick={() =>
+              run(
+                closeGroupStage,
+                "Cierre fase grupos",
+                "Vas a cerrar la fase de grupos y otorgar los puntos de \"posiciones\" a todos los participantes. ¿Continuar?",
+              )
+            }
+            disabled={pending}
+          >
             {pending ? <Loader2 className="animate-spin" /> : <Play />}
             Cerrar y puntuar
           </Button>
@@ -92,7 +116,12 @@ export function OperationsActions() {
             onClick={() => {
               const fd = new FormData();
               fd.set("stageKey", stageKey);
-              runWithFormData(closeKnockoutStage, fd, "Cierre ronda");
+              runWithFormData(
+                closeKnockoutStage,
+                fd,
+                "Cierre ronda",
+                `Vas a otorgar los puntos del bracket de ${KO_LABEL[stageKey]}. ¿Continuar?`,
+              );
             }}
             disabled={pending}
           >
@@ -111,7 +140,16 @@ export function OperationsActions() {
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <Button onClick={() => run(closeTopScorer, "Bota de Oro")} disabled={pending}>
+          <Button
+            onClick={() =>
+              run(
+                closeTopScorer,
+                "Bota de Oro",
+                "Vas a finalizar la Bota de Oro y otorgar los puntos del top de goleadores. Sólo deberías hacerlo cuando el torneo haya terminado. ¿Continuar?",
+              )
+            }
+            disabled={pending}
+          >
             {pending ? <Loader2 className="animate-spin" /> : <Play />}
             Calcular y puntuar
           </Button>
@@ -129,7 +167,13 @@ export function OperationsActions() {
         <CardFooter>
           <Button
             variant="secondary"
-            onClick={() => run(recomputeEverything, "Recalcular todo")}
+            onClick={() =>
+              run(
+                recomputeEverything,
+                "Recalcular todo",
+                "Esto borra y reescribe todas las entradas de puntos del torneo aplicando las reglas actuales. La operación es idempotente pero puede tardar unos segundos. ¿Continuar?",
+              )
+            }
             disabled={pending}
           >
             {pending ? <Loader2 className="animate-spin" /> : <Play />}
