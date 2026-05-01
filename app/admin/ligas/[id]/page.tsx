@@ -18,6 +18,7 @@ import {
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { requireAdmin } from "@/lib/auth/guards";
+import { inLeagueFilter } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
 import { InviteLinkCopy } from "../invite-link-copy";
 import { MemberActions } from "./member-actions";
@@ -38,11 +39,13 @@ export default async function AdminLeagueDetailPage({
   const [league] = await db.select().from(leagues).where(eq(leagues.id, leagueId)).limit(1);
   if (!league) notFound();
 
+  // Miembros: el filtro incluye admins (que pertenecen a todas las ligas).
+  const memberFilter = inLeagueFilter(leagueId)!;
   const [members, otherLeagues, pointsRows] = await Promise.all([
     db
       .select()
       .from(profiles)
-      .where(eq(profiles.leagueId, leagueId))
+      .where(memberFilter)
       .orderBy(asc(profiles.createdAt)),
     db
       .select({ id: leagues.id, name: leagues.name, isPublic: leagues.isPublic })

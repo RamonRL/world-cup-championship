@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { Lock, Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
-import { currentLeagueId } from "@/lib/leagues";
+import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { formatRemaining } from "@/lib/deadlines";
 import { getBracketStatus } from "@/lib/bracket-state";
@@ -37,11 +37,11 @@ export default async function CompararPage({
   const leagueId = await currentLeagueId(me);
   const params = await searchParams;
   const vsId = params.vs ?? null;
-  // Sólo se compara contra participantes de la misma liga visible.
-  const opponentFilter =
-    leagueId == null
-      ? ne(profiles.id, me.id)
-      : and(ne(profiles.id, me.id), eq(profiles.leagueId, leagueId));
+  // Oponentes: miembros de la misma liga + admins (globales). Excluido yo.
+  const leagueFilter = inLeagueFilter(leagueId);
+  const opponentFilter = leagueFilter
+    ? and(ne(profiles.id, me.id), leagueFilter)
+    : ne(profiles.id, me.id);
   const allUsers = await db
     .select()
     .from(profiles)

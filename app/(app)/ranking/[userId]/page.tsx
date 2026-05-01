@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { ListOrdered } from "lucide-react";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
-import { currentLeagueId } from "@/lib/leagues";
+import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { loadActivityFeed } from "@/lib/activity-feed";
 import { formatDateTime, initials } from "@/lib/utils";
 
@@ -59,20 +59,23 @@ export default async function ParticipantDetailPage({
 
   const [user] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
   if (!user) notFound();
-  // Si el usuario consultado no pertenece a la liga visible, lo tratamos
-  // como inexistente (privacidad cross-league).
+  // Privacidad cross-league: la ficha sólo se ve si el usuario es de la
+  // liga del visitante o es admin (admins son globales). El propio
+  // visitante admin tiene visibilidad total.
   if (
     me.role !== "admin" &&
     leagueId != null &&
-    user.leagueId !== leagueId
+    user.leagueId !== leagueId &&
+    user.role !== "admin"
   ) {
     notFound();
   }
 
+  const filter = inLeagueFilter(leagueId);
   const [allUsers, allLedger, theirLedger] = await Promise.all([
-    leagueId == null
-      ? db.select().from(profiles)
-      : db.select().from(profiles).where(eq(profiles.leagueId, leagueId)),
+    filter
+      ? db.select().from(profiles).where(filter)
+      : db.select().from(profiles),
     db.select().from(pointsLedger),
     db
       .select()

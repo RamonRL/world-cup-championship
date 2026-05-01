@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChatThread } from "@/app/(app)/chat/chat-thread";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { requireUser } from "@/lib/auth/guards";
-import { currentLeagueId } from "@/lib/leagues";
+import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
 import { formatRemaining } from "@/lib/deadlines";
 import { Edit3, Settings2 } from "lucide-react";
@@ -116,50 +116,42 @@ export default async function MatchDetailPage({
       .orderBy(desc(chatMessages.createdAt))
       .limit(100),
     predsPublic
-      ? db
-          .select({
-            userId: predMatchResult.userId,
-            homeScore: predMatchResult.homeScore,
-            awayScore: predMatchResult.awayScore,
-            willGoToPens: predMatchResult.willGoToPens,
-            winnerTeamId: predMatchResult.winnerTeamId,
-            authorEmail: profiles.email,
-            authorNickname: profiles.nickname,
-            authorAvatar: profiles.avatarUrl,
-          })
-          .from(predMatchResult)
-          .innerJoin(profiles, eq(predMatchResult.userId, profiles.id))
-          .where(
-            leagueId == null
-              ? eq(predMatchResult.matchId, matchId)
-              : and(
-                  eq(predMatchResult.matchId, matchId),
-                  eq(profiles.leagueId, leagueId),
-                ),
-          )
+      ? (() => {
+          const leagueFilter = inLeagueFilter(leagueId);
+          const where = leagueFilter
+            ? and(eq(predMatchResult.matchId, matchId), leagueFilter)
+            : eq(predMatchResult.matchId, matchId);
+          return db
+            .select({
+              userId: predMatchResult.userId,
+              homeScore: predMatchResult.homeScore,
+              awayScore: predMatchResult.awayScore,
+              willGoToPens: predMatchResult.willGoToPens,
+              winnerTeamId: predMatchResult.winnerTeamId,
+              authorEmail: profiles.email,
+              authorNickname: profiles.nickname,
+              authorAvatar: profiles.avatarUrl,
+            })
+            .from(predMatchResult)
+            .innerJoin(profiles, eq(predMatchResult.userId, profiles.id))
+            .where(where);
+        })()
       : Promise.resolve([]),
     predsPublic
-      ? leagueId == null
-        ? db
-            .select({
-              userId: predMatchScorer.userId,
-              playerId: predMatchScorer.playerId,
-            })
-            .from(predMatchScorer)
-            .where(eq(predMatchScorer.matchId, matchId))
-        : db
+      ? (() => {
+          const leagueFilter = inLeagueFilter(leagueId);
+          const where = leagueFilter
+            ? and(eq(predMatchScorer.matchId, matchId), leagueFilter)
+            : eq(predMatchScorer.matchId, matchId);
+          return db
             .select({
               userId: predMatchScorer.userId,
               playerId: predMatchScorer.playerId,
             })
             .from(predMatchScorer)
             .innerJoin(profiles, eq(predMatchScorer.userId, profiles.id))
-            .where(
-              and(
-                eq(predMatchScorer.matchId, matchId),
-                eq(profiles.leagueId, leagueId),
-              ),
-            )
+            .where(where);
+        })()
       : Promise.resolve([]),
   ]);
 

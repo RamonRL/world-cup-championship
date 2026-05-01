@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
-import { currentLeagueId } from "@/lib/leagues";
+import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { loadActivityFeed } from "@/lib/activity-feed";
 
@@ -51,10 +51,11 @@ export default async function DashboardPage() {
     .where(eq(pointsLedger.userId, me.id));
   const myPoints = myPointsRow?.total ?? 0;
 
-  // Sólo participantes de la liga visible para el podio y la posición.
-  const allUsers = leagueId == null
-    ? await db.select().from(profiles)
-    : await db.select().from(profiles).where(eq(profiles.leagueId, leagueId));
+  // Participantes de la liga visible + admins (globales).
+  const leagueFilter = inLeagueFilter(leagueId);
+  const allUsers = leagueFilter
+    ? await db.select().from(profiles).where(leagueFilter)
+    : await db.select().from(profiles);
   const allLedger = await db.select().from(pointsLedger);
   const stats = new Map<
     string,

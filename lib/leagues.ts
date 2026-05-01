@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
-import { eq } from "drizzle-orm";
+import { eq, or, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { leagues } from "@/lib/db/schema";
+import { leagues, profiles } from "@/lib/db/schema";
 import type { CurrentUser } from "@/lib/auth/guards";
 
 const ADMIN_VIEW_COOKIE = "admin_league_view";
@@ -45,3 +45,19 @@ export async function currentLeagueId(me: CurrentUser): Promise<number | null> {
 }
 
 export const ADMIN_LEAGUE_VIEW_COOKIE = ADMIN_VIEW_COOKIE;
+
+/**
+ * Filtro Drizzle reutilizable: el usuario pertenece a la liga `leagueId`
+ * O tiene rol admin. Los admins son "globales" — aparecen en el ranking,
+ * podio, comparar y predicciones reveladas de todas las ligas. Sus picks
+ * son los mismos para todas (no se duplican), simplemente entran en cada
+ * agregación.
+ *
+ * Si `leagueId` es null, devolvemos undefined (sin filtro) y la query
+ * carga todos los profiles — es el caso del admin sin liga pública
+ * seedeada, defensa-en-profundidad.
+ */
+export function inLeagueFilter(leagueId: number | null): SQL | undefined {
+  if (leagueId == null) return undefined;
+  return or(eq(profiles.leagueId, leagueId), eq(profiles.role, "admin"));
+}

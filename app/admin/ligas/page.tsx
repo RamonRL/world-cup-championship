@@ -18,13 +18,23 @@ export const dynamic = "force-dynamic";
 export default async function AdminLeaguesPage() {
   const allLeagues = await db.select().from(leagues).orderBy(asc(leagues.isPublic), asc(leagues.createdAt));
 
-  // Member counts per league in a single query.
-  const memberRows = await db
-    .select({ leagueId: profiles.leagueId, count: sql<number>`count(*)::int` })
-    .from(profiles)
-    .where(sql`${profiles.leagueId} is not null`)
-    .groupBy(profiles.leagueId);
-  const memberByLeague = new Map(memberRows.map((r) => [r.leagueId ?? 0, r.count]));
+  // Conteo de miembros por liga + admins. Cada admin "pertenece" a todas
+  // las ligas, así que sumamos su conteo a cada total.
+  const [memberRows, [adminRow]] = await Promise.all([
+    db
+      .select({ leagueId: profiles.leagueId, count: sql<number>`count(*)::int` })
+      .from(profiles)
+      .where(sql`${profiles.leagueId} is not null AND ${profiles.role} <> 'admin'`)
+      .groupBy(profiles.leagueId),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(profiles)
+      .where(eq(profiles.role, "admin")),
+  ]);
+  const adminCount = adminRow?.count ?? 0;
+  const memberByLeague = new Map(
+    memberRows.map((r) => [r.leagueId ?? 0, r.count]),
+  );
 
   return (
     <div className="space-y-6">
@@ -44,7 +54,7 @@ export default async function AdminLeaguesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {allLeagues.map((league) => {
-            const members = memberByLeague.get(league.id) ?? 0;
+            const members = (memberByLeague.get(league.id) ?? 0) + adminCount;
             return (
               <article
                 key={league.id}
