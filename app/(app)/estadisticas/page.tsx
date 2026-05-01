@@ -1,11 +1,27 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { matchScorers, matches } from "@/lib/db/schema";
+import { matchScorers, matches, teams } from "@/lib/db/schema";
+import { TeamFlag } from "@/components/brand/team-flag";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Shield, Target } from "lucide-react";
+import { formatRemaining } from "@/lib/deadlines";
 
 export const metadata = { title: "Estadísticas" };
+
+const KICKOFF = new Date(
+  process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z",
+);
+
+const STAGE_LABEL: Record<string, string> = {
+  group: "Fase de grupos",
+  r32: "Dieciseisavos",
+  r16: "Octavos",
+  qf: "Cuartos",
+  sf: "Semifinales",
+  third: "Tercer puesto",
+  final: "Final",
+};
 
 export default async function StatsPage() {
   const [matchAgg] = await db
@@ -15,19 +31,8 @@ export default async function StatsPage() {
     })
     .from(matches);
 
-  const [scorerCount] = await db
-    .select({ goals: sql<number>`count(*)::int` })
-    .from(matchScorers);
-
-  const [drawsRow] = await db
-    .select({
-      draws: sql<number>`count(*) filter (where home_score = away_score and status = 'finished')::int`,
-      penalties: sql<number>`count(*) filter (where went_to_pens)::int`,
-      over6: sql<number>`count(*) filter (where home_score + away_score > 6)::int`,
-    })
-    .from(matches);
-
   if (matchAgg.played === 0) {
+    const ms = Math.max(0, KICKOFF.getTime() - Date.now());
     return (
       <div className="space-y-6">
         <PageHeader
@@ -38,41 +43,84 @@ export default async function StatsPage() {
         <EmptyState
           icon={<BarChart3 className="size-5" />}
           title="Sin datos todavía"
-          description="Aparecerán aquí cuando el admin guarde el primer resultado."
+          description={`Aparecerán aquí en cuanto el admin guarde el primer resultado. El torneo arranca en ${formatRemaining(ms)}.`}
         />
       </div>
     );
   }
 
+  const [scorerRows, drawsRows, finishedMatches, allTeams, stagesAgg] = await Promise.all([
+    db.select({ goals: sql<number>`count(*)::int` }).from(matchScorers),
+    db
+      .select({
+        draws: sql<number>`count(*) filter (where home_score = away_score and status = 'finished')::int`,
+        penalties: sql<number>`count(*) filter (where went_to_pens)::int`,
+        over6: sql<number>`count(*) filter (where home_score + away_score > 6)::int`,
+      })
+      .from(matches),
+    db.select().from(matches).where(eq(matches.status, "finished")),
+    db.select().from(teams),
+    db
+      .select({
+        stage: matches.stage,
+        played: sql<number>`count(*) filter (where status = 'finished')::int`,
+        goals: sql<number>`coalesce(sum(home_score) filter (where status = 'finished'), 0)::int + coalesce(sum(away_score) filter (where status = 'finished'), 0)::int`,
+      })
+      .from(matches)
+      .groupBy(matches.stage),
+  ]);
+  const scorerCount = scorerRows[0] ?? { goals: 0 };
+  const drawsRow = drawsRows[0] ?? { draws: 0, penalties: 0, over6: 0 };
+
+  // Per-team aggregate from finished matches.
+  const tally = new Map<number, { scored: number; conceded: number; played: number }>();
+  for (const m of finishedMatches) {
+    if (
+      m.homeScore == null ||
+      m.awayScore == null ||
+      m.homeTeamId == null ||
+      m.awayTeamId == null
+    ) {
+      continue;
+    }
+    const home = tally.get(m.homeTeamId) ?? { scored: 0, conceded: 0, played: 0 };
+    home.scored += m.homeScore;
+    home.conceded += m.awayScore;
+    home.played += 1;
+    tally.set(m.homeTeamId, home);
+    const away = tally.get(m.awayTeamId) ?? { scored: 0, conceded: 0, played: 0 };
+    away.scored += m.awayScore;
+    away.conceded += m.homeScore;
+    away.played += 1;
+    tally.set(m.awayTeamId, away);
+  }
+  const teamById = new Map(allTeams.map((t) => [t.id, t]));
+  const teamRows = Array.from(tally.entries()).map(([teamId, t]) => ({
+    team: teamById.get(teamId) ?? null,
+    ...t,
+  }));
+  const bestAttack = [...teamRows].sort((a, b) => b.scored - a.scored).slice(0, 3);
+  const bestDefense = [...teamRows]
+    .filter((r) => r.played > 0)
+    .sort(
+      (a, b) =>
+        a.conceded / Math.max(1, a.played) - b.conceded / Math.max(1, b.played),
+    )
+    .slice(0, 3);
+
   const avg = (scorerCount.goals / matchAgg.played).toFixed(2);
 
-  const stats = [
-    {
-      label: "Partidos jugados",
-      value: matchAgg.played,
-      hint: `de ${matchAgg.total}`,
-    },
+  const headlineStats = [
+    { label: "Partidos jugados", value: matchAgg.played.toString(), hint: `de ${matchAgg.total}` },
     {
       label: "Goles totales",
-      value: scorerCount.goals,
+      value: scorerCount.goals.toString(),
       hint: `${avg} por partido`,
       accent: true,
     },
-    {
-      label: "Empates en 90'",
-      value: drawsRow.draws,
-      hint: "antes de prórroga / penaltis",
-    },
-    {
-      label: "Tandas de penaltis",
-      value: drawsRow.penalties,
-      hint: "decididas en 11 metros",
-    },
-    {
-      label: "Partidos +6 goles",
-      value: drawsRow.over6,
-      hint: "festival de gol",
-    },
+    { label: "Empates en 90'", value: drawsRow.draws.toString(), hint: "antes de prórroga" },
+    { label: "Tandas de penaltis", value: drawsRow.penalties.toString(), hint: "decididas en 11m" },
+    { label: "Festival de gol", value: drawsRow.over6.toString(), hint: "partidos +6 goles" },
   ];
 
   return (
@@ -82,11 +130,13 @@ export default async function StatsPage() {
         title="Estadísticas"
         description="Cifras agregadas en directo. Se actualizan cada vez que el admin guarda un resultado."
       />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {stats.map((s) => (
+
+      {/* Headline stats */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {headlineStats.map((s) => (
           <article
             key={s.label}
-            className={`relative overflow-hidden rounded-xl border p-6 ${
+            className={`relative overflow-hidden rounded-xl border p-5 ${
               s.accent
                 ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface))]"
                 : "border-[var(--color-border)] bg-[var(--color-surface)]"
@@ -96,18 +146,162 @@ export default async function StatsPage() {
               {s.label}
             </p>
             <p
-              className={`mt-3 font-display tabular text-7xl leading-none tracking-tight ${
+              className={`mt-2 font-display tabular text-5xl leading-none tracking-tight ${
                 s.accent ? "text-[var(--color-arena)] glow-arena" : ""
               }`}
             >
               {s.value}
             </p>
-            <p className="mt-2 font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+            <p className="mt-2 font-editorial text-xs italic text-[var(--color-muted-foreground)]">
               {s.hint}
             </p>
           </article>
         ))}
-      </div>
+      </section>
+
+      {/* Best attack / best defense */}
+      <section className="grid gap-4 lg:grid-cols-2">
+        <RankPanel
+          title="Mejores ataques"
+          subtitle="Goles a favor en lo que va de torneo"
+          icon={<Target className="size-4" />}
+          rows={bestAttack.map((r) => ({
+            team: r.team,
+            primary: r.scored,
+            hint: `${r.played} ${r.played === 1 ? "partido" : "partidos"}`,
+          }))}
+          unitLabel="goles"
+        />
+        <RankPanel
+          title="Mejores defensas"
+          subtitle="Menor promedio de goles encajados"
+          icon={<Shield className="size-4" />}
+          rows={bestDefense.map((r) => ({
+            team: r.team,
+            primary: (r.conceded / Math.max(1, r.played)).toFixed(2),
+            hint: `${r.conceded} GC en ${r.played} ${r.played === 1 ? "partido" : "partidos"}`,
+          }))}
+          unitLabel="GC/partido"
+        />
+      </section>
+
+      {/* Stage breakdown */}
+      {stagesAgg.length > 0 ? (
+        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+          <header className="flex items-center gap-3 pb-4">
+            <span className="h-px w-6 bg-[var(--color-arena)]" />
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              Goles por fase
+            </p>
+          </header>
+          <ul className="space-y-2">
+            {stagesAgg
+              .filter((s) => s.played > 0)
+              .map((s) => {
+                const avgPerMatch =
+                  s.played > 0 ? (s.goals / s.played).toFixed(2) : "—";
+                return (
+                  <li
+                    key={s.stage}
+                    className="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2.5"
+                  >
+                    <span className="text-sm font-medium">{STAGE_LABEL[s.stage] ?? s.stage}</span>
+                    <span className="flex items-baseline gap-3 font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                      <span>
+                        <span className="font-display tabular text-base text-[var(--color-foreground)]">
+                          {s.played}
+                        </span>{" "}
+                        partidos
+                      </span>
+                      <span>
+                        <span className="font-display tabular text-base text-[var(--color-arena)] glow-arena">
+                          {s.goals}
+                        </span>{" "}
+                        goles
+                      </span>
+                      <span className="hidden sm:inline">· {avgPerMatch}/p</span>
+                    </span>
+                  </li>
+                );
+              })}
+          </ul>
+        </section>
+      ) : null}
     </div>
+  );
+}
+
+function RankPanel({
+  title,
+  subtitle,
+  icon,
+  rows,
+  unitLabel,
+}: {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  rows: { team: { code: string; name: string } | null; primary: number | string; hint: string }[];
+  unitLabel: string;
+}) {
+  return (
+    <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+      <header className="flex items-center justify-between gap-3 pb-4">
+        <div>
+          <div className="flex items-center gap-2 text-[var(--color-arena)]">
+            {icon}
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em]">{title}</p>
+          </div>
+          <p className="mt-1 font-editorial text-xs italic text-[var(--color-muted-foreground)]">
+            {subtitle}
+          </p>
+        </div>
+        <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+          {unitLabel}
+        </span>
+      </header>
+      {rows.length === 0 ? (
+        <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+          Aún sin datos suficientes.
+        </p>
+      ) : (
+        <ol className="space-y-1.5">
+          {rows.map((r, i) => (
+            <li
+              key={i}
+              className={`flex items-center gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2.5 ${
+                i === 0 ? "ring-1 ring-[var(--color-arena)]/30" : ""
+              }`}
+            >
+              <span
+                className={`font-display tabular text-2xl ${
+                  i === 0
+                    ? "text-[var(--color-arena)] glow-arena"
+                    : "text-[var(--color-muted-foreground)]"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <TeamFlag code={r.team?.code} size={28} />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                {r.team?.name ?? "—"}
+              </span>
+              <span className="text-right">
+                <span
+                  className={`font-display tabular text-2xl ${
+                    i === 0 ? "text-[var(--color-arena)] glow-arena" : ""
+                  }`}
+                >
+                  {r.primary}
+                </span>
+                <span className="ml-1 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                  · {r.hint}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </article>
   );
 }

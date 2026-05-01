@@ -1,11 +1,18 @@
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireUser } from "@/lib/auth/guards";
+import { initials } from "@/lib/utils";
 import { ProfileForm } from "./profile-form";
 
 export const metadata = { title: "Mi perfil" };
 
 export default async function ProfilePage() {
   const me = await requireUser();
+  const display = me.nickname || me.email.split("@")[0];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -13,6 +20,40 @@ export default async function ProfilePage() {
         title="Mi perfil"
         description="Personaliza tu apodo y avatar para que el resto de participantes te identifique."
       />
+
+      {/* Tu ficha — vista pública resumida + atajo al detalle de participante */}
+      <Link
+        href={`/ranking/${me.id}`}
+        className="group relative block overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 sm:p-6"
+      >
+        <div className="halftone pointer-events-none absolute inset-0 opacity-[0.04]" aria-hidden />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Avatar className="size-14 border border-[var(--color-border-strong)]">
+              {me.avatarUrl ? <AvatarImage src={me.avatarUrl} alt="" /> : null}
+              <AvatarFallback className="text-base">{initials(display)}</AvatarFallback>
+            </Avatar>
+            <div className="space-y-1">
+              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Cómo te ven los demás
+              </p>
+              <p className="font-display text-2xl tracking-tight">{display}</p>
+              <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                {me.email}
+                {me.role === "admin" ? (
+                  <Badge variant="outline" className="ml-2 text-[0.55rem]">
+                    Admin
+                  </Badge>
+                ) : null}
+              </p>
+            </div>
+          </div>
+          <span className="flex items-center gap-1.5 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)] group-hover:underline">
+            Ver mi ficha completa <ArrowUpRight className="size-3" />
+          </span>
+        </div>
+      </Link>
+
       <ProfileForm
         email={me.email}
         nickname={me.nickname}

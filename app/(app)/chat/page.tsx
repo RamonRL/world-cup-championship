@@ -1,4 +1,4 @@
-import { desc, eq, isNull } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { chatMessages, profiles } from "@/lib/db/schema";
 import { PageHeader } from "@/components/shell/page-header";
@@ -25,14 +25,19 @@ export default async function ChatPage() {
     .where(eq(chatMessages.scope, "global"))
     .orderBy(desc(chatMessages.createdAt))
     .limit(200);
-  void isNull;
+
+  const activeMessages = messages.filter((m) => m.deletedAt == null).length;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Comunidad"
         title="Hilo global"
-        description="Anuncios, banter y comentarios. El admin puede eliminar mensajes que se pasen de raya."
+        description={
+          activeMessages === 0
+            ? "Anuncios, banter y comentarios. Empieza tú la conversación."
+            : `${activeMessages} ${activeMessages === 1 ? "mensaje activo" : "mensajes activos"} · el admin puede borrar lo que se pase de raya.`
+        }
       />
       <ChatThread
         scope="global"
