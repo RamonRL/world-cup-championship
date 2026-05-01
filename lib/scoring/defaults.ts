@@ -87,7 +87,7 @@ export const DEFAULT_SPECIAL_PREDICTIONS = [
     key: "best_goalkeeper",
     question: "Mejor portero del torneo (Guante de Oro)",
     type: "player" as const,
-    optionsJson: { positionFilter: "GK" },
+    optionsJson: { positionFilter: "POR" },
     pointsConfigJson: { correct: 6 },
     orderIndex: 5,
   },
