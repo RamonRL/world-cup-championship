@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Crown, ListOrdered } from "lucide-react";
+import { Award, Crown, ListOrdered, Medal } from "lucide-react";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pointsLedger, profiles } from "@/lib/db/schema";
@@ -118,88 +118,44 @@ export default async function RankingPage() {
         description="Empates: marcadores exactos · puntos en eliminatorias · campeón acertado."
       />
 
-      {/* Podium */}
-      <section className="grid gap-3 sm:grid-cols-3">
-        {[top3[1], top3[0], top3[2]].map((p, displayIdx) => {
+      {/* Podium · DOM order [#1, #2, #3] (mobile stack natural). En sm+
+          aplicamos sm:order-{1,2,3} a [#2, #1, #3] respectivamente y
+          sm:items-end para que las alturas escalonadas alineen al base. */}
+      <section className="grid items-end gap-3 sm:grid-cols-3">
+        {top3.map((p, i) => {
+          const position = i + 1;
           if (!p) {
             return (
               <div
-                key={displayIdx}
-                className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]/50"
+                key={`empty-${position}`}
+                className={`rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]/50 ${
+                  position === 1
+                    ? "h-48 sm:order-2"
+                    : position === 2
+                      ? "h-40 sm:order-1"
+                      : "h-36 sm:order-3"
+                }`}
               />
             );
           }
-          const realPosition = displayIdx === 0 ? 2 : displayIdx === 1 ? 1 : 3;
-          const isMe = p.user.id === me.id;
-          const display = p.user.nickname || p.user.email.split("@")[0];
           return (
-            <Link
+            <PodiumCard
               key={p.user.id}
-              href={`/ranking/${p.user.id}`}
-              className={`group relative overflow-hidden rounded-xl border bg-[var(--color-surface)] p-5 transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/60 ${
-                realPosition === 1
-                  ? "border-[var(--color-arena)]/60 sm:order-2 sm:-translate-y-2"
-                  : "border-[var(--color-border)]"
-              } ${isMe ? "ring-2 ring-[var(--color-arena)]/40 ring-offset-2 ring-offset-[var(--color-bg)]" : ""}`}
-            >
-              {realPosition === 1 ? (
-                <div
-                  className="halftone pointer-events-none absolute inset-0 opacity-[0.07]"
-                  aria-hidden
-                />
-              ) : null}
-              <div className="relative space-y-3">
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`font-display text-7xl leading-none ${
-                      realPosition === 1
-                        ? "text-[var(--color-arena)] glow-arena"
-                        : "text-[var(--color-muted-foreground)]"
-                    }`}
-                  >
-                    {realPosition}
-                  </span>
-                  {realPosition === 1 ? (
-                    <Crown className="size-6 text-[var(--color-arena)]" />
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-3">
-                  <Avatar className="size-10 border border-[var(--color-border)]">
-                    {p.user.avatarUrl ? <AvatarImage src={p.user.avatarUrl} alt="" /> : null}
-                    <AvatarFallback>{initials(display)}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="truncate font-display text-lg tracking-tight">{display}</p>
-                    {isMe ? (
-                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
-                        Tú
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="flex items-end justify-between gap-2 border-t border-dashed border-[var(--color-border)] pt-3">
-                  <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-                      Puntos
-                    </p>
-                    <p className="font-display tabular text-4xl tracking-tight">
-                      {p.totalPoints}
-                    </p>
-                  </div>
-                  <div className="text-right text-xs text-[var(--color-muted-foreground)]">
-                    <p>{p.exactScoresCount} exactos</p>
-                    <p>{p.knockoutPoints} en KO</p>
-                  </div>
-                </div>
-              </div>
-            </Link>
+              position={position}
+              entry={p}
+              isMe={p.user.id === me.id}
+            />
           );
         })}
       </section>
 
-      {/* My status */}
-      {myEntry && myIndex >= 0 ? (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface))] p-4">
+      {/* My status — sólo cuando NO estoy en el podio. Si ya estoy en
+          top-3, mi tarjeta ya brilla arriba; redundancia evitada. */}
+      {myEntry && myIndex >= 3 ? (
+        <Link
+          href={`/ranking/${me.id}`}
+          className="group flex items-center justify-between gap-4 rounded-xl border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface))] p-4 transition hover:border-[var(--color-arena)]"
+        >
           <div className="flex items-center gap-4">
             <span className="font-display text-5xl tabular text-[var(--color-arena)] glow-arena">
               #{(myIndex + 1).toString().padStart(2, "0")}
@@ -215,65 +171,212 @@ export default async function RankingPage() {
           </div>
           <div className="text-right">
             <p className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-              {myIndex === 0 ? "Líder" : `A ${lead} del líder`}
+              A {lead} del líder
             </p>
             <p className="font-display text-3xl tabular">{myEntry.totalPoints}</p>
           </div>
-        </div>
+        </Link>
       ) : null}
 
       {/* Rest of the leaderboard */}
       {rest.length > 0 ? (
-        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <div className="grid grid-cols-[64px_1fr_80px_80px_80px] gap-2 border-b border-[var(--color-border)] px-4 py-3 font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-            <span>Pos</span>
-            <span>Participante</span>
-            <span className="text-right">Pts</span>
-            <span className="hidden text-right sm:inline">Ex.</span>
-            <span className="hidden text-right sm:inline">KO</span>
+        <section className="space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="h-px w-6 bg-[var(--color-arena)]" />
+            <h2 className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              Posiciones · 4 y siguientes
+            </h2>
+            <span className="h-px flex-1 bg-[var(--color-border)]" />
           </div>
-          <ul>
-            {rest.map((r, i) => {
-              const position = i + 4;
-              const isMe = r.user.id === me.id;
-              const display = r.user.nickname || r.user.email.split("@")[0];
-              return (
-                <li key={r.user.id}>
-                  <Link
-                    href={`/ranking/${r.user.id}`}
-                    className={`grid grid-cols-[64px_1fr_80px_80px_80px] items-center gap-2 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0 transition hover:bg-[var(--color-surface-2)] ${
-                      isMe ? "bg-[color-mix(in_oklch,var(--color-arena)_6%,transparent)]" : ""
-                    }`}
-                  >
-                    <span className="font-display text-2xl tabular text-[var(--color-muted-foreground)]">
-                      {position.toString().padStart(2, "0")}
-                    </span>
-                    <span className="flex items-center gap-3 truncate">
-                      <Avatar className="size-8 border border-[var(--color-border)]">
-                        {r.user.avatarUrl ? <AvatarImage src={r.user.avatarUrl} alt="" /> : null}
-                        <AvatarFallback>{initials(display)}</AvatarFallback>
-                      </Avatar>
-                      <span className="truncate text-sm font-medium">{display}</span>
-                      {isMe ? (
-                        <Badge variant="default" className="ml-1">
-                          Tú
-                        </Badge>
-                      ) : null}
-                    </span>
-                    <span className="text-right font-display tabular text-xl">{r.totalPoints}</span>
-                    <span className="hidden text-right text-sm tabular text-[var(--color-muted-foreground)] sm:inline">
-                      {r.exactScoresCount}
-                    </span>
-                    <span className="hidden text-right text-sm tabular text-[var(--color-muted-foreground)] sm:inline">
-                      {r.knockoutPoints}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="grid grid-cols-[56px_1fr_72px_56px_56px] gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2.5 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)] sm:grid-cols-[56px_1fr_72px_64px_64px]">
+              <span>Pos</span>
+              <span>Participante</span>
+              <span className="text-right">Pts</span>
+              <span className="hidden text-right sm:inline">Ex.</span>
+              <span className="hidden text-right sm:inline">KO</span>
+            </div>
+            <ul>
+              {rest.map((r, i) => {
+                const position = i + 4;
+                const isMe = r.user.id === me.id;
+                const display = r.user.nickname || r.user.email.split("@")[0];
+                return (
+                  <li key={r.user.id}>
+                    <Link
+                      href={`/ranking/${r.user.id}`}
+                      className={`grid grid-cols-[56px_1fr_72px] items-center gap-2 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0 transition hover:bg-[var(--color-surface-2)] sm:grid-cols-[56px_1fr_72px_64px_64px] ${
+                        isMe
+                          ? "bg-[color-mix(in_oklch,var(--color-arena)_6%,transparent)]"
+                          : ""
+                      }`}
+                    >
+                      <span className="font-display text-2xl tabular text-[var(--color-muted-foreground)]">
+                        {position.toString().padStart(2, "0")}
+                      </span>
+                      <span className="flex items-center gap-3 truncate">
+                        <Avatar className="size-8 border border-[var(--color-border)]">
+                          {r.user.avatarUrl ? <AvatarImage src={r.user.avatarUrl} alt="" /> : null}
+                          <AvatarFallback>{initials(display)}</AvatarFallback>
+                        </Avatar>
+                        <span className="truncate text-sm font-medium">{display}</span>
+                        {isMe ? (
+                          <Badge variant="default" className="ml-1">
+                            Tú
+                          </Badge>
+                        ) : null}
+                      </span>
+                      <span className="text-right font-display tabular text-xl">
+                        {r.totalPoints}
+                      </span>
+                      <span className="hidden text-right text-sm tabular text-[var(--color-muted-foreground)] sm:inline">
+                        {r.exactScoresCount}
+                      </span>
+                      <span className="hidden text-right text-sm tabular text-[var(--color-muted-foreground)] sm:inline">
+                        {r.knockoutPoints}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </section>
       ) : null}
     </div>
+  );
+}
+
+type PodiumEntry = {
+  user: typeof profiles.$inferSelect;
+  totalPoints: number;
+  exactScoresCount: number;
+  knockoutPoints: number;
+  championCorrect: boolean;
+};
+
+const PODIUM_LAYOUT: Record<
+  number,
+  {
+    order: string;
+    height: string;
+    border: string;
+    accent: string;
+    icon: typeof Crown;
+    iconClass: string;
+    medalRing: string;
+    label: string;
+  }
+> = {
+  1: {
+    order: "sm:order-2",
+    height: "sm:min-h-[18rem]",
+    border:
+      "border-[var(--color-arena)]/60 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))]",
+    accent: "text-[var(--color-arena)] glow-arena",
+    icon: Crown,
+    iconClass: "text-[var(--color-arena)]",
+    medalRing: "ring-2 ring-[var(--color-arena)]",
+    label: "Oro",
+  },
+  2: {
+    order: "sm:order-1",
+    height: "sm:min-h-[15rem]",
+    border:
+      "border-[var(--color-border-strong)] bg-[color-mix(in_oklch,var(--color-foreground)_3%,var(--color-surface))]",
+    accent: "text-[var(--color-foreground)]",
+    icon: Medal,
+    iconClass: "text-[var(--color-foreground)]/70",
+    medalRing: "ring-1 ring-[var(--color-border-strong)]",
+    label: "Plata",
+  },
+  3: {
+    order: "sm:order-3",
+    height: "sm:min-h-[13.5rem]",
+    border: "border-[var(--color-border)] bg-[var(--color-surface)]",
+    accent: "text-[color-mix(in_oklch,var(--color-arena)_50%,var(--color-muted-foreground))]",
+    icon: Award,
+    iconClass:
+      "text-[color-mix(in_oklch,var(--color-arena)_50%,var(--color-muted-foreground))]",
+    medalRing:
+      "ring-1 ring-[color-mix(in_oklch,var(--color-arena)_30%,var(--color-border))]",
+    label: "Bronce",
+  },
+};
+
+function PodiumCard({
+  position,
+  entry,
+  isMe,
+}: {
+  position: number;
+  entry: PodiumEntry;
+  isMe: boolean;
+}) {
+  const layout = PODIUM_LAYOUT[position]!;
+  const Icon = layout.icon;
+  const display = entry.user.nickname || entry.user.email.split("@")[0];
+
+  return (
+    <Link
+      href={`/ranking/${entry.user.id}`}
+      className={`group relative flex flex-col overflow-hidden rounded-xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elev-2)] ${layout.order} ${layout.height} ${layout.border} ${
+        isMe ? "ring-2 ring-[var(--color-arena)]/40 ring-offset-2 ring-offset-[var(--color-bg)]" : ""
+      }`}
+    >
+      {position === 1 ? (
+        <div
+          className="halftone pointer-events-none absolute inset-0 opacity-[0.07]"
+          aria-hidden
+        />
+      ) : null}
+      <div className="relative flex flex-1 flex-col gap-3">
+        <header className="flex items-start justify-between gap-2">
+          <span
+            className={`font-display leading-none ${
+              position === 1 ? "text-7xl sm:text-8xl" : "text-6xl"
+            } ${layout.accent}`}
+          >
+            {position}
+          </span>
+          <div className="flex flex-col items-end gap-1">
+            <Icon className={`size-6 ${layout.iconClass}`} />
+            <span
+              className={`font-mono text-[0.55rem] uppercase tracking-[0.28em] ${layout.iconClass}`}
+            >
+              {layout.label}
+            </span>
+          </div>
+        </header>
+        <div className="flex items-center gap-3">
+          <Avatar className={`size-11 border border-[var(--color-border)] ${layout.medalRing}`}>
+            {entry.user.avatarUrl ? <AvatarImage src={entry.user.avatarUrl} alt="" /> : null}
+            <AvatarFallback>{initials(display)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate font-display text-lg tracking-tight">{display}</p>
+            {isMe ? (
+              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+                Tú
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-auto flex items-end justify-between gap-2 border-t border-dashed border-[var(--color-border)] pt-3">
+          <div>
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+              Puntos
+            </p>
+            <p className={`font-display tabular ${position === 1 ? "text-5xl" : "text-4xl"} tracking-tight ${layout.accent}`}>
+              {entry.totalPoints}
+            </p>
+          </div>
+          <div className="text-right font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+            <p>{entry.exactScoresCount} exactos</p>
+            <p>{entry.knockoutPoints} en KO</p>
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }
