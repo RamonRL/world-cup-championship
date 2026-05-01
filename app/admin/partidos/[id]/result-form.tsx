@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScoreStepper } from "@/components/forms/score-stepper";
 import { saveMatchResult, type FormState } from "./actions";
 
 const initial: FormState = { ok: false };
@@ -121,32 +122,26 @@ export function ResultForm({ match, homeTeam, awayTeam, players, existingScorers
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <div className="space-y-2 text-center">
+            <div className="flex flex-col items-center gap-2 text-center">
               <Badge variant="outline">{homeTeam?.code ?? "—"}</Badge>
               <p className="font-medium">{homeTeam?.name ?? "Local"}</p>
-              <Input
-                type="number"
-                name="homeScore"
+              <ScoreStepper
                 value={home}
-                onChange={(e) => setHome(Number(e.target.value))}
-                className="h-16 text-center font-display text-4xl"
-                min={0}
-                max={40}
+                onChange={setHome}
+                ariaLabel={`Goles ${homeTeam?.name ?? "local"}`}
               />
+              <input type="hidden" name="homeScore" value={home} />
             </div>
             <span className="font-display text-3xl text-[var(--color-muted-foreground)]">vs</span>
-            <div className="space-y-2 text-center">
+            <div className="flex flex-col items-center gap-2 text-center">
               <Badge variant="outline">{awayTeam?.code ?? "—"}</Badge>
               <p className="font-medium">{awayTeam?.name ?? "Visitante"}</p>
-              <Input
-                type="number"
-                name="awayScore"
+              <ScoreStepper
                 value={away}
-                onChange={(e) => setAway(Number(e.target.value))}
-                className="h-16 text-center font-display text-4xl"
-                min={0}
-                max={40}
+                onChange={setAway}
+                ariaLabel={`Goles ${awayTeam?.name ?? "visitante"}`}
               />
+              <input type="hidden" name="awayScore" value={away} />
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -206,26 +201,22 @@ export function ResultForm({ match, homeTeam, awayTeam, players, existingScorers
           {isKnockout && pens ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="homeScorePen">Penaltis local</Label>
-                <Input
-                  id="homeScorePen"
-                  name="homeScorePen"
-                  type="number"
+                <Label>Penaltis {homeTeam?.code ?? "local"}</Label>
+                <ScoreStepper
                   value={homePen}
-                  onChange={(e) => setHomePen(Number(e.target.value))}
-                  min={0}
+                  onChange={setHomePen}
+                  ariaLabel={`Penaltis ${homeTeam?.name ?? "local"}`}
                 />
+                <input type="hidden" name="homeScorePen" value={homePen} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="awayScorePen">Penaltis visitante</Label>
-                <Input
-                  id="awayScorePen"
-                  name="awayScorePen"
-                  type="number"
+                <Label>Penaltis {awayTeam?.code ?? "visitante"}</Label>
+                <ScoreStepper
                   value={awayPen}
-                  onChange={(e) => setAwayPen(Number(e.target.value))}
-                  min={0}
+                  onChange={setAwayPen}
+                  ariaLabel={`Penaltis ${awayTeam?.name ?? "visitante"}`}
                 />
+                <input type="hidden" name="awayScorePen" value={awayPen} />
               </div>
             </div>
           ) : null}

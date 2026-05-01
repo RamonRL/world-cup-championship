@@ -25,7 +25,7 @@ import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { requireUser } from "@/lib/auth/guards";
 import { formatDateTime, initials } from "@/lib/utils";
 import { formatRemaining } from "@/lib/deadlines";
-import { Edit3 } from "lucide-react";
+import { Edit3, Settings2 } from "lucide-react";
 
 const STAGE_LABEL: Record<string, string> = {
   group: "Fase de grupos",
@@ -253,12 +253,22 @@ export default async function MatchDetailPage({
           { table: "match_scorers", filter: `match_id=eq.${matchId}` },
         ]}
       />
-      <Button asChild variant="ghost" size="sm" className="px-0 text-[var(--color-muted-foreground)]">
-        <Link href="/calendario">
-          <ArrowLeft />
-          Volver al calendario
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between gap-2">
+        <Button asChild variant="ghost" size="sm" className="px-0 text-[var(--color-muted-foreground)]">
+          <Link href="/calendario">
+            <ArrowLeft />
+            Volver al calendario
+          </Link>
+        </Button>
+        {me.role === "admin" ? (
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link href={`/admin/partidos/${match.id}`}>
+              <Settings2 className="size-3.5" />
+              Editar resultado
+            </Link>
+          </Button>
+        ) : null}
+      </div>
 
       {/* Hero scoreboard */}
       <section className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
