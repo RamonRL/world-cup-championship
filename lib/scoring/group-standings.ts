@@ -92,7 +92,14 @@ export async function recomputeAllGroupStandings(): Promise<{
   }
 
   await db.transaction(async (tx) => {
-    for (const [groupId, arr] of byGroup) {
+    // Wipe TODA la tabla y reescribimos desde cero. Importante: si el admin
+    // revierte el último partido finalizado de un grupo, ese grupo ya no
+    // aparece en `byGroup`, así que un delete por-grupo dejaría sus filas
+    // viejas intactas. Truncar primero garantiza que cualquier reversión
+    // borra el estado obsoleto correspondiente.
+    await tx.delete(groupStandings);
+
+    for (const [, arr] of byGroup) {
       arr.sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points;
         const gdA = a.goalsFor - a.goalsAgainst;
@@ -100,7 +107,6 @@ export async function recomputeAllGroupStandings(): Promise<{
         if (gdB !== gdA) return gdB - gdA;
         return b.goalsFor - a.goalsFor;
       });
-      await tx.delete(groupStandings).where(eq(groupStandings.groupId, groupId));
       for (let i = 0; i < arr.length; i++) {
         const v = arr[i];
         await tx.insert(groupStandings).values({
