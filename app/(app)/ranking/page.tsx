@@ -278,36 +278,36 @@ const PODIUM_LAYOUT: Record<
 > = {
   1: {
     order: "sm:order-2",
-    height: "sm:min-h-[18rem]",
+    height: "sm:min-h-[23rem]",
     border:
       "border-[var(--color-arena)]/60 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))]",
     accent: "text-[var(--color-arena)] glow-arena",
     icon: Crown,
     iconClass: "text-[var(--color-arena)]",
-    medalRing: "ring-2 ring-[var(--color-arena)]",
+    medalRing: "ring-4 ring-[var(--color-arena)]",
     label: "Oro",
   },
   2: {
     order: "sm:order-1",
-    height: "sm:min-h-[15rem]",
+    height: "sm:min-h-[20rem]",
     border:
       "border-[var(--color-border-strong)] bg-[color-mix(in_oklch,var(--color-foreground)_3%,var(--color-surface))]",
     accent: "text-[var(--color-foreground)]",
     icon: Medal,
     iconClass: "text-[var(--color-foreground)]/70",
-    medalRing: "ring-1 ring-[var(--color-border-strong)]",
+    medalRing: "ring-2 ring-[var(--color-border-strong)]",
     label: "Plata",
   },
   3: {
     order: "sm:order-3",
-    height: "sm:min-h-[13.5rem]",
+    height: "sm:min-h-[18.5rem]",
     border: "border-[var(--color-border)] bg-[var(--color-surface)]",
     accent: "text-[color-mix(in_oklch,var(--color-arena)_50%,var(--color-muted-foreground))]",
     icon: Award,
     iconClass:
       "text-[color-mix(in_oklch,var(--color-arena)_50%,var(--color-muted-foreground))]",
     medalRing:
-      "ring-1 ring-[color-mix(in_oklch,var(--color-arena)_30%,var(--color-border))]",
+      "ring-2 ring-[color-mix(in_oklch,var(--color-arena)_40%,var(--color-border-strong))]",
     label: "Bronce",
   },
 };
@@ -324,6 +324,20 @@ function PodiumCard({
   const layout = PODIUM_LAYOUT[position]!;
   const Icon = layout.icon;
   const display = entry.user.nickname || entry.user.email.split("@")[0];
+  // Avatares dimensionados por posición — el #1 dominante, decreciendo
+  // en plata y bronce. La posición vive arriba a la izquierda como número
+  // grande; el avatar va centrado horizontalmente para ser el foco visual.
+  const avatarSize =
+    position === 1
+      ? "size-32 sm:size-40"
+      : position === 2
+        ? "size-28 sm:size-32"
+        : "size-24 sm:size-28";
+  const positionSize =
+    position === 1 ? "text-6xl sm:text-7xl" : "text-5xl sm:text-6xl";
+  const nameSize =
+    position === 1 ? "text-xl sm:text-2xl" : "text-lg sm:text-xl";
+  const pointsSize = position === 1 ? "text-4xl sm:text-5xl" : "text-3xl sm:text-4xl";
 
   return (
     <Link
@@ -338,51 +352,61 @@ function PodiumCard({
           aria-hidden
         />
       ) : null}
-      <div className="relative flex flex-1 flex-col gap-3">
-        <header className="flex items-start justify-between gap-2">
-          <span
-            className={`font-display leading-none ${
-              position === 1 ? "text-7xl sm:text-8xl" : "text-6xl"
-            } ${layout.accent}`}
-          >
-            {position}
-          </span>
-          <div className="flex flex-col items-end gap-1">
-            <Icon className={`size-6 ${layout.iconClass}`} />
-            <span
-              className={`font-mono text-[0.55rem] uppercase tracking-[0.28em] ${layout.iconClass}`}
-            >
-              {layout.label}
-            </span>
-          </div>
-        </header>
-        <div className="flex items-center gap-3">
-          <Avatar className={`size-11 border border-[var(--color-border)] ${layout.medalRing}`}>
-            {entry.user.avatarUrl ? <AvatarImage src={entry.user.avatarUrl} alt="" /> : null}
-            <AvatarFallback>{initials(display)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p className="truncate font-display text-lg tracking-tight">{display}</p>
-            {isMe ? (
-              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
-                Tú
-              </p>
-            ) : null}
-          </div>
+
+      {/* Posición · esquina superior izquierda */}
+      <span
+        className={`relative font-display leading-none tabular ${positionSize} ${layout.accent}`}
+      >
+        {position}
+      </span>
+
+      {/* Medalla + label · esquina superior derecha (absolute) */}
+      <div className="absolute right-4 top-4 flex flex-col items-end gap-1">
+        <Icon className={`size-6 ${layout.iconClass}`} />
+        <span
+          className={`font-mono text-[0.55rem] uppercase tracking-[0.28em] ${layout.iconClass}`}
+        >
+          {layout.label}
+        </span>
+      </div>
+
+      {/* Avatar protagonista · centrado en el cuerpo de la tarjeta */}
+      <div className="relative flex flex-1 flex-col items-center justify-center gap-3 py-3">
+        <Avatar
+          className={`${avatarSize} border-2 border-[var(--color-border-strong)] ${layout.medalRing}`}
+        >
+          {entry.user.avatarUrl ? <AvatarImage src={entry.user.avatarUrl} alt="" /> : null}
+          <AvatarFallback className="font-display text-3xl tracking-tight">
+            {initials(display)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="px-2 text-center">
+          <p className={`truncate font-display tracking-tight ${nameSize}`}>
+            {display}
+          </p>
+          {isMe ? (
+            <p className="mt-0.5 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+              Tú
+            </p>
+          ) : null}
         </div>
-        <div className="mt-auto flex items-end justify-between gap-2 border-t border-dashed border-[var(--color-border)] pt-3">
-          <div>
-            <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-              Puntos
-            </p>
-            <p className={`font-display tabular ${position === 1 ? "text-5xl" : "text-4xl"} tracking-tight ${layout.accent}`}>
-              {entry.totalPoints}
-            </p>
-          </div>
-          <div className="text-right font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-            <p>{entry.exactScoresCount} exactos</p>
-            <p>{entry.knockoutPoints} en KO</p>
-          </div>
+      </div>
+
+      {/* Footer · puntos + sub-stats */}
+      <div className="relative flex items-end justify-between gap-2 border-t border-dashed border-[var(--color-border)] pt-3">
+        <div>
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+            Puntos
+          </p>
+          <p
+            className={`font-display tabular tracking-tight ${pointsSize} ${layout.accent}`}
+          >
+            {entry.totalPoints}
+          </p>
+        </div>
+        <div className="text-right font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+          <p>{entry.exactScoresCount} exactos</p>
+          <p>{entry.knockoutPoints} en KO</p>
         </div>
       </div>
     </Link>
