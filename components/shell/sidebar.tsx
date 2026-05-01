@@ -24,14 +24,14 @@ export function Sidebar({ isAdmin, pendingCount = 0 }: Props) {
         >
           <Image
             src="/logo.png"
-            alt="Mundial 26"
+            alt="Copa Mundial de la FIFA 2026"
             width={40}
             height={40}
             priority
             className="size-10 rounded-md object-cover shadow-[var(--shadow-arena)]"
           />
           <span className="leading-tight">
-            <span className="block font-display text-2xl tracking-tight">Mundial 26</span>
+            <span className="block font-display text-2xl tracking-tight">Copa Mundial de la FIFA 2026</span>
             <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
               La Quiniela
             </span>
