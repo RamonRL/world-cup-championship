@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Trophy } from "lucide-react";
+import Image from "next/image";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
@@ -42,15 +42,20 @@ export default async function LoginPage({
         <div className="relative flex h-full flex-col justify-between p-14">
           <header className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-md bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]">
-                <Trophy className="size-5" />
-              </span>
+              <Image
+                src="/logo.png"
+                alt="Copa Mundial de la FIFA 2026"
+                width={44}
+                height={44}
+                priority
+                className="size-11 rounded-md object-cover shadow-[var(--shadow-arena)]"
+              />
               <div className="leading-tight">
                 <p className="text-[0.7rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
                   {process.env.NEXT_PUBLIC_APP_NAME ?? "World Cup Championship"}
                 </p>
                 <p className="font-display text-xl tracking-tight">
-                  La quiniela del Mundial 26
+                  La quiniela de la Copa Mundial de la FIFA 2026
                 </p>
               </div>
             </div>
@@ -117,10 +122,15 @@ export default async function LoginPage({
         <div className="halftone pointer-events-none absolute right-0 top-0 h-40 w-40 opacity-[0.05]" aria-hidden />
         <div className="w-full max-w-md space-y-10">
           <div className="space-y-3 lg:hidden">
-            <span className="grid size-11 place-items-center rounded-md bg-[var(--color-arena)] text-white">
-              <Trophy className="size-5" />
-            </span>
-            <p className="font-display text-4xl tracking-tight">Mundial 26</p>
+            <Image
+              src="/logo.png"
+              alt="Copa Mundial de la FIFA 2026"
+              width={44}
+              height={44}
+              priority
+              className="size-11 rounded-md object-cover"
+            />
+            <p className="font-display text-4xl tracking-tight">Copa Mundial de la FIFA 2026</p>
           </div>
 
           <div className="space-y-3">
