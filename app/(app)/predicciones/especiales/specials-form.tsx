@@ -286,8 +286,20 @@ function FieldFor({
     case "player": {
       const positionFilter = (special.optionsJson as { positionFilter?: string } | null)
         ?.positionFilter;
-      const candidates = positionFilter
-        ? players.filter((p) => p.position === positionFilter)
+      // The seed script maps wiki position codes (GK, DF, MF, FW) to Spanish
+      // abbreviations (POR, DEF, MED, DEL) before storing them. Normalize here
+      // so that a positionFilter of "GK" still matches players stored as "POR".
+      const POSITION_FILTER_MAP: Record<string, string> = {
+        GK: "POR",
+        DF: "DEF",
+        MF: "MED",
+        FW: "DEL",
+      };
+      const normalizedFilter = positionFilter
+        ? (POSITION_FILTER_MAP[positionFilter.toUpperCase()] ?? positionFilter)
+        : undefined;
+      const candidates = normalizedFilter
+        ? players.filter((p) => p.position === normalizedFilter)
         : players;
       const v = (value.playerId as number | undefined) ?? "";
       return (
