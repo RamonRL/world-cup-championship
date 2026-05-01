@@ -283,9 +283,6 @@ export default async function ParticipantDetailPage({
               <h1 className="mt-1 font-display text-3xl tracking-tight sm:text-4xl">
                 {display}
               </h1>
-              <p className="mt-1 break-all font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-                {user.email}
-              </p>
               <div className="mt-3 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
                 {isMe ? <Badge variant="default">Tú</Badge> : null}
                 {user.role === "admin" ? (
