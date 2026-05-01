@@ -32,7 +32,14 @@ export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
   }, [pathname]);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-surface)_92%,transparent)] backdrop-blur-md lg:hidden">
+    <nav
+      // `fixed bottom-0` ya ancla al borde visible del viewport, por lo que
+      // cuando Chrome móvil oculta su URL bar al hacer scroll-down la nav se
+      // desliza al nuevo borde inferior. Añadimos `pb-[env(safe-area-inset-bottom)]`
+      // para que en iOS la zona de tap quede por encima del home indicator
+      // mientras el fondo arena llega hasta la esquina del cristal.
+      className="fixed inset-x-0 bottom-0 z-30 flex border-t border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-surface)_92%,transparent)] pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+    >
       {primary.map((item) => {
         const active =
           item.href === "/dashboard"

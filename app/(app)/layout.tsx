@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           avatarUrl={me.avatarUrl}
           isAdmin={isAdmin}
         />
-        <main className="flex-1 px-4 pb-24 pt-6 lg:px-8 lg:pb-12">
+        <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+6rem)] pt-6 lg:px-8 lg:pb-12">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
         <MobileBottomNav isAdmin={isAdmin} pendingCount={pendingCount} />
