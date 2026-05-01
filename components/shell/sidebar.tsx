@@ -3,13 +3,30 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV, buildNavItems, type NavItem } from "./nav-data";
 
-type Props = { isAdmin: boolean; myId: string; pendingCount?: number };
+type Props = {
+  isAdmin: boolean;
+  myId: string;
+  pendingCount?: number;
+  defaultCollapsed?: boolean;
+};
 
-export function Sidebar({ isAdmin, myId, pendingCount = 0 }: Props) {
+// Cookie name compartido con el server-side reader del layout para que el
+// estado de la sidebar persista entre navegaciones sin flicker.
+const COLLAPSE_COOKIE = "sidebar_collapsed";
+
+export function Sidebar({
+  isAdmin,
+  myId,
+  pendingCount = 0,
+  defaultCollapsed = false,
+}: Props) {
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const items = buildNavItems(myId);
   const main = items.filter((i) => i.group === "main");
   const preds = items.filter((i) => i.group === "predicciones");
@@ -17,48 +34,114 @@ export function Sidebar({ isAdmin, myId, pendingCount = 0 }: Props) {
   const admin = isAdmin ? ADMIN_NAV : [];
   const activeHref = pickActiveHref(pathname, [...items, ...admin]);
 
+  const toggle = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    document.cookie = `${COLLAPSE_COOKIE}=${next ? "1" : "0"};path=/;max-age=31536000;samesite=lax`;
+  };
+
   return (
-    <aside className="hidden w-64 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
+    <aside
+      className={cn(
+        "hidden shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] transition-[width] duration-200 lg:block",
+        collapsed ? "w-16" : "w-64",
+      )}
+    >
       <div className="sticky top-0 flex h-dvh flex-col">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-3 border-b border-[var(--color-border)] px-5 py-6 transition-colors hover:bg-[var(--color-surface-2)]"
+        {/* Header — logo + título + toggle (en collapsed solo el logo) */}
+        <div
+          className={cn(
+            "flex items-center border-b border-[var(--color-border)]",
+            collapsed ? "flex-col gap-3 px-2 py-4" : "gap-3 px-5 py-6",
+          )}
         >
-          <Image
-            src="/logo.png"
-            alt="Copa Mundial de la FIFA 2026"
-            width={40}
-            height={40}
-            priority
-            className="size-10 rounded-md object-cover shadow-[var(--shadow-arena)]"
+          <Link
+            href="/dashboard"
+            className={cn(
+              "flex items-center transition-colors",
+              collapsed
+                ? "justify-center"
+                : "min-w-0 flex-1 gap-3 hover:opacity-80",
+            )}
+            title={collapsed ? "Inicio" : undefined}
+          >
+            <Image
+              src="/logo.png"
+              alt="Copa Mundial de la FIFA 2026"
+              width={40}
+              height={40}
+              priority
+              className="size-10 rounded-md object-cover shadow-[var(--shadow-arena)]"
+            />
+            {!collapsed ? (
+              <span className="min-w-0 leading-tight">
+                <span className="block font-display text-2xl tracking-tight">
+                  Copa Mundial de la FIFA 2026
+                </span>
+                <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                  La Quiniela
+                </span>
+              </span>
+            ) : null}
+          </Link>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={collapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
+            title={collapsed ? "Expandir" : "Contraer"}
+            className="grid size-8 shrink-0 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted-foreground)] transition hover:border-[var(--color-arena)]/40 hover:text-[var(--color-foreground)]"
+          >
+            {collapsed ? (
+              <ChevronsRight className="size-4" />
+            ) : (
+              <ChevronsLeft className="size-4" />
+            )}
+          </button>
+        </div>
+
+        <nav
+          className={cn(
+            "flex-1 overflow-y-auto",
+            collapsed ? "space-y-2 px-2 py-4" : "space-y-7 px-3 py-5",
+          )}
+        >
+          <NavGroup
+            title="Torneo"
+            items={main}
+            activeHref={activeHref}
+            collapsed={collapsed}
           />
-          <span className="leading-tight">
-            <span className="block font-display text-2xl tracking-tight">Copa Mundial de la FIFA 2026</span>
-            <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-              La Quiniela
-            </span>
-          </span>
-        </Link>
-        <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-5">
-          <NavGroup title="Torneo" items={main} activeHref={activeHref} />
           <NavGroup
             title="Predicciones"
             items={preds}
             activeHref={activeHref}
             badgeFor="/predicciones"
             badgeCount={pendingCount}
+            collapsed={collapsed}
           />
-          <NavGroup title="Comunidad" items={social} activeHref={activeHref} />
+          <NavGroup
+            title="Comunidad"
+            items={social}
+            activeHref={activeHref}
+            collapsed={collapsed}
+          />
           {admin.length > 0 ? (
-            <NavGroup title="Admin" items={admin} activeHref={activeHref} />
+            <NavGroup
+              title="Admin"
+              items={admin}
+              activeHref={activeHref}
+              collapsed={collapsed}
+            />
           ) : null}
         </nav>
-        <div className="border-t border-[var(--color-border)] px-5 py-4">
-          <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-            Canadá · México · USA
-          </p>
-          <p className="font-display text-base tracking-tight">11 jun — 19 jul</p>
-        </div>
+        {!collapsed ? (
+          <div className="border-t border-[var(--color-border)] px-5 py-4">
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              Canadá · México · USA
+            </p>
+            <p className="font-display text-base tracking-tight">11 jun — 19 jul</p>
+          </div>
+        ) : null}
       </div>
     </aside>
   );
@@ -70,21 +153,30 @@ function NavGroup({
   activeHref,
   badgeFor,
   badgeCount = 0,
+  collapsed,
 }: {
   title: string;
   items: NavItem[];
   activeHref: string | null;
   badgeFor?: string;
   badgeCount?: number;
+  collapsed: boolean;
 }) {
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2 px-2 pb-2">
-        <span className="h-px w-3 bg-[var(--color-arena)]" />
-        <p className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-          {title}
-        </p>
-      </div>
+    <div className={collapsed ? "space-y-1" : "space-y-1"}>
+      {collapsed ? (
+        <span
+          aria-hidden
+          className="mx-auto mb-1 block h-px w-6 bg-[var(--color-border)]"
+        />
+      ) : (
+        <div className="flex items-center gap-2 px-2 pb-2">
+          <span className="h-px w-3 bg-[var(--color-arena)]" />
+          <p className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            {title}
+          </p>
+        </div>
+      )}
       {items.map((item) => {
         const active = item.href === activeHref;
         const showBadge = badgeFor === item.href && badgeCount > 0;
@@ -92,28 +184,44 @@ function NavGroup({
           <Link
             key={item.href}
             href={item.href}
+            title={collapsed ? item.label : undefined}
+            aria-label={collapsed ? item.label : undefined}
             className={cn(
-              "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition",
-              active
-                ? "bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] font-semibold text-[var(--color-foreground)]"
-                : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]",
+              "group relative flex items-center transition",
+              collapsed
+                ? cn(
+                    "mx-auto size-11 justify-center rounded-md",
+                    active
+                      ? "bg-[color-mix(in_oklch,var(--color-arena)_12%,transparent)] ring-1 ring-[var(--color-arena)]/40"
+                      : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]",
+                  )
+                : cn(
+                    "gap-3 rounded-md px-3 py-2.5 text-[0.95rem]",
+                    active
+                      ? "bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] font-semibold text-[var(--color-foreground)]"
+                      : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-foreground)]",
+                  ),
             )}
           >
-            {active ? (
+            {active && !collapsed ? (
               <span
                 aria-hidden
-                className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-[var(--color-arena)]"
+                className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r bg-[var(--color-arena)]"
               />
             ) : null}
             <item.icon
-              className={cn(
-                "size-4",
-                active ? "text-[var(--color-arena)]" : "",
-              )}
+              className={cn("size-5", active ? "text-[var(--color-arena)]" : "")}
             />
-            <span>{item.label}</span>
+            {!collapsed ? <span>{item.label}</span> : null}
             {showBadge ? (
-              <span className="ml-auto grid min-w-[1.25rem] place-items-center rounded-full bg-[var(--color-arena)] px-1.5 font-mono text-[0.6rem] font-semibold tabular text-white">
+              <span
+                className={cn(
+                  "grid place-items-center rounded-full bg-[var(--color-arena)] font-mono font-semibold tabular text-white",
+                  collapsed
+                    ? "absolute right-0.5 top-0.5 size-4 px-0 text-[0.5rem]"
+                    : "ml-auto min-w-[1.25rem] px-1.5 text-[0.6rem]",
+                )}
+              >
                 {badgeCount > 99 ? "99+" : badgeCount}
               </span>
             ) : null}

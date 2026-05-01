@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { leagues } from "@/lib/db/schema";
@@ -12,6 +13,8 @@ import { loadDeadlineSummary } from "@/lib/deadlines";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireUser();
   const isAdmin = me.role === "admin";
+  const cookieStore = await cookies();
+  const sidebarCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
   const [{ imminent, pendingCount }, currentView, leagueRows] = await Promise.all([
     loadDeadlineSummary(me.id),
     currentLeagueId(me),
@@ -24,7 +27,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ]);
   return (
     <div className="flex min-h-dvh">
-      <Sidebar isAdmin={isAdmin} myId={me.id} pendingCount={pendingCount} />
+      <Sidebar
+        isAdmin={isAdmin}
+        myId={me.id}
+        pendingCount={pendingCount}
+        defaultCollapsed={sidebarCollapsed}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <DeadlineBanner deadline={imminent} />
         <AppHeader
