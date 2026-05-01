@@ -185,30 +185,9 @@ export default async function PrediccionesHub() {
         </div>
       </Section>
 
-      {/* SECTION 2 — Eliminatoria */}
+      {/* SECTION 2 — Por jornada */}
       <Section
         index="II"
-        title="Eliminatoria"
-        subtitle="Se desbloquea al cerrar la fase de grupos"
-        meta={
-          bracketStatus.state === "open" && bracketStatus.closesAt
-            ? `Cierre · ${formatDateTime(bracketStatus.closesAt, {
-                day: "2-digit",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}`
-            : bracketStatus.state === "waiting"
-              ? "Aún no disponible"
-              : "Cerrado"
-        }
-      >
-        <BracketCard status={bracketStatus.state} closesAt={bracketStatus.closesAt} />
-      </Section>
-
-      {/* SECTION 3 — Por jornada */}
-      <Section
-        index="III"
         title="Jornada a jornada"
         subtitle="Marcador y goleador del partido en una sola jugada"
         meta={
@@ -246,6 +225,27 @@ export default async function PrediccionesHub() {
             )}
           </div>
         )}
+      </Section>
+
+      {/* SECTION 3 — Eliminatoria */}
+      <Section
+        index="III"
+        title="Eliminatoria"
+        subtitle="Se desbloquea al cerrar la fase de grupos"
+        meta={
+          bracketStatus.state === "open" && bracketStatus.closesAt
+            ? `Cierre · ${formatDateTime(bracketStatus.closesAt, {
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`
+            : bracketStatus.state === "waiting"
+              ? "Aún no disponible"
+              : "Cerrado"
+        }
+      >
+        <BracketCard status={bracketStatus.state} closesAt={bracketStatus.closesAt} />
       </Section>
     </div>
   );
