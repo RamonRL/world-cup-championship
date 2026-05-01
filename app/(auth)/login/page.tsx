@@ -66,8 +66,12 @@ export default async function LoginPage({
 
           <div className="space-y-8">
             <div className="flex items-center gap-3">
-              <span className="grid size-2 place-items-center rounded-full bg-[var(--color-arena)]">
-                <span className="absolute size-2 animate-ping rounded-full bg-[var(--color-arena)] opacity-60" />
+              <span className="relative flex size-2">
+                <span
+                  aria-hidden
+                  className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70"
+                />
+                <span className="relative inline-flex size-2 rounded-full bg-[var(--color-arena)]" />
               </span>
               <p className="font-mono text-xs uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
                 T-{daysLeft.toString().padStart(2, "0")} días al kickoff
@@ -120,17 +124,29 @@ export default async function LoginPage({
 
       <main className="relative flex items-center justify-center overflow-hidden px-6 py-12 sm:px-10">
         <div className="halftone pointer-events-none absolute right-0 top-0 h-40 w-40 opacity-[0.05]" aria-hidden />
-        <div className="w-full max-w-md space-y-10">
-          <div className="flex flex-col items-center space-y-3 text-center lg:hidden">
+        <div className="w-full max-w-md space-y-8">
+          <div className="flex flex-col items-center space-y-4 text-center lg:hidden">
             <Image
               src="/logo.png"
               alt="Copa Mundial de la FIFA 2026"
-              width={66}
-              height={66}
+              width={72}
+              height={72}
               priority
-              className="size-[66px] rounded-md object-cover"
+              className="size-[72px] rounded-md object-cover shadow-[var(--shadow-arena)]"
             />
-            <p className="font-display text-4xl tracking-tight">Copa Mundial de la FIFA 2026</p>
+            <p className="font-display text-3xl leading-tight tracking-tight sm:text-4xl">
+              Copa Mundial de la FIFA 2026
+            </p>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] px-3 py-1 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+              <span className="relative flex size-1.5">
+                <span
+                  aria-hidden
+                  className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70"
+                />
+                <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-arena)]" />
+              </span>
+              T-{daysLeft.toString().padStart(2, "0")} días al kickoff
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -153,6 +169,12 @@ export default async function LoginPage({
           ) : null}
 
           <LoginForm next={params.next} />
+
+          {/* Mini-tagline para el móvil — refuerza el "qué es esto" para
+              quien aterriza sin contexto. En desktop ya lo cubre el aside. */}
+          <p className="text-center font-editorial text-xs italic text-[var(--color-muted-foreground)] lg:hidden">
+            48 selecciones · 104 partidos · 6 categorías de predicción.
+          </p>
         </div>
       </main>
     </div>
