@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth/guards";
 import { AppHeader } from "@/components/shell/header";
-import { AdminSidebar } from "./admin-sidebar";
+import { AdminMobileNav, AdminSidebar } from "./admin-sidebar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const me = await requireAdmin();
@@ -14,7 +14,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           avatarUrl={me.avatarUrl}
           isAdmin
         />
-        <main className="flex-1 px-4 pb-24 pt-6 lg:px-8 lg:pb-12">
+        <AdminMobileNav />
+        <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+6rem)] pt-6 lg:px-8 lg:pb-12">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
       </div>

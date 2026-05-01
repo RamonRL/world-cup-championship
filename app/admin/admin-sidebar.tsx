@@ -33,6 +33,12 @@ const items: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },
 ];
 
+function isActive(pathname: string, href: string) {
+  return href === "/admin"
+    ? pathname === href
+    : pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function AdminSidebar() {
   const pathname = usePathname();
   return (
@@ -51,10 +57,7 @@ export function AdminSidebar() {
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
           {items.map((item) => {
-            const active =
-              item.href === "/admin"
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = isActive(pathname, item.href);
             return (
               <Link
                 key={item.href}
@@ -83,5 +86,39 @@ export function AdminSidebar() {
         </div>
       </div>
     </aside>
+  );
+}
+
+/**
+ * Tira horizontal con scroll para móvil — los 11 items del panel admin
+ * caben en una sola línea con scroll-x. Va dentro de la columna interior
+ * del layout, justo bajo el AppHeader.
+ */
+export function AdminMobileNav() {
+  const pathname = usePathname();
+  return (
+    <nav
+      aria-label="Secciones de admin"
+      className="sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-surface)_92%,transparent)] px-4 py-2 backdrop-blur-md lg:hidden"
+    >
+      {items.map((item) => {
+        const active = isActive(pathname, item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition",
+              active
+                ? "border-[var(--color-arena)] bg-[color-mix(in_oklch,var(--color-arena)_12%,transparent)] text-[var(--color-arena)]"
+                : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted-foreground)]",
+            )}
+          >
+            <item.icon className="size-3.5" />
+            <span className="whitespace-nowrap">{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
