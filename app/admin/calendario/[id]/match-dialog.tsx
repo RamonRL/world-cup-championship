@@ -113,13 +113,13 @@ export function MatchDialog({ matchdayId, stage, teams, groups, match, trigger }
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="groupId">Grupo (si fase grupos)</Label>
-              <Select name="groupId" defaultValue={match?.groupId?.toString() ?? "none"}>
+              <Select name="groupId" defaultValue={match?.groupId?.toString()}>
                 <SelectTrigger id="groupId">
                   <SelectValue placeholder="Sin grupo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">
-                    <span className="text-[var(--color-muted-foreground)]">Sin grupo</span>
+                  <SelectItem value="none" textValue="Sin grupo">
+                    Sin grupo
                   </SelectItem>
                   {groups.map((g) => (
                     <SelectItem key={g.id} value={g.id.toString()}>
@@ -135,16 +135,14 @@ export function MatchDialog({ matchdayId, stage, teams, groups, match, trigger }
               <Label htmlFor="homeTeamId">Local</Label>
               <Select
                 name="homeTeamId"
-                defaultValue={match?.homeTeamId?.toString() ?? "none"}
+                defaultValue={match?.homeTeamId?.toString()}
               >
                 <SelectTrigger id="homeTeamId">
                   <SelectValue placeholder="Sin definir" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">
-                    <span className="text-[var(--color-muted-foreground)]">
-                      Sin definir
-                    </span>
+                  <SelectItem value="none" textValue="Sin definir">
+                    Sin definir
                   </SelectItem>
                   {teams.map((t) => (
                     <SelectItem key={t.id} value={t.id.toString()}>
@@ -158,16 +156,14 @@ export function MatchDialog({ matchdayId, stage, teams, groups, match, trigger }
               <Label htmlFor="awayTeamId">Visitante</Label>
               <Select
                 name="awayTeamId"
-                defaultValue={match?.awayTeamId?.toString() ?? "none"}
+                defaultValue={match?.awayTeamId?.toString()}
               >
                 <SelectTrigger id="awayTeamId">
                   <SelectValue placeholder="Sin definir" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">
-                    <span className="text-[var(--color-muted-foreground)]">
-                      Sin definir
-                    </span>
+                  <SelectItem value="none" textValue="Sin definir">
+                    Sin definir
                   </SelectItem>
                   {teams.map((t) => (
                     <SelectItem key={t.id} value={t.id.toString()}>
