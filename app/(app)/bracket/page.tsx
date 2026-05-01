@@ -157,8 +157,9 @@ export default async function BracketPage() {
         <Legend />
       )}
 
-      {/* Desktop tree */}
-      <div className="hidden lg:block">
+      {/* Desktop tree — rompemos el max-w-6xl del layout con márgenes
+          negativos crecientes en xl/2xl para aprovechar la pantalla ancha. */}
+      <div className="hidden lg:block lg:-mx-4 xl:-mx-16 2xl:-mx-40">
         <BracketTree matches={treeMap} myPicks={myPicks} />
       </div>
 
