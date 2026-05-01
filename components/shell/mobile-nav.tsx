@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import {
   Sheet,
@@ -21,6 +22,14 @@ export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
   const pathname = usePathname();
   const primary = NAV_ITEMS.filter((i) => i.primaryMobile);
   const overflow = NAV_ITEMS.filter((i) => !i.primaryMobile).concat(isAdmin ? ADMIN_NAV : []);
+
+  // Sheet de "Más" controlado para poder cerrarlo cuando se navega.
+  // Sin esto, el bottom-sheet se queda abierto por encima de la página
+  // a la que acabas de saltar.
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-surface)_92%,transparent)] backdrop-blur-md lg:hidden">
@@ -58,7 +67,7 @@ export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
           </Link>
         );
       })}
-      <Sheet>
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetTrigger className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
           <Menu className="size-5" />
           <span>Más</span>
@@ -71,7 +80,12 @@ export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
           <Separator className="my-4" />
           <div className="grid grid-cols-2 gap-2">
             {overflow.map((item) => (
-              <OverflowLink key={item.href} item={item} pathname={pathname} />
+              <OverflowLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                onSelect={() => setMoreOpen(false)}
+              />
             ))}
           </div>
         </SheetContent>
@@ -80,11 +94,20 @@ export function MobileBottomNav({ isAdmin, pendingCount = 0 }: Props) {
   );
 }
 
-function OverflowLink({ item, pathname }: { item: NavItem; pathname: string }) {
+function OverflowLink({
+  item,
+  pathname,
+  onSelect,
+}: {
+  item: NavItem;
+  pathname: string;
+  onSelect: () => void;
+}) {
   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
   return (
     <Link
       href={item.href}
+      onClick={onSelect}
       className={cn(
         "flex items-center gap-2.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-sm font-medium transition",
         active
