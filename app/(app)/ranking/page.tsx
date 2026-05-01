@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Crown, ListOrdered } from "lucide-react";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pointsLedger, profiles } from "@/lib/db/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { initials } from "@/lib/utils";
 
 export const metadata = { title: "Ranking" };
@@ -22,7 +23,13 @@ const KNOCKOUT_SOURCES = [
 
 export default async function RankingPage() {
   const me = await requireUser();
-  const allUsers = await db.select().from(profiles);
+  const leagueId = await currentLeagueId(me);
+  // Sólo se rankean los miembros de la liga visible. El ledger se filtra en
+  // memoria contra esos IDs en vez de hacer un join, así reusamos las dos
+  // queries simples y evitamos n+1.
+  const allUsers = leagueId == null
+    ? await db.select().from(profiles)
+    : await db.select().from(profiles).where(eq(profiles.leagueId, leagueId));
   const ledger = await db.select().from(pointsLedger);
 
   const championPredId = await db.execute<{ user_id: string; team_id: number }>(sql`

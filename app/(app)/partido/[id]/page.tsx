@@ -23,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChatThread } from "@/app/(app)/chat/chat-thread";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
 import { formatRemaining } from "@/lib/deadlines";
 import { Edit3, Settings2 } from "lucide-react";
@@ -43,6 +44,7 @@ export default async function MatchDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const me = await requireUser();
+  const leagueId = await currentLeagueId(me);
   const { id } = await params;
   const matchId = Number(id);
   if (!Number.isFinite(matchId)) notFound();
@@ -126,17 +128,38 @@ export default async function MatchDetailPage({
             authorAvatar: profiles.avatarUrl,
           })
           .from(predMatchResult)
-          .leftJoin(profiles, eq(predMatchResult.userId, profiles.id))
-          .where(eq(predMatchResult.matchId, matchId))
+          .innerJoin(profiles, eq(predMatchResult.userId, profiles.id))
+          .where(
+            leagueId == null
+              ? eq(predMatchResult.matchId, matchId)
+              : and(
+                  eq(predMatchResult.matchId, matchId),
+                  eq(profiles.leagueId, leagueId),
+                ),
+          )
       : Promise.resolve([]),
     predsPublic
-      ? db
-          .select({
-            userId: predMatchScorer.userId,
-            playerId: predMatchScorer.playerId,
-          })
-          .from(predMatchScorer)
-          .where(eq(predMatchScorer.matchId, matchId))
+      ? leagueId == null
+        ? db
+            .select({
+              userId: predMatchScorer.userId,
+              playerId: predMatchScorer.playerId,
+            })
+            .from(predMatchScorer)
+            .where(eq(predMatchScorer.matchId, matchId))
+        : db
+            .select({
+              userId: predMatchScorer.userId,
+              playerId: predMatchScorer.playerId,
+            })
+            .from(predMatchScorer)
+            .innerJoin(profiles, eq(predMatchScorer.userId, profiles.id))
+            .where(
+              and(
+                eq(predMatchScorer.matchId, matchId),
+                eq(profiles.leagueId, leagueId),
+              ),
+            )
       : Promise.resolve([]),
   ]);
 

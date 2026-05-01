@@ -57,6 +57,34 @@ export const pointsSource = pgEnum("points_source", [
 
 // ───────────────────────── identidad ─────────────────────────
 
+/**
+ * Una liga es un grupo cerrado de participantes que comparten ranking,
+ * predicciones visibles y chat. La "Liga principal" (id=1, isPublic=true) es
+ * la que ve cualquiera que entre por la URL pública. Las privadas se crean
+ * desde /admin/ligas y se reparten por invite link `/invite/{inviteToken}`.
+ *
+ * Los datos del torneo (selecciones, partidos, jugadores, scoring rules)
+ * son globales — el Mundial es uno solo para todos. Lo que cambia por liga
+ * es quién aparece en cada ranking / cabeza de tabla / chat.
+ */
+export const leagues = pgTable(
+  "leagues",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description"),
+    inviteToken: text("invite_token").notNull().unique(),
+    isPublic: boolean("is_public").notNull().default(false),
+    createdBy: uuid("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("leagues_invite_token_idx").on(t.inviteToken),
+    index("leagues_is_public_idx").on(t.isPublic),
+  ],
+);
+
 export const profiles = pgTable(
   "profiles",
   {
@@ -65,10 +93,19 @@ export const profiles = pgTable(
     nickname: text("nickname"),
     avatarUrl: text("avatar_url"),
     role: userRole("role").notNull().default("user"),
+    // Liga a la que pertenece el participante. Nullable para que el admin
+    // global pueda existir sin liga fija y alternar contexto desde el
+    // header. El resto de perfiles deben tener leagueId.
+    leagueId: integer("league_id").references(() => leagues.id, {
+      onDelete: "set null",
+    }),
     bannedAt: timestamp("banned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("profiles_role_idx").on(t.role)],
+  (t) => [
+    index("profiles_role_idx").on(t.role),
+    index("profiles_league_idx").on(t.leagueId),
+  ],
 );
 
 // ───────────────────────── torneo ─────────────────────────

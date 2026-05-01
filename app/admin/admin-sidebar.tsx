@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Sliders,
   Sparkles,
+  Trophy,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 const items: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin", label: "Dashboard", icon: Gauge },
+  { href: "/admin/ligas", label: "Ligas", icon: Trophy },
   { href: "/admin/usuarios", label: "Usuarios", icon: UserCheck },
   { href: "/admin/selecciones", label: "Selecciones", icon: Users },
   { href: "/admin/jugadores", label: "Jugadores", icon: Goal },

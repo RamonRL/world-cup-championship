@@ -1,15 +1,27 @@
 import Image from "next/image";
 import Link from "next/link";
 import { UserMenu } from "./user-menu";
+import { AdminLeagueSwitcher } from "./admin-league-switcher";
 
 type Props = {
   email: string;
   nickname: string | null;
   avatarUrl: string | null;
   isAdmin: boolean;
+  /** Lista de ligas para el selector de admin. Sólo se renderiza si isAdmin. */
+  leagues?: { id: number; name: string; isPublic: boolean }[];
+  /** Liga "vista" actualmente por el admin. Cookie-backed. */
+  currentLeagueId?: number | null;
 };
 
-export function AppHeader({ email, nickname, avatarUrl, isAdmin }: Props) {
+export function AppHeader({
+  email,
+  nickname,
+  avatarUrl,
+  isAdmin,
+  leagues,
+  currentLeagueId,
+}: Props) {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-bg)_88%,transparent)] px-4 backdrop-blur-md lg:px-8">
       <Link href="/dashboard" className="flex items-center gap-2.5 lg:hidden">
@@ -34,7 +46,15 @@ export function AppHeader({ email, nickname, avatarUrl, isAdmin }: Props) {
           En vivo · Canadá / México / USA
         </span>
       </div>
-      <UserMenu email={email} nickname={nickname} avatarUrl={avatarUrl} isAdmin={isAdmin} />
+      <div className="flex items-center gap-3">
+        {isAdmin && leagues && leagues.length > 0 ? (
+          <AdminLeagueSwitcher
+            leagues={leagues}
+            currentLeagueId={currentLeagueId ?? null}
+          />
+        ) : null}
+        <UserMenu email={email} nickname={nickname} avatarUrl={avatarUrl} isAdmin={isAdmin} />
+      </div>
     </header>
   );
 }

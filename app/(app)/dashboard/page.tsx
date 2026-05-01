@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { loadActivityFeed } from "@/lib/activity-feed";
 
@@ -39,6 +40,7 @@ const MARQUEE_TOKENS = [
 
 export default async function DashboardPage() {
   const me = await requireUser();
+  const leagueId = await currentLeagueId(me);
   const kickoff = new Date(KICKOFF);
   const days = Math.max(0, Math.ceil((kickoff.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
@@ -49,7 +51,10 @@ export default async function DashboardPage() {
     .where(eq(pointsLedger.userId, me.id));
   const myPoints = myPointsRow?.total ?? 0;
 
-  const allUsers = await db.select().from(profiles);
+  // Sólo participantes de la liga visible para el podio y la posición.
+  const allUsers = leagueId == null
+    ? await db.select().from(profiles)
+    : await db.select().from(profiles).where(eq(profiles.leagueId, leagueId));
   const allLedger = await db.select().from(pointsLedger);
   const stats = new Map<
     string,

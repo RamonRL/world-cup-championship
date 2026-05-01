@@ -8,6 +8,13 @@
       "when": 1777485077038,
       "tag": "0000_brave_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777645238947,
+      "tag": "0001_chemical_betty_ross",
+      "breakpoints": true
     }
   ]
 }

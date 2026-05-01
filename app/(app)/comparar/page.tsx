@@ -1,6 +1,6 @@
 import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
-import { asc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   groups,
@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { Lock, Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { formatRemaining } from "@/lib/deadlines";
 import { getBracketStatus } from "@/lib/bracket-state";
@@ -33,12 +34,18 @@ export default async function CompararPage({
   searchParams: Promise<{ vs?: string }>;
 }) {
   const me = await requireUser();
+  const leagueId = await currentLeagueId(me);
   const params = await searchParams;
   const vsId = params.vs ?? null;
+  // Sólo se compara contra participantes de la misma liga visible.
+  const opponentFilter =
+    leagueId == null
+      ? ne(profiles.id, me.id)
+      : and(ne(profiles.id, me.id), eq(profiles.leagueId, leagueId));
   const allUsers = await db
     .select()
     .from(profiles)
-    .where(ne(profiles.id, me.id))
+    .where(opponentFilter)
     .orderBy(asc(profiles.email));
 
   if (allUsers.length === 0) {
