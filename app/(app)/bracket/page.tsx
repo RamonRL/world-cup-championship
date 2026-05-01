@@ -118,7 +118,11 @@ export default async function BracketPage() {
   };
 
   return (
-    <div className="space-y-8">
+    // El bracket usa más anchura que max-w-6xl en xl/2xl. Aplicamos los
+    // mismos márgenes negativos a TODA la página (header, banner,
+    // simulador, podio del campeón) para que el árbol no parezca
+    // sobresalir respecto al resto del contenido.
+    <div className="space-y-8 lg:-mx-4 xl:-mx-16 2xl:-mx-40">
       <PageHeader
         eyebrow="Eliminación directa"
         title="Bracket del torneo"
@@ -157,9 +161,9 @@ export default async function BracketPage() {
         <Legend />
       )}
 
-      {/* Desktop tree — rompemos el max-w-6xl del layout con márgenes
-          negativos crecientes en xl/2xl para aprovechar la pantalla ancha. */}
-      <div className="hidden lg:block lg:-mx-4 xl:-mx-16 2xl:-mx-40">
+      {/* Desktop tree — la anchura extra ya viene del wrapper de la
+          página, así que aquí basta con mostrar/ocultar por breakpoint. */}
+      <div className="hidden lg:block">
         <BracketTree matches={treeMap} myPicks={myPicks} />
       </div>
 
