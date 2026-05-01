@@ -147,7 +147,7 @@ export default async function BracketPage() {
       <PageHeader
         eyebrow="Eliminación directa"
         title="Bracket del torneo"
-        description="32 → 16 → 8 → 4 → 2 → 1. El árbol oficial de FIFA con tus picks resaltados (●) y los aciertos en verde."
+        description="El árbol oficial de eliminación directa: dieciseisavos, octavos, cuartos, semifinales y final. Tus picks aparecen resaltados (●) y los aciertos en verde."
         actions={
           <Link
             href="/predicciones/bracket"
