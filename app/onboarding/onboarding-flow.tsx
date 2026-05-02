@@ -259,7 +259,7 @@ function CreateLeagueForm({ fresh }: { fresh: boolean }) {
         <FloatingField
           name="name"
           label="Nombre de la quiniela"
-          placeholder="Quiniela del Curro 2026"
+          placeholder="QUINIELA MUNDIAL 2026"
           required
           maxLength={60}
           autoComplete="off"
