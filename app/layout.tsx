@@ -1,5 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Big_Shoulders, DM_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
+import {
+  Big_Shoulders,
+  DM_Sans,
+  Instrument_Serif,
+  JetBrains_Mono,
+} from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { NavigationProgress } from "@/components/shell/navigation-progress";
@@ -19,11 +24,16 @@ const bigShoulders = Big_Shoulders({
   display: "swap",
 });
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
+// Instrument Serif: italic editorial moderno, más sobrio que Fraunces.
+// Se renderiza para descripciones y prose ("Lo último de la cancha.",
+// fechas, dichos). Solo viene en weight 400 + italic 400 — suficiente
+// porque todas las usages son italic.
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin", "latin-ext"],
+  weight: "400",
+  style: ["normal", "italic"],
   variable: "--font-editorial-loaded",
   display: "swap",
-  axes: ["SOFT", "WONK"],
 });
 
 const jetbrains = JetBrains_Mono({
@@ -65,7 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${dmSans.variable} ${bigShoulders.variable} ${fraunces.variable} ${jetbrains.variable}`}
+      className={`${dmSans.variable} ${bigShoulders.variable} ${instrumentSerif.variable} ${jetbrains.variable}`}
     >
       <body>
         <ThemeProvider>
