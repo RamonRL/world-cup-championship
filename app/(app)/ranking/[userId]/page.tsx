@@ -22,7 +22,7 @@ import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
 import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { loadActivityFeed } from "@/lib/activity-feed";
-import { formatDateTime, initials } from "@/lib/utils";
+import { formatDate, formatDateTime, initials } from "@/lib/utils";
 
 const KNOCKOUT_SOURCES = [
   "bracket_slot",
@@ -302,7 +302,7 @@ export default async function ParticipantDetailPage({
                   </Badge>
                 ) : null}
                 <span className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-                  Alta {formatDateTime(user.createdAt, { day: "2-digit", month: "short" })}
+                  Alta {formatDate(user.createdAt, { day: "2-digit", month: "short", year: "numeric" })}
                 </span>
               </div>
             </div>
