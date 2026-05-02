@@ -201,6 +201,12 @@
     font-weight: 500;
     font-style: italic;
     letter-spacing: -0.005em;
+    /* Instrument Serif tiene x-height bajo y se ve un pelín pequeña
+       junto a la sans del cuerpo. Con un 1.08em relativo gana volumen
+       sin romper alineaciones. line-height un poco más holgado para
+       compensar la inclinación itálica. */
+    font-size: 1.08em;
+    line-height: 1.45;
   }
   .font-mono {
     font-family: var(--font-mono);
