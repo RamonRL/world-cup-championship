@@ -12,7 +12,7 @@ const dmSans = DM_Sans({
 });
 
 const bigShoulders = Big_Shoulders({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   weight: ["500", "700", "800", "900"],
   variable: "--font-display-loaded",
   display: "swap",

@@ -34,7 +34,7 @@
   --color-card-yellow: var(--color-card-yellow-token);
   --color-card-red: var(--color-card-red-token);
 
-  --font-display: var(--font-display-loaded), "Bebas Neue", Impact, ui-sans-serif, sans-serif;
+  --font-display: var(--font-display-loaded), Impact, "Helvetica Neue", ui-sans-serif, sans-serif;
   --font-editorial: var(--font-editorial-loaded), Georgia, ui-serif, serif;
   --font-sans: var(--font-sans-loaded), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono-loaded), ui-monospace, monospace;

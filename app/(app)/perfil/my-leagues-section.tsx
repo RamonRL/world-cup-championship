@@ -93,13 +93,10 @@ export function MyLeaguesSection({
                   <div className="flex flex-wrap items-center gap-2 text-[0.65rem] text-[var(--color-muted-foreground)]">
                     {m.isPublic ? (
                       <Badge variant="success" className="text-[0.55rem]">
-                        Pública · permanente
+                        Permanente
                       </Badge>
                     ) : (
                       <>
-                        <Badge variant="outline" className="text-[0.55rem]">
-                          Privada
-                        </Badge>
                         {m.joinCode ? (
                           <span className="font-mono uppercase tracking-[0.18em] text-[var(--color-arena)]">
                             {m.joinCode}

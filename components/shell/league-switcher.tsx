@@ -54,15 +54,11 @@ export function LeagueSwitcher({
                 <button type="submit" className="flex w-full items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-left">
                     <span className="font-medium">{m.name}</span>
-                    {m.isPublic ? (
-                      <span className="ml-1.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-                        Pública
-                      </span>
-                    ) : (
+                    {!m.isPublic && m.joinCode ? (
                       <span className="ml-1.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
                         · {m.joinCode}
                       </span>
-                    )}
+                    ) : null}
                   </span>
                   {isActive ? (
                     <Check className="size-3.5 text-[var(--color-arena)]" />
