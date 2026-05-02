@@ -9,7 +9,7 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   matchdays,
@@ -23,9 +23,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { computeMatchdayStates, type Stage } from "@/lib/matchday-state";
 import { getBracketStatus } from "@/lib/bracket-state";
+import { ImportPredictionsBanner } from "@/components/predictions/import-banner";
 
 export const metadata = { title: "Mis predicciones" };
 
@@ -36,6 +38,7 @@ const KICKOFF = new Date(
 export default async function PrediccionesHub() {
   const me = await requireUser();
   const now = new Date();
+  const leagueId = (await currentLeagueId(me))!;
 
   const [
     [{ groupPredCount }],
@@ -50,17 +53,30 @@ export default async function PrediccionesHub() {
     db
       .select({ groupPredCount: sql<number>`count(*)::int` })
       .from(predGroupRanking)
-      .where(eq(predGroupRanking.userId, me.id)),
+      .where(
+        and(
+          eq(predGroupRanking.userId, me.id),
+          eq(predGroupRanking.leagueId, leagueId),
+        ),
+      ),
     db
       .select()
       .from(predTournamentTopScorer)
-      .where(eq(predTournamentTopScorer.userId, me.id))
+      .where(
+        and(
+          eq(predTournamentTopScorer.userId, me.id),
+          eq(predTournamentTopScorer.leagueId, leagueId),
+        ),
+      )
       .limit(1),
     db
       .select()
       .from(specialPredictions)
       .orderBy(asc(specialPredictions.orderIndex)),
-    db.select().from(predSpecial).where(eq(predSpecial.userId, me.id)),
+    db
+      .select()
+      .from(predSpecial)
+      .where(and(eq(predSpecial.userId, me.id), eq(predSpecial.leagueId, leagueId))),
     getBracketStatus(),
     db
       .select()
@@ -80,7 +96,12 @@ export default async function PrediccionesHub() {
       })
       .from(predMatchResult)
       .innerJoin(matches, eq(matches.id, predMatchResult.matchId))
-      .where(eq(predMatchResult.userId, me.id))
+      .where(
+        and(
+          eq(predMatchResult.userId, me.id),
+          eq(predMatchResult.leagueId, leagueId),
+        ),
+      )
       .groupBy(matches.matchdayId),
   ]);
 
@@ -119,6 +140,8 @@ export default async function PrediccionesHub() {
         title="Predicciones"
         description="Tres bloques por momento del torneo: lo que cierras antes del kickoff, lo que se desbloquea con la eliminatoria y lo que respondes ronda a ronda. Tus picks quedan privados hasta cada cierre."
       />
+
+      <ImportPredictionsBanner userId={me.id} activeLeagueId={leagueId} />
 
       {/* SECTION 1 — Pre-torneo */}
       <Section

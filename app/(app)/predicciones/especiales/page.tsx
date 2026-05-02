@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { players, predSpecial, specialPredictions, teams } from "@/lib/db/schema";
 import { Sparkles } from "lucide-react";
@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { ScoringBox } from "@/components/brand/scoring-box";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { SPECIALS_FOOTNOTE, SPECIALS_SCORING } from "@/lib/scoring/copy";
 import { SpecialsForm } from "./specials-form";
 
@@ -13,9 +14,13 @@ export const metadata = { title: "Predicciones especiales" };
 
 export default async function PredictSpecialsPage() {
   const me = await requireUser();
+  const leagueId = (await currentLeagueId(me))!;
   const [specials, mine, allPlayers, allTeams] = await Promise.all([
     db.select().from(specialPredictions).orderBy(asc(specialPredictions.orderIndex)),
-    db.select().from(predSpecial).where(eq(predSpecial.userId, me.id)),
+    db
+      .select()
+      .from(predSpecial)
+      .where(and(eq(predSpecial.userId, me.id), eq(predSpecial.leagueId, leagueId))),
     db.select().from(players).orderBy(asc(players.name)),
     db.select().from(teams).orderBy(asc(teams.name)),
   ]);

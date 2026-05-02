@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { predTournamentTopScorer } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -24,11 +25,20 @@ export async function saveTopScorerPrediction(
   if (KICKOFF.getTime() <= Date.now()) {
     return { ok: false, error: "El torneo ya empezó." };
   }
+  const leagueId = await currentLeagueId(me);
+  if (leagueId == null) {
+    return { ok: false, error: "Sin liga activa." };
+  }
   await db
     .insert(predTournamentTopScorer)
-    .values({ userId: me.id, playerId: parsed.data.playerId, submittedAt: new Date() })
+    .values({
+      userId: me.id,
+      leagueId,
+      playerId: parsed.data.playerId,
+      submittedAt: new Date(),
+    })
     .onConflictDoUpdate({
-      target: [predTournamentTopScorer.userId],
+      target: [predTournamentTopScorer.userId, predTournamentTopScorer.leagueId],
       set: { playerId: parsed.data.playerId, submittedAt: new Date() },
     });
   revalidatePath("/predicciones/goleador-torneo");

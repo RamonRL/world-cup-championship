@@ -1,6 +1,6 @@
 import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches, predBracketSlot, teams } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { Lock, Swords, Trophy } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { getBracketStatus } from "@/lib/bracket-state";
 import { BracketTree, type BracketMatch } from "@/components/bracket/bracket-tree";
@@ -31,6 +32,7 @@ type KoStage = (typeof KO_STAGES)[number];
 
 export default async function BracketPage() {
   const me = await requireUser();
+  const leagueId = (await currentLeagueId(me))!;
   const [koMatches, bracketStatus] = await Promise.all([
     db
       .select()
@@ -52,7 +54,9 @@ export default async function BracketPage() {
   const myPreds = await db
     .select()
     .from(predBracketSlot)
-    .where(eq(predBracketSlot.userId, me.id));
+    .where(
+      and(eq(predBracketSlot.userId, me.id), eq(predBracketSlot.leagueId, leagueId)),
+    );
 
   const myByStage = new Map<string, Set<number>>();
   for (const p of myPreds) {

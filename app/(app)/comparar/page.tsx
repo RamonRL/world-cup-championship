@@ -34,7 +34,7 @@ export default async function CompararPage({
   searchParams: Promise<{ vs?: string }>;
 }) {
   const me = await requireUser();
-  const leagueId = await currentLeagueId(me);
+  const leagueId = (await currentLeagueId(me))!;
   const params = await searchParams;
   const vsId = params.vs ?? null;
   // Oponentes: miembros de la misma liga + admins (globales). Excluido yo.
@@ -75,26 +75,68 @@ export default async function CompararPage({
 
   const [myGroups, opponentGroups, allGroups, allTeams, myChamp, oppChamp, myTop, oppTop] =
     await Promise.all([
-      db.select().from(predGroupRanking).where(eq(predGroupRanking.userId, me.id)),
+      db
+        .select()
+        .from(predGroupRanking)
+        .where(
+          and(
+            eq(predGroupRanking.userId, me.id),
+            eq(predGroupRanking.leagueId, leagueId),
+          ),
+        ),
       opponent
-        ? db.select().from(predGroupRanking).where(eq(predGroupRanking.userId, opponent.id))
+        ? db
+            .select()
+            .from(predGroupRanking)
+            .where(
+              and(
+                eq(predGroupRanking.userId, opponent.id),
+                eq(predGroupRanking.leagueId, leagueId),
+              ),
+            )
         : Promise.resolve([]),
       db.select().from(groups).orderBy(asc(groups.code)),
       db.select().from(teams),
-      db.select().from(predBracketSlot).where(eq(predBracketSlot.userId, me.id)),
+      db
+        .select()
+        .from(predBracketSlot)
+        .where(
+          and(
+            eq(predBracketSlot.userId, me.id),
+            eq(predBracketSlot.leagueId, leagueId),
+          ),
+        ),
       opponent
-        ? db.select().from(predBracketSlot).where(eq(predBracketSlot.userId, opponent.id))
+        ? db
+            .select()
+            .from(predBracketSlot)
+            .where(
+              and(
+                eq(predBracketSlot.userId, opponent.id),
+                eq(predBracketSlot.leagueId, leagueId),
+              ),
+            )
         : Promise.resolve([]),
       db
         .select()
         .from(predTournamentTopScorer)
-        .where(eq(predTournamentTopScorer.userId, me.id))
+        .where(
+          and(
+            eq(predTournamentTopScorer.userId, me.id),
+            eq(predTournamentTopScorer.leagueId, leagueId),
+          ),
+        )
         .limit(1),
       opponent
         ? db
             .select()
             .from(predTournamentTopScorer)
-            .where(eq(predTournamentTopScorer.userId, opponent.id))
+            .where(
+              and(
+                eq(predTournamentTopScorer.userId, opponent.id),
+                eq(predTournamentTopScorer.leagueId, leagueId),
+              ),
+            )
             .limit(1)
         : Promise.resolve([]),
     ]);

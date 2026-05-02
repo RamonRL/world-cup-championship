@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { ScoringBox } from "@/components/brand/scoring-box";
 import { Lock } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { getMatchdayState, type Stage } from "@/lib/matchday-state";
 import { EmptyState } from "@/components/shell/empty-state";
@@ -28,6 +29,7 @@ export default async function PredictMatchdayPage({
   params: Promise<{ matchdayId: string }>;
 }) {
   const me = await requireUser();
+  const leagueId = (await currentLeagueId(me))!;
   const { matchdayId: idParam } = await params;
   const matchdayId = Number(idParam);
   if (!Number.isFinite(matchdayId)) notFound();
@@ -98,6 +100,7 @@ export default async function PredictMatchdayPage({
           .where(
             and(
               eq(predMatchResult.userId, me.id),
+              eq(predMatchResult.leagueId, leagueId),
               inArray(predMatchResult.matchId, matchIds),
             ),
           )
@@ -110,6 +113,7 @@ export default async function PredictMatchdayPage({
           .where(
             and(
               eq(predMatchScorer.userId, me.id),
+              eq(predMatchScorer.leagueId, leagueId),
               inArray(predMatchScorer.matchId, matchIds),
             ),
           )

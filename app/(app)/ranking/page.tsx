@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Award, Crown, ListOrdered, Medal } from "lucide-react";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pointsLedger, profiles } from "@/lib/db/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,18 +23,22 @@ const KNOCKOUT_SOURCES = [
 
 export default async function RankingPage() {
   const me = await requireUser();
-  const leagueId = await currentLeagueId(me);
-  // Miembros de la liga visible + admins (que pertenecen a todas).
+  const leagueId = (await currentLeagueId(me))!;
+  // Miembros de la liga activa.
   const filter = inLeagueFilter(leagueId);
   const allUsers = filter
     ? await db.select().from(profiles).where(filter)
     : await db.select().from(profiles);
-  const ledger = await db.select().from(pointsLedger);
+  const ledger = await db
+    .select()
+    .from(pointsLedger)
+    .where(eq(pointsLedger.leagueId, leagueId));
 
+  // Picks de campeón scoped a esta liga.
   const championPredId = await db.execute<{ user_id: string; team_id: number }>(sql`
     SELECT user_id, predicted_team_id AS team_id
     FROM pred_bracket_slot
-    WHERE stage = 'final' AND slot_position = 0
+    WHERE stage = 'final' AND slot_position = 0 AND league_id = ${leagueId}
   `);
   const championByUser = new Map<string, number | null>();
   for (const row of championPredId as unknown as { user_id: string; team_id: number }[]) {

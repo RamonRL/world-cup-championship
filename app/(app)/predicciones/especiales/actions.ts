@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { predSpecial, specialPredictions } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -55,27 +56,37 @@ export async function saveSpecialPredictions(
     }
   }
 
+  const leagueId = await currentLeagueId(me);
+  if (leagueId == null) {
+    return { ok: false, error: "Sin liga activa." };
+  }
+
   await db.transaction(async (tx) => {
     for (const p of parsed.data.predictions) {
-      // Skip empty submissions (e.g., user cleared answer)
       if (Object.keys(p.valueJson).length === 0) continue;
-      // Filter out null values for fields that aren't set
       if (Object.values(p.valueJson).every((v) => v == null || v === "")) {
         await tx
           .delete(predSpecial)
-          .where(eq(predSpecial.userId, me.id) && eq(predSpecial.specialId, p.specialId));
+          .where(
+            and(
+              eq(predSpecial.userId, me.id),
+              eq(predSpecial.leagueId, leagueId),
+              eq(predSpecial.specialId, p.specialId),
+            ),
+          );
         continue;
       }
       await tx
         .insert(predSpecial)
         .values({
           userId: me.id,
+          leagueId,
           specialId: p.specialId,
           valueJson: p.valueJson as unknown,
           submittedAt: new Date(),
         })
         .onConflictDoUpdate({
-          target: [predSpecial.userId, predSpecial.specialId],
+          target: [predSpecial.userId, predSpecial.leagueId, predSpecial.specialId],
           set: { valueJson: p.valueJson as unknown, submittedAt: new Date() },
         });
     }

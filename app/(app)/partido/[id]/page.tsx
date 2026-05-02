@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChatThread } from "@/app/(app)/chat/chat-thread";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { requireUser } from "@/lib/auth/guards";
-import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
 import { formatRemaining } from "@/lib/deadlines";
 import { Edit3, Settings2 } from "lucide-react";
@@ -64,6 +64,7 @@ export default async function MatchDetailPage({
       .where(
         and(
           eq(predMatchResult.userId, me.id),
+          eq(predMatchResult.leagueId, leagueId!),
           eq(predMatchResult.matchId, matchId),
         ),
       )
@@ -74,6 +75,7 @@ export default async function MatchDetailPage({
       .where(
         and(
           eq(predMatchScorer.userId, me.id),
+          eq(predMatchScorer.leagueId, leagueId!),
           eq(predMatchScorer.matchId, matchId),
         ),
       )
@@ -84,6 +86,7 @@ export default async function MatchDetailPage({
       .where(
         and(
           eq(pointsLedger.userId, me.id),
+          eq(pointsLedger.leagueId, leagueId!),
           sql`${pointsLedger.sourceKey} like ${matchSourceKeyPrefix + "%"}`,
         ),
       ),
@@ -115,43 +118,41 @@ export default async function MatchDetailPage({
       .where(eq(chatMessages.matchId, matchId))
       .orderBy(desc(chatMessages.createdAt))
       .limit(100),
-    predsPublic
-      ? (() => {
-          const leagueFilter = inLeagueFilter(leagueId);
-          const where = leagueFilter
-            ? and(eq(predMatchResult.matchId, matchId), leagueFilter)
-            : eq(predMatchResult.matchId, matchId);
-          return db
-            .select({
-              userId: predMatchResult.userId,
-              homeScore: predMatchResult.homeScore,
-              awayScore: predMatchResult.awayScore,
-              willGoToPens: predMatchResult.willGoToPens,
-              winnerTeamId: predMatchResult.winnerTeamId,
-              authorEmail: profiles.email,
-              authorNickname: profiles.nickname,
-              authorAvatar: profiles.avatarUrl,
-            })
-            .from(predMatchResult)
-            .innerJoin(profiles, eq(predMatchResult.userId, profiles.id))
-            .where(where);
-        })()
+    predsPublic && leagueId != null
+      ? db
+          .select({
+            userId: predMatchResult.userId,
+            homeScore: predMatchResult.homeScore,
+            awayScore: predMatchResult.awayScore,
+            willGoToPens: predMatchResult.willGoToPens,
+            winnerTeamId: predMatchResult.winnerTeamId,
+            authorEmail: profiles.email,
+            authorNickname: profiles.nickname,
+            authorAvatar: profiles.avatarUrl,
+          })
+          .from(predMatchResult)
+          .innerJoin(profiles, eq(predMatchResult.userId, profiles.id))
+          .where(
+            and(
+              eq(predMatchResult.matchId, matchId),
+              eq(predMatchResult.leagueId, leagueId),
+            ),
+          )
       : Promise.resolve([]),
-    predsPublic
-      ? (() => {
-          const leagueFilter = inLeagueFilter(leagueId);
-          const where = leagueFilter
-            ? and(eq(predMatchScorer.matchId, matchId), leagueFilter)
-            : eq(predMatchScorer.matchId, matchId);
-          return db
-            .select({
-              userId: predMatchScorer.userId,
-              playerId: predMatchScorer.playerId,
-            })
-            .from(predMatchScorer)
-            .innerJoin(profiles, eq(predMatchScorer.userId, profiles.id))
-            .where(where);
-        })()
+    predsPublic && leagueId != null
+      ? db
+          .select({
+            userId: predMatchScorer.userId,
+            playerId: predMatchScorer.playerId,
+          })
+          .from(predMatchScorer)
+          .innerJoin(profiles, eq(predMatchScorer.userId, profiles.id))
+          .where(
+            and(
+              eq(predMatchScorer.matchId, matchId),
+              eq(predMatchScorer.leagueId, leagueId),
+            ),
+          )
       : Promise.resolve([]),
   ]);
 

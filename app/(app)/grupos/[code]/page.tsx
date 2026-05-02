@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
 
 export const metadata = { title: "Grupo" };
@@ -28,6 +29,7 @@ export default async function GroupDetailPage({
   params: Promise<{ code: string }>;
 }) {
   const me = await requireUser();
+  const leagueId = (await currentLeagueId(me))!;
   const { code } = await params;
   const upper = code.toUpperCase();
 
@@ -59,12 +61,18 @@ export default async function GroupDetailPage({
   const firstMatchAt = groupMatches[0]?.scheduledAt ?? null;
   const ranksPublic = firstMatchAt ? new Date(firstMatchAt).getTime() <= Date.now() : false;
 
+  // Predicciones de otros: solo miembros de la liga activa.
+  const memberFilter = inLeagueFilter(leagueId);
   const [myPred, otherPreds] = await Promise.all([
     db
       .select()
       .from(predGroupRanking)
       .where(
-        and(eq(predGroupRanking.userId, me.id), eq(predGroupRanking.groupId, group.id)),
+        and(
+          eq(predGroupRanking.userId, me.id),
+          eq(predGroupRanking.leagueId, leagueId),
+          eq(predGroupRanking.groupId, group.id),
+        ),
       )
       .limit(1),
     ranksPublic
@@ -82,7 +90,12 @@ export default async function GroupDetailPage({
           .from(predGroupRanking)
           .leftJoin(profiles, eq(predGroupRanking.userId, profiles.id))
           .where(
-            and(eq(predGroupRanking.groupId, group.id), ne(predGroupRanking.userId, me.id)),
+            and(
+              eq(predGroupRanking.groupId, group.id),
+              eq(predGroupRanking.leagueId, leagueId),
+              ne(predGroupRanking.userId, me.id),
+              memberFilter ?? eq(predGroupRanking.leagueId, leagueId),
+            ),
           )
       : Promise.resolve([]),
   ]);

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { predBracketSlot } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -63,23 +64,36 @@ export async function saveBracketPicks(
     }
   }
 
+  const leagueId = await currentLeagueId(me);
+  if (leagueId == null) {
+    return { ok: false, error: "Sin liga activa." };
+  }
+
   await db.transaction(async (tx) => {
-    // Replace all of this user's bracket picks.
-    await tx.delete(predBracketSlot).where(eq(predBracketSlot.userId, me.id));
+    // Reemplazar las picks de bracket de este usuario en la liga activa.
+    await tx
+      .delete(predBracketSlot)
+      .where(
+        and(
+          eq(predBracketSlot.userId, me.id),
+          eq(predBracketSlot.leagueId, leagueId),
+        ),
+      );
 
     const rows: (typeof predBracketSlot.$inferInsert)[] = [];
     r16.forEach((teamId, i) =>
-      rows.push({ userId: me.id, stage: "r16", slotPosition: i + 1, predictedTeamId: teamId }),
+      rows.push({ userId: me.id, leagueId, stage: "r16", slotPosition: i + 1, predictedTeamId: teamId }),
     );
     qf.forEach((teamId, i) =>
-      rows.push({ userId: me.id, stage: "qf", slotPosition: i + 1, predictedTeamId: teamId }),
+      rows.push({ userId: me.id, leagueId, stage: "qf", slotPosition: i + 1, predictedTeamId: teamId }),
     );
     sf.forEach((teamId, i) =>
-      rows.push({ userId: me.id, stage: "sf", slotPosition: i + 1, predictedTeamId: teamId }),
+      rows.push({ userId: me.id, leagueId, stage: "sf", slotPosition: i + 1, predictedTeamId: teamId }),
     );
     finalists.forEach((teamId, i) =>
       rows.push({
         userId: me.id,
+        leagueId,
         stage: "final",
         slotPosition: i + 1,
         predictedTeamId: teamId,
@@ -88,6 +102,7 @@ export async function saveBracketPicks(
     if (championTeamId) {
       rows.push({
         userId: me.id,
+        leagueId,
         stage: "final",
         slotPosition: 0,
         predictedTeamId: championTeamId,

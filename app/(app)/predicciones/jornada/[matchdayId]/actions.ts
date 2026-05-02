@@ -12,6 +12,7 @@ import {
   predMatchScorer,
 } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { getMatchdayState, type Stage } from "@/lib/matchday-state";
 
 export type FormState = { ok: boolean; error?: string };
@@ -106,12 +107,18 @@ export async function saveMatchdayPredictions(
     }
   }
 
+  const leagueId = await currentLeagueId(me);
+  if (leagueId == null) {
+    return { ok: false, error: "Sin liga activa." };
+  }
+
   await db.transaction(async (tx) => {
     for (const p of parsed.data.predictions) {
       await tx
         .insert(predMatchResult)
         .values({
           userId: me.id,
+          leagueId,
           matchId: p.matchId,
           homeScore: p.homeScore,
           awayScore: p.awayScore,
@@ -120,7 +127,7 @@ export async function saveMatchdayPredictions(
           submittedAt: new Date(),
         })
         .onConflictDoUpdate({
-          target: [predMatchResult.userId, predMatchResult.matchId],
+          target: [predMatchResult.userId, predMatchResult.leagueId, predMatchResult.matchId],
           set: {
             homeScore: p.homeScore,
             awayScore: p.awayScore,
@@ -136,6 +143,7 @@ export async function saveMatchdayPredictions(
           .where(
             and(
               eq(predMatchScorer.userId, me.id),
+              eq(predMatchScorer.leagueId, leagueId),
               eq(predMatchScorer.matchId, p.matchId),
             ),
           );
@@ -144,12 +152,13 @@ export async function saveMatchdayPredictions(
           .insert(predMatchScorer)
           .values({
             userId: me.id,
+            leagueId,
             matchId: p.matchId,
             playerId: p.scorerPlayerId,
             submittedAt: new Date(),
           })
           .onConflictDoUpdate({
-            target: [predMatchScorer.userId, predMatchScorer.matchId],
+            target: [predMatchScorer.userId, predMatchScorer.leagueId, predMatchScorer.matchId],
             set: {
               playerId: p.scorerPlayerId,
               submittedAt: new Date(),

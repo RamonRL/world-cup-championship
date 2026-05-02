@@ -19,9 +19,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const isAdmin = me.role === "admin";
   const cookieStore = await cookies();
   const sidebarCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
-  const [{ imminent, pendingCount }, currentView, memberships] = await Promise.all([
-    loadDeadlineSummary(me.id),
-    currentLeagueId(me),
+  const currentView = await currentLeagueId(me);
+  const [{ imminent, pendingCount }, memberships] = await Promise.all([
+    loadDeadlineSummary(me.id, currentView ?? me.leagueId!),
     getMembershipsForUser(me.id),
   ]);
   return (

@@ -1,4 +1,4 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { predBracketSlot, teams } from "@/lib/db/schema";
 import { Swords } from "lucide-react";
@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { ScoringBox } from "@/components/brand/scoring-box";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { getBracketStatus, getQualifiedTeamIds } from "@/lib/bracket-state";
 import { BRACKET_FOOTNOTE, BRACKET_SCORING } from "@/lib/scoring/copy";
@@ -41,10 +42,16 @@ export default async function PredictBracketPage() {
       ? await db.select().from(teams).where(inArray(teams.id, qualifiedIds))
       : [];
 
+  const leagueId = (await currentLeagueId(me))!;
   const mine = await db
     .select()
     .from(predBracketSlot)
-    .where(eq(predBracketSlot.userId, me.id));
+    .where(
+      and(
+        eq(predBracketSlot.userId, me.id),
+        eq(predBracketSlot.leagueId, leagueId),
+      ),
+    );
 
   // Filter previous picks to only those still in the qualified pool (just in
   // case the standings shifted between submissions).

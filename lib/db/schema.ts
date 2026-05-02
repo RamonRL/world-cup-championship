@@ -265,6 +265,9 @@ export const predGroupRanking = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
+    leagueId: integer("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
     groupId: integer("group_id")
       .notNull()
       .references(() => groups.id, { onDelete: "cascade" }),
@@ -274,7 +277,10 @@ export const predGroupRanking = pgTable(
     pos4TeamId: integer("pos4_team_id").references(() => teams.id, { onDelete: "set null" }),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.groupId] })],
+  (t) => [
+    primaryKey({ columns: [t.userId, t.leagueId, t.groupId] }),
+    index("pred_group_ranking_league_idx").on(t.leagueId),
+  ],
 );
 
 export const predBracketSlot = pgTable(
@@ -283,6 +289,9 @@ export const predBracketSlot = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
+    leagueId: integer("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
     stage: matchStage("stage").notNull(),
     slotPosition: smallint("slot_position").notNull(),
     predictedTeamId: integer("predicted_team_id").references(() => teams.id, {
@@ -290,16 +299,29 @@ export const predBracketSlot = pgTable(
     }),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.stage, t.slotPosition] })],
+  (t) => [
+    primaryKey({ columns: [t.userId, t.leagueId, t.stage, t.slotPosition] }),
+    index("pred_bracket_slot_league_idx").on(t.leagueId),
+  ],
 );
 
-export const predTournamentTopScorer = pgTable("pred_tournament_top_scorer", {
-  userId: uuid("user_id")
-    .primaryKey()
-    .references(() => profiles.id, { onDelete: "cascade" }),
-  playerId: integer("player_id").references(() => players.id, { onDelete: "set null" }),
-  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const predTournamentTopScorer = pgTable(
+  "pred_tournament_top_scorer",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    leagueId: integer("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    playerId: integer("player_id").references(() => players.id, { onDelete: "set null" }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.leagueId] }),
+    index("pred_tournament_top_scorer_league_idx").on(t.leagueId),
+  ],
+);
 
 export const predMatchResult = pgTable(
   "pred_match_result",
@@ -307,6 +329,9 @@ export const predMatchResult = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
+    leagueId: integer("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
     matchId: integer("match_id")
       .notNull()
       .references(() => matches.id, { onDelete: "cascade" }),
@@ -318,7 +343,10 @@ export const predMatchResult = pgTable(
     }),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.matchId] })],
+  (t) => [
+    primaryKey({ columns: [t.userId, t.leagueId, t.matchId] }),
+    index("pred_match_result_league_idx").on(t.leagueId),
+  ],
 );
 
 export const predMatchScorer = pgTable(
@@ -327,6 +355,9 @@ export const predMatchScorer = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
+    leagueId: integer("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
     matchId: integer("match_id")
       .notNull()
       .references(() => matches.id, { onDelete: "cascade" }),
@@ -335,7 +366,10 @@ export const predMatchScorer = pgTable(
       .references(() => players.id, { onDelete: "cascade" }),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.matchId] })],
+  (t) => [
+    primaryKey({ columns: [t.userId, t.leagueId, t.matchId] }),
+    index("pred_match_scorer_league_idx").on(t.leagueId),
+  ],
 );
 
 export const specialPredictions = pgTable("special_predictions", {
@@ -357,13 +391,19 @@ export const predSpecial = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
+    leagueId: integer("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
     specialId: integer("special_id")
       .notNull()
       .references(() => specialPredictions.id, { onDelete: "cascade" }),
     valueJson: jsonb("value_json").notNull(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.specialId] })],
+  (t) => [
+    primaryKey({ columns: [t.userId, t.leagueId, t.specialId] }),
+    index("pred_special_league_idx").on(t.leagueId),
+  ],
 );
 
 // ───────────────────────── puntuación ─────────────────────────
@@ -382,6 +422,9 @@ export const pointsLedger = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
+    leagueId: integer("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
     source: pointsSource("source").notNull(),
     sourceRef: jsonb("source_ref").notNull(),
     sourceKey: text("source_key").notNull(),
@@ -389,8 +432,9 @@ export const pointsLedger = pgTable(
     computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    unique("points_ledger_unique").on(t.userId, t.source, t.sourceKey),
+    unique("points_ledger_unique").on(t.userId, t.leagueId, t.source, t.sourceKey),
     index("points_ledger_user_idx").on(t.userId),
+    index("points_ledger_league_idx").on(t.leagueId),
     index("points_ledger_source_key_idx").on(t.source, t.sourceKey),
   ],
 );

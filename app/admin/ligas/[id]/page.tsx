@@ -58,6 +58,7 @@ export default async function AdminLeagueDetailPage({
         total: sql<number>`coalesce(sum(${pointsLedger.points}), 0)::int`,
       })
       .from(pointsLedger)
+      .where(eq(pointsLedger.leagueId, leagueId))
       .groupBy(pointsLedger.userId),
   ]);
 

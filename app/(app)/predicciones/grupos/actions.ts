@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { predGroupRanking } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -49,12 +50,18 @@ export async function saveGroupPredictions(
     };
   }
 
+  const leagueId = await currentLeagueId(me);
+  if (leagueId == null) {
+    return { ok: false, error: "Sin liga activa." };
+  }
+
   await db.transaction(async (tx) => {
     for (const p of parsed.data.predictions) {
       await tx
         .insert(predGroupRanking)
         .values({
           userId: me.id,
+          leagueId,
           groupId: p.groupId,
           pos1TeamId: p.pos1TeamId ?? null,
           pos2TeamId: p.pos2TeamId ?? null,
@@ -63,7 +70,11 @@ export async function saveGroupPredictions(
           submittedAt: new Date(),
         })
         .onConflictDoUpdate({
-          target: [predGroupRanking.userId, predGroupRanking.groupId],
+          target: [
+            predGroupRanking.userId,
+            predGroupRanking.leagueId,
+            predGroupRanking.groupId,
+          ],
           set: {
             pos1TeamId: p.pos1TeamId ?? null,
             pos2TeamId: p.pos2TeamId ?? null,

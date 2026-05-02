@@ -25,6 +25,7 @@ import { requireUser } from "@/lib/auth/guards";
 import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { loadActivityFeed } from "@/lib/activity-feed";
+import { ImportPredictionsBanner } from "@/components/predictions/import-banner";
 
 const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z";
 
@@ -40,23 +41,26 @@ const MARQUEE_TOKENS = [
 
 export default async function DashboardPage() {
   const me = await requireUser();
-  const leagueId = await currentLeagueId(me);
+  const leagueId = (await currentLeagueId(me))!;
   const kickoff = new Date(KICKOFF);
   const days = Math.max(0, Math.ceil((kickoff.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
-  // Stats
+  // Stats: solo cuentan los puntos que el usuario ha hecho en ESTA liga.
   const [myPointsRow] = await db
     .select({ total: sql<number>`coalesce(sum(${pointsLedger.points}), 0)::int` })
     .from(pointsLedger)
-    .where(eq(pointsLedger.userId, me.id));
+    .where(and(eq(pointsLedger.userId, me.id), eq(pointsLedger.leagueId, leagueId)));
   const myPoints = myPointsRow?.total ?? 0;
 
-  // Participantes de la liga visible + admins (globales).
+  // Participantes de la liga activa.
   const leagueFilter = inLeagueFilter(leagueId);
   const allUsers = leagueFilter
     ? await db.select().from(profiles).where(leagueFilter)
     : await db.select().from(profiles);
-  const allLedger = await db.select().from(pointsLedger);
+  const allLedger = await db
+    .select()
+    .from(pointsLedger)
+    .where(eq(pointsLedger.leagueId, leagueId));
   const stats = new Map<
     string,
     {
@@ -126,6 +130,7 @@ export default async function DashboardPage() {
       and(
         eq(predMatchScorer.matchId, matches.id),
         eq(predMatchScorer.userId, me.id),
+        eq(predMatchScorer.leagueId, leagueId),
       ),
     )
     .where(and(gt(matches.scheduledAt, new Date()), sql`${predMatchScorer.matchId} is null`));
@@ -143,16 +148,26 @@ export default async function DashboardPage() {
     db
       .select({ c: sql<number>`count(*)::int` })
       .from(predGroupRanking)
-      .where(eq(predGroupRanking.userId, me.id)),
+      .where(
+        and(
+          eq(predGroupRanking.userId, me.id),
+          eq(predGroupRanking.leagueId, leagueId),
+        ),
+      ),
     db
       .select()
       .from(predTournamentTopScorer)
-      .where(eq(predTournamentTopScorer.userId, me.id))
+      .where(
+        and(
+          eq(predTournamentTopScorer.userId, me.id),
+          eq(predTournamentTopScorer.leagueId, leagueId),
+        ),
+      )
       .limit(1),
     db
       .select({ c: sql<number>`count(*)::int` })
       .from(predSpecial)
-      .where(eq(predSpecial.userId, me.id)),
+      .where(and(eq(predSpecial.userId, me.id), eq(predSpecial.leagueId, leagueId))),
     db.select({ c: sql<number>`count(*)::int` }).from(specialPredictions),
     db
       .select()
@@ -196,7 +211,7 @@ export default async function DashboardPage() {
         .from(matchScorers)
         .where(eq(matchScorers.matchId, liveMatch.id))
     : [];
-  const activity = await loadActivityFeed(me.id, 8);
+  const activity = await loadActivityFeed(me.id, leagueId, 8);
 
   const liveScorerPlayerIds = liveScorerRows.map((s) => s.playerId);
   const livePlayerRows =
@@ -236,6 +251,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-10">
+      <ImportPredictionsBanner userId={me.id} activeLeagueId={leagueId} />
+
       {/* Marquee strip */}
       <div className="-mx-4 overflow-hidden border-y border-[var(--color-border)] bg-[var(--color-surface)] py-2 lg:-mx-8">
         <div className="marquee flex w-max items-center gap-8 whitespace-nowrap font-display text-xs uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">

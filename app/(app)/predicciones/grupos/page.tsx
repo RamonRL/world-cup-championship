@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, predGroupRanking, teams } from "@/lib/db/schema";
 import { PageHeader } from "@/components/shell/page-header";
@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { ScoringBox } from "@/components/brand/scoring-box";
 import { Users } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { GROUPS_FOOTNOTE, GROUPS_SCORING } from "@/lib/scoring/copy";
 import { GroupRankingForm } from "./group-ranking-form";
@@ -18,10 +19,19 @@ const KICKOFF = new Date(
 
 export default async function PredictGroupsPage() {
   const me = await requireUser();
+  const leagueId = (await currentLeagueId(me))!;
   const [allGroups, allTeams, myPreds] = await Promise.all([
     db.select().from(groups).orderBy(asc(groups.code)),
     db.select().from(teams).orderBy(asc(teams.name)),
-    db.select().from(predGroupRanking).where(eq(predGroupRanking.userId, me.id)),
+    db
+      .select()
+      .from(predGroupRanking)
+      .where(
+        and(
+          eq(predGroupRanking.userId, me.id),
+          eq(predGroupRanking.leagueId, leagueId),
+        ),
+      ),
   ]);
 
   const teamsByGroup = new Map<number, typeof allTeams>();

@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { players, predTournamentTopScorer, teams } from "@/lib/db/schema";
 import { Target } from "lucide-react";
@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { ScoringBox } from "@/components/brand/scoring-box";
 import { requireUser } from "@/lib/auth/guards";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { TOP_SCORER_SCORING } from "@/lib/scoring/copy";
 import { TopScorerForm } from "./top-scorer-form";
@@ -18,13 +19,19 @@ const KICKOFF = new Date(
 
 export default async function PredictTopScorerPage() {
   const me = await requireUser();
+  const leagueId = (await currentLeagueId(me))!;
   const [allPlayers, allTeams, mine] = await Promise.all([
     db.select().from(players).orderBy(asc(players.name)),
     db.select().from(teams),
     db
       .select()
       .from(predTournamentTopScorer)
-      .where(eq(predTournamentTopScorer.userId, me.id))
+      .where(
+        and(
+          eq(predTournamentTopScorer.userId, me.id),
+          eq(predTournamentTopScorer.leagueId, leagueId),
+        ),
+      )
       .limit(1),
   ]);
 

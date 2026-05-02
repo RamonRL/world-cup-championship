@@ -25,7 +25,10 @@ export type PendingDeadline = {
  *   - `pendingCount`: how many distinct pending items there are open right
  *     now across matchdays + per-match scorers (used as the nav badge)
  */
-export async function loadDeadlineSummary(userId: string): Promise<{
+export async function loadDeadlineSummary(
+  userId: string,
+  leagueId: number,
+): Promise<{
   imminent: PendingDeadline | null;
   pendingCount: number;
 }> {
@@ -79,6 +82,7 @@ export async function loadDeadlineSummary(userId: string): Promise<{
             .where(
               and(
                 eq(predMatchResult.userId, userId),
+                eq(predMatchResult.leagueId, leagueId),
                 inArray(matches.matchdayId, openIds),
               ),
             )

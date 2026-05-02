@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   groups,
@@ -39,12 +39,15 @@ const SOURCE_LABEL: Record<string, string> = {
  */
 export async function loadActivityFeed(
   userId: string,
+  leagueId: number,
   limit = 8,
 ): Promise<ActivityEntry[]> {
   const rows = await db
     .select()
     .from(pointsLedger)
-    .where(eq(pointsLedger.userId, userId))
+    .where(
+      and(eq(pointsLedger.userId, userId), eq(pointsLedger.leagueId, leagueId)),
+    )
     .orderBy(desc(pointsLedger.computedAt))
     .limit(limit);
   if (rows.length === 0) return [];

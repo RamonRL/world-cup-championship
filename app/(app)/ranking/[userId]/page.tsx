@@ -12,7 +12,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pointsLedger, profiles } from "@/lib/db/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -150,12 +150,21 @@ export default async function ParticipantDetailPage({
     filter
       ? db.select().from(profiles).where(filter)
       : db.select().from(profiles),
-    db.select().from(pointsLedger),
-    db
-      .select()
-      .from(pointsLedger)
-      .where(eq(pointsLedger.userId, userId))
-      .orderBy(desc(pointsLedger.computedAt)),
+    leagueId != null
+      ? db.select().from(pointsLedger).where(eq(pointsLedger.leagueId, leagueId))
+      : Promise.resolve([] as (typeof pointsLedger.$inferSelect)[]),
+    leagueId != null
+      ? db
+          .select()
+          .from(pointsLedger)
+          .where(
+            and(
+              eq(pointsLedger.userId, userId),
+              eq(pointsLedger.leagueId, leagueId),
+            ),
+          )
+          .orderBy(desc(pointsLedger.computedAt))
+      : Promise.resolve([] as (typeof pointsLedger.$inferSelect)[]),
   ]);
 
   const stats = new Map<
@@ -219,7 +228,8 @@ export default async function ParticipantDetailPage({
     byCategory.set(e.source, existing);
   }
 
-  const recent = await loadActivityFeed(userId, 12);
+  const recent =
+    leagueId != null ? await loadActivityFeed(userId, leagueId, 12) : [];
 
   const display = user.nickname || user.email.split("@")[0];
   const isMe = user.id === me.id;

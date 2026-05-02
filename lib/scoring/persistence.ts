@@ -15,7 +15,6 @@ import {
   specialPredictions,
 } from "@/lib/db/schema";
 import {
-  bracketStageFromMatchStage,
   scoreBracketStage,
   scoreGroupPrediction,
   scoreMatchResultPrediction,
@@ -29,11 +28,10 @@ import {
 } from "./index";
 import { DEFAULT_SCORING_RULES } from "./defaults";
 
-/**
- * Load the active scoring rules from the database, falling back to defaults
- * for any keys missing in the DB (so the engine never crashes if a key was
- * deleted by mistake).
- */
+// Tras la migración multi-liga, todas las predicciones y entradas del ledger
+// están scopeadas por leagueId. Las funciones recompute* iteran cada
+// (user, league) tuple individualmente — la lógica pura de scoring no cambia.
+
 export async function loadScoringRules(): Promise<ScoringRules> {
   const rows = await db.select().from(scoringRules);
   const result = { ...DEFAULT_SCORING_RULES } as ScoringRules;
@@ -50,11 +48,12 @@ export async function loadScoringRules(): Promise<ScoringRules> {
 
 async function replaceLedgerEntries(args: {
   userId: string;
+  leagueId: number;
   source: LedgerEntry["source"];
   sourceKeys: string[];
   fresh: LedgerEntry[];
 }) {
-  const { userId, source, sourceKeys, fresh } = args;
+  const { userId, leagueId, source, sourceKeys, fresh } = args;
   if (sourceKeys.length === 0 && fresh.length === 0) return;
 
   await db.transaction(async (tx) => {
@@ -64,6 +63,7 @@ async function replaceLedgerEntries(args: {
         .where(
           and(
             eq(pointsLedger.userId, userId),
+            eq(pointsLedger.leagueId, leagueId),
             eq(pointsLedger.source, source),
             inArray(pointsLedger.sourceKey, sourceKeys),
           ),
@@ -73,6 +73,7 @@ async function replaceLedgerEntries(args: {
       await tx.insert(pointsLedger).values(
         fresh.map((e) => ({
           userId,
+          leagueId,
           source: e.source,
           sourceKey: e.sourceKey,
           sourceRef: e.sourceRef as unknown,
@@ -95,7 +96,6 @@ export async function recomputeMatchScoringForAllUsers(matchId: number) {
     match.awayScore == null ||
     match.status !== "finished"
   ) {
-    // Not finalized yet — clear any existing score-related entries for this match.
     await clearMatchLedger(matchId);
     return;
   }
@@ -119,7 +119,7 @@ export async function recomputeMatchScoringForAllUsers(matchId: number) {
     })),
   };
 
-  // Result predictions
+  // Result predictions — un row por (user, league, match).
   const resultPreds = await db
     .select()
     .from(predMatchResult)
@@ -144,7 +144,6 @@ export async function recomputeMatchScoringForAllUsers(matchId: number) {
       `match:${matchId}:qualifier`,
       `match:${matchId}:pens_bonus`,
     ];
-    // group all sources into the union; we replace per source.
     for (const source of [
       "match_exact_score",
       "match_outcome",
@@ -154,6 +153,7 @@ export async function recomputeMatchScoringForAllUsers(matchId: number) {
     ] as const) {
       await replaceLedgerEntries({
         userId: p.userId,
+        leagueId: p.leagueId,
         source,
         sourceKeys: sourceKeys.filter((k) => keyBelongsToSource(k, source)),
         fresh: fresh.filter((e) => e.source === source),
@@ -161,7 +161,7 @@ export async function recomputeMatchScoringForAllUsers(matchId: number) {
     }
   }
 
-  // Scorer predictions
+  // Scorer predictions — un row por (user, league, match).
   const scorerPreds = await db
     .select()
     .from(predMatchScorer)
@@ -180,6 +180,7 @@ export async function recomputeMatchScoringForAllUsers(matchId: number) {
       ].filter((k) => keyBelongsToSource(k, source));
       await replaceLedgerEntries({
         userId: p.userId,
+        leagueId: p.leagueId,
         source,
         sourceKeys,
         fresh: fresh.filter((e) => e.source === source),
@@ -210,10 +211,8 @@ function keyBelongsToSource(key: string, source: LedgerEntry["source"]) {
 }
 
 async function clearMatchLedger(matchId: number) {
-  // Every match-scoped ledger entry stores its source_key as
-  // `match:{matchId}:...` (and the per-scorer keys carry the player suffix).
-  // Filter on that prefix so reverting one match doesn't wipe ledger rows
-  // for unrelated matches.
+  // Borra entradas match-scope para ESTE match en TODAS las ligas. Se
+  // regeneran cuando el match vuelva a finalizarse.
   const prefix = `match:${matchId}:`;
   await db
     .delete(pointsLedger)
@@ -265,18 +264,19 @@ export async function recomputeGroupScoringForAllUsers(groupId: number) {
       actual,
       rules,
     });
-    // Allowed sourceKeys for this group: 4 team rows + optional bonus
     const teamKeys = [p.pos1TeamId, p.pos2TeamId, p.pos3TeamId, p.pos4TeamId]
       .filter((x): x is number => x != null)
       .map((tid) => `group:${groupId}:team:${tid}`);
     await replaceLedgerEntries({
       userId: p.userId,
+      leagueId: p.leagueId,
       source: "group_position",
       sourceKeys: teamKeys,
       fresh: fresh.filter((e) => e.source === "group_position"),
     });
     await replaceLedgerEntries({
       userId: p.userId,
+      leagueId: p.leagueId,
       source: "group_top2_swap",
       sourceKeys: [`group:${groupId}:top2_swap`],
       fresh: fresh.filter((e) => e.source === "group_top2_swap"),
@@ -293,11 +293,6 @@ function clampPosition(p: number): 1 | 2 | 3 | 4 {
 
 // ───────────────────────── bracket stages ─────────────────────────
 
-/**
- * Recompute bracket points for a knockout stage. `actualAdvancingTeamIds` is
- * the list of teams that survived that stage (e.g. the 16 winners of R32 for
- * the 'r16' stage award, the 8 winners of R16 for 'qf', etc.).
- */
 export async function recomputeBracketStageForAllUsers(
   stageKey: BracketStageKey,
   actualAdvancingTeamIds: number[],
@@ -308,32 +303,29 @@ export async function recomputeBracketStageForAllUsers(
     .from(predBracketSlot)
     .where(eq(predBracketSlot.stage, mapBracketStageToMatchStage(stageKey)));
 
-  // Group predictions by user
-  const byUser = new Map<string, number[]>();
+  // Agrupar predicciones por (user, league).
+  const byUserLeague = new Map<string, { userId: string; leagueId: number; teams: number[] }>();
   for (const p of preds) {
     if (!p.predictedTeamId) continue;
-    const arr = byUser.get(p.userId) ?? [];
-    arr.push(p.predictedTeamId);
-    byUser.set(p.userId, arr);
+    const key = `${p.userId}:${p.leagueId}`;
+    const existing = byUserLeague.get(key);
+    if (existing) {
+      existing.teams.push(p.predictedTeamId);
+    } else {
+      byUserLeague.set(key, {
+        userId: p.userId,
+        leagueId: p.leagueId,
+        teams: [p.predictedTeamId],
+      });
+    }
   }
 
-  // For champion stage, also include explicit champion prediction (final winner).
   if (stageKey === "champion") {
-    // Champion is encoded as the slot 1 of stage 'final' that won — but for
-    // simplicity we let admin set it via a dedicated stage 'champion' row.
-    const championPreds = await db
-      .select()
-      .from(predBracketSlot)
-      .where(eq(predBracketSlot.stage, "final"));
-    // Champion is *one* slot; we treat user's stage='final' slot 1 as champion.
-    // The model that the user maintains: for 'final' they pick TWO teams (both
-    // finalists, slots 1-2). The champion is recorded separately under
-    // stage='final' slot=0 (a special slot). To keep this concrete, the seed
-    // and admin UI will use slot 0 for champion.
-    void championPreds;
+    // Champion vive como stage='final' slot=0; lo computa el scorer dedicado.
+    void preds;
   }
 
-  for (const [userId, predictedTeamIds] of byUser) {
+  for (const { userId, leagueId, teams: predictedTeamIds } of byUserLeague.values()) {
     const fresh = scoreBracketStage({
       stageKey,
       predictedTeamIds,
@@ -343,6 +335,7 @@ export async function recomputeBracketStageForAllUsers(
     const allKeys = predictedTeamIds.map((tid) => `bracket:${stageKey}:team:${tid}`);
     await replaceLedgerEntries({
       userId,
+      leagueId,
       source: "bracket_slot",
       sourceKeys: allKeys,
       fresh,
@@ -380,6 +373,7 @@ export async function recomputeTopScorerForAllUsers(topScorerRanking: number[]) 
     const sourceKeys = p.playerId ? [`tournament_top_scorer:${p.playerId}`] : [];
     await replaceLedgerEntries({
       userId: p.userId,
+      leagueId: p.leagueId,
       source: "tournament_top_scorer",
       sourceKeys,
       fresh,
@@ -416,6 +410,7 @@ export async function recomputeSpecialPredictionForAllUsers(specialId: number) {
     });
     await replaceLedgerEntries({
       userId: p.userId,
+      leagueId: p.leagueId,
       source: "special_prediction",
       sourceKeys: [`special:${specialId}`],
       fresh,
@@ -446,9 +441,6 @@ export async function recomputeAllScoring() {
   for (const g of finalizedGroups) {
     await recomputeGroupScoringForAllUsers(g.groupId);
   }
-
-  // Bracket stages — left to admin "Operaciones" page (needs canonical advancing
-  // lists per stage). Recompute is triggered explicitly there.
 
   // Resolved specials
   const resolvedSpecials = await db
