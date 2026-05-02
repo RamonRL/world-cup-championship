@@ -174,7 +174,7 @@ function MatchCard({
         <TeamRow team={home} score={m.homeScore} status={m.status} />
         <TeamRow team={away} score={m.awayScore} status={m.status} />
         {m.venue ? (
-          <p className="border-t border-dashed border-[var(--color-border)] pt-2 font-editorial text-xs italic text-[var(--color-muted-foreground)]">
+          <p className="border-t border-dashed border-[var(--color-border)] pt-2 font-editorial !text-xs italic !leading-snug text-[var(--color-muted-foreground)]">
             {m.venue}
           </p>
         ) : null}
