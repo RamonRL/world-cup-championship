@@ -335,4 +335,32 @@
   .bracket-slot-dim {
     opacity: 0.35;
   }
+
+  /* Orbes de fondo del onboarding — drift lento + pulse de tamaño para
+     que la pantalla se sienta "viva" sin distraer. La animación es
+     ligera (only transform/opacity) para que el browser la haga en GPU.
+     Respetamos prefers-reduced-motion: si el usuario lo pide, los orbes
+     quedan estáticos. */
+  @keyframes onboarding-orb-drift {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50%      { transform: translate3d(40px, -30px, 0) scale(1.08); }
+  }
+  @keyframes onboarding-orb-drift-2 {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50%      { transform: translate3d(-30px, 30px, 0) scale(1.05); }
+  }
+  .onboarding-orb {
+    animation: onboarding-orb-drift 14s ease-in-out infinite;
+    will-change: transform;
+  }
+  .onboarding-orb-2 {
+    animation: onboarding-orb-drift-2 18s ease-in-out infinite;
+    will-change: transform;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .onboarding-orb,
+    .onboarding-orb-2 {
+      animation: none;
+    }
+  }
 }
