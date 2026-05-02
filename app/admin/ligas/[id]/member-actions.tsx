@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { ArrowRightLeft, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowRightLeft, LogOut, MoreVertical, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { hardDeleteUser, moveUserToLeague } from "@/lib/league-actions";
+import {
+  hardDeleteUser,
+  moveUserToLeague,
+  removeMembership,
+} from "@/lib/league-actions";
 
 type LeagueLite = { id: number; name: string; isPublic: boolean };
 
@@ -25,6 +29,7 @@ export function MemberActions({
   userEmail,
   isAdmin,
   currentLeagueId,
+  currentLeagueIsPublic,
   otherLeagues,
 }: {
   userId: string;
@@ -32,15 +37,15 @@ export function MemberActions({
   userEmail: string;
   isAdmin: boolean;
   currentLeagueId: number;
+  currentLeagueIsPublic: boolean;
   otherLeagues: LeagueLite[];
 }) {
   const [pending, start] = useTransition();
-  void currentLeagueId;
 
-  function move(targetLeagueId: number, leagueName: string) {
+  function add(targetLeagueId: number, leagueName: string) {
     if (
       !window.confirm(
-        `Vas a mover a "${userLabel}" a "${leagueName}". Sus predicciones y puntos se mantienen, pero pasará a aparecer sólo en el ranking de la liga destino. ¿Seguir?`,
+        `Vas a inscribir a "${userLabel}" en "${leagueName}". Aparecerá también en su ranking y será su liga activa. ¿Seguir?`,
       )
     )
       return;
@@ -50,9 +55,29 @@ export function MemberActions({
       fd.set("leagueId", targetLeagueId.toString());
       try {
         await moveUserToLeague(fd);
-        toast.success(`Movido a "${leagueName}".`);
+        toast.success(`Inscrito en "${leagueName}".`);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "No se pudo mover.");
+        toast.error(err instanceof Error ? err.message : "No se pudo inscribir.");
+      }
+    });
+  }
+
+  function kick() {
+    if (
+      !window.confirm(
+        `Vas a quitar a "${userLabel}" de esta liga. Sus predicciones y puntos NO se borran, pero deja de aparecer en el ranking de aquí. ¿Seguir?`,
+      )
+    )
+      return;
+    start(async () => {
+      const fd = new FormData();
+      fd.set("userId", userId);
+      fd.set("leagueId", currentLeagueId.toString());
+      try {
+        await removeMembership(fd);
+        toast.success(`${userLabel} fuera de esta liga.`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo quitar.");
       }
     });
   }
@@ -110,7 +135,7 @@ export function MemberActions({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <ArrowRightLeft className="mr-2 size-3.5" />
-              Mover a otra liga
+              Inscribir en otra liga
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56">
               {otherLeagues.length === 0 ? (
@@ -121,7 +146,7 @@ export function MemberActions({
                 otherLeagues.map((l) => (
                   <DropdownMenuItem
                     key={l.id}
-                    onClick={() => move(l.id, l.name)}
+                    onClick={() => add(l.id, l.name)}
                   >
                     <span className="flex-1 truncate">{l.name}</span>
                     {l.isPublic ? (
@@ -134,6 +159,12 @@ export function MemberActions({
               )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          {!currentLeagueIsPublic ? (
+            <DropdownMenuItem onClick={kick}>
+              <LogOut className="mr-2 size-3.5" />
+              Quitar de esta liga
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={remove}

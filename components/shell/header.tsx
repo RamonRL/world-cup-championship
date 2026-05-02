@@ -1,17 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { UserMenu } from "./user-menu";
-import { AdminLeagueSwitcher } from "./admin-league-switcher";
+import { LeagueSwitcher } from "./league-switcher";
+import type { Membership } from "@/lib/leagues";
 
 type Props = {
   email: string;
   nickname: string | null;
   avatarUrl: string | null;
   isAdmin: boolean;
-  /** Lista de ligas para el selector de admin. Sólo se renderiza si isAdmin. */
-  leagues?: { id: number; name: string; isPublic: boolean }[];
-  /** Liga "vista" actualmente por el admin. Cookie-backed. */
-  currentLeagueId?: number | null;
+  memberships: Membership[];
+  activeLeagueId: number | null;
 };
 
 export function AppHeader({
@@ -19,8 +18,8 @@ export function AppHeader({
   nickname,
   avatarUrl,
   isAdmin,
-  leagues,
-  currentLeagueId,
+  memberships,
+  activeLeagueId,
 }: Props) {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-bg)_88%,transparent)] px-4 backdrop-blur-md lg:px-8">
@@ -40,19 +39,10 @@ export function AppHeader({
           </span>
         </span>
       </Link>
-      <div className="hidden items-center gap-3 lg:flex">
-        <span className="size-2 rounded-full bg-[var(--color-success)]" />
-        <span className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-          En vivo · Canadá / México / USA
-        </span>
+      <div className="flex flex-1 justify-center">
+        <LeagueSwitcher memberships={memberships} activeLeagueId={activeLeagueId} />
       </div>
       <div className="flex items-center gap-3">
-        {isAdmin && leagues && leagues.length > 0 ? (
-          <AdminLeagueSwitcher
-            leagues={leagues}
-            currentLeagueId={currentLeagueId ?? null}
-          />
-        ) : null}
         <UserMenu email={email} nickname={nickname} avatarUrl={avatarUrl} isAdmin={isAdmin} />
       </div>
     </header>

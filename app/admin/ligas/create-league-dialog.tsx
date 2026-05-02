@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Plus, Save } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,14 +15,20 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createLeague, type LeagueFormState } from "@/lib/league-actions";
+import { createLeague, type CreateLeagueResult } from "@/lib/league-actions";
 
-const initial: LeagueFormState = { ok: false };
+const initial: CreateLeagueResult = { ok: false };
 
 export function CreateLeagueDialog() {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(createLeague, initial);
-  if (state.ok && open) setOpen(false);
+  if (state.ok && state.league && open) {
+    toast.success(
+      `Creada "${state.league.name}". Código: ${state.league.joinCode ?? "—"}`,
+      { duration: 6000 },
+    );
+    setOpen(false);
+  }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -32,10 +39,11 @@ export function CreateLeagueDialog() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nueva liga privada</DialogTitle>
+          <DialogTitle>Nueva quiniela privada</DialogTitle>
           <DialogDescription>
-            Recibirá un invite link único. Reenvíalo a las personas que quieras incluir; al
-            registrarse con ese link quedarán atadas a esta liga.
+            Recibirás un código de 4 dígitos y un invite link, ambos fijos
+            para siempre. Te quedarás inscrito en la quiniela y será tu
+            liga activa.
           </DialogDescription>
         </DialogHeader>
         <form action={action} className="space-y-4">
@@ -47,7 +55,7 @@ export function CreateLeagueDialog() {
               required
               minLength={2}
               maxLength={60}
-              placeholder="Liga de los amigos del trabajo"
+              placeholder="Quiniela del Curro 2026"
             />
           </div>
           <div className="space-y-1.5">
@@ -56,7 +64,7 @@ export function CreateLeagueDialog() {
               id="description"
               name="description"
               maxLength={280}
-              placeholder="Quiniela del Mundial entre el equipo de marketing"
+              placeholder="Una frase para presentarla"
             />
           </div>
           {state.error ? (
@@ -68,7 +76,7 @@ export function CreateLeagueDialog() {
             </Button>
             <Button type="submit" disabled={pending}>
               <Save />
-              {pending ? "Creando…" : "Crear liga"}
+              {pending ? "Creando…" : "Crear quiniela"}
             </Button>
           </DialogFooter>
         </form>

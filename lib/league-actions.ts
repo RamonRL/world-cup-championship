@@ -4,38 +4,64 @@ import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { leagues, profiles } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth/guards";
+import { leagueMemberships, leagues, profiles } from "@/lib/db/schema";
+import { requireAdmin, requireUser } from "@/lib/auth/guards";
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { logAdminAction } from "@/lib/admin/audit";
-import { isAdminEmail } from "@/lib/auth/admins";
-import { ADMIN_LEAGUE_VIEW_COOKIE, PENDING_INVITE_COOKIE } from "@/lib/leagues";
+import {
+  PENDING_INVITE_COOKIE,
+  PRIVATE_LEAGUES_PER_USER_LIMIT,
+  countPrivateMemberships,
+  generateUniqueJoinCode,
+  getPublicLeague,
+  isMemberOf,
+  joinLeagueByInviteToken,
+} from "@/lib/leagues";
 
 export type LeagueFormState = { ok: boolean; error?: string; message?: string };
 
 function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40) || "liga";
+  return (
+    input
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "liga"
+  );
 }
 
+const PRIVATE_LIMIT_ERROR = `Tienes ${PRIVATE_LEAGUES_PER_USER_LIMIT} quinielas privadas. Para unirte a una nueva, abandona alguna desde tu perfil.`;
+
 const createSchema = z.object({
-  name: z.string().trim().min(2).max(60),
+  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(60),
   description: z.string().trim().max(280).optional(),
 });
 
+export type CreateLeagueResult = LeagueFormState & {
+  league?: {
+    id: number;
+    name: string;
+    slug: string;
+    joinCode: string | null;
+    inviteToken: string;
+  };
+};
+
+/**
+ * Crea una nueva liga privada. Abierto a cualquier usuario logueado (no
+ * solo admin). El creador queda automáticamente inscrito y la liga pasa a
+ * ser su liga activa. Se valida el límite de 5 privadas.
+ */
 export async function createLeague(
-  _prev: LeagueFormState,
+  _prev: CreateLeagueResult,
   formData: FormData,
-): Promise<LeagueFormState> {
-  const me = await requireAdmin();
+): Promise<CreateLeagueResult> {
+  const me = await requireUser();
   const parsed = createSchema.safeParse({
     name: formData.get("name") ?? "",
     description: (formData.get("description") as string) || undefined,
@@ -44,15 +70,25 @@ export async function createLeague(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
+  const privateCount = await countPrivateMemberships(me.id);
+  if (privateCount >= PRIVATE_LEAGUES_PER_USER_LIMIT) {
+    return { ok: false, error: PRIVATE_LIMIT_ERROR };
+  }
+
+  // Slug único: si choca, sufijo aleatorio.
   const baseSlug = slugify(parsed.data.name);
-  // Slug uniqueness: if collision, append a 4-char random suffix.
   let slug = baseSlug;
   for (let i = 0; i < 5; i++) {
-    const [clash] = await db.select({ id: leagues.id }).from(leagues).where(eq(leagues.slug, slug)).limit(1);
+    const [clash] = await db
+      .select({ id: leagues.id })
+      .from(leagues)
+      .where(eq(leagues.slug, slug))
+      .limit(1);
     if (!clash) break;
     slug = `${baseSlug}-${randomUUID().slice(0, 4)}`;
   }
   const inviteToken = randomUUID().replace(/-/g, "");
+  const joinCode = await generateUniqueJoinCode();
 
   const [created] = await db
     .insert(leagues)
@@ -61,188 +97,179 @@ export async function createLeague(
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       inviteToken,
+      joinCode,
       isPublic: false,
       createdBy: me.id,
     })
     .returning();
 
-  await logAdminAction({
-    adminId: me.id,
-    action: "league.create",
-    payload: { id: created.id, slug },
-  });
-
-  revalidatePath("/admin/ligas");
-  return { ok: true, message: `Creada "${created.name}".` };
-}
-
-export async function deleteLeague(formData: FormData) {
-  const me = await requireAdmin();
-  const id = Number(formData.get("id"));
-  if (!Number.isFinite(id)) return;
-  // Mantén la liga pública intacta — borrarla rompería la app por completo.
-  const [target] = await db.select().from(leagues).where(eq(leagues.id, id)).limit(1);
-  if (!target || target.isPublic) return;
-  // Mueve los miembros a la liga pública para que no queden huérfanos.
+  // Auto-inscribir al creador y ponerla como activa.
+  await db
+    .insert(leagueMemberships)
+    .values({ userId: me.id, leagueId: created.id })
+    .onConflictDoNothing();
   await db
     .update(profiles)
-    .set({ leagueId: sql`(SELECT id FROM ${leagues} WHERE is_public = true LIMIT 1)` })
-    .where(eq(profiles.leagueId, id));
-  await db.delete(leagues).where(eq(leagues.id, id));
-  await logAdminAction({ adminId: me.id, action: "league.delete", payload: { id } });
-  revalidatePath("/admin/ligas");
-}
+    .set({ leagueId: created.id })
+    .where(eq(profiles.id, me.id));
 
-const rotateSchema = z.object({ id: z.coerce.number().int() });
-
-/**
- * Cambia la liga que el admin está "viendo" (cookie httpOnly). Las queries
- * de ranking, podio, comparar y partidos respetan este id para mostrarle
- * los datos de cualquier liga sin tener que pertenecer a ella.
- *
- * `leagueId` puede ser "default" para borrar la cookie y volver a la liga
- * principal.
- */
-export async function setLeagueView(formData: FormData) {
-  await requireAdmin();
-  const raw = formData.get("leagueId");
-  const id = raw === "default" || raw == null || raw === "" ? null : Number(raw);
-
-  const cookieStore = await cookies();
-  if (id == null || !Number.isFinite(id)) {
-    cookieStore.delete(ADMIN_LEAGUE_VIEW_COOKIE);
-  } else {
-    cookieStore.set(ADMIN_LEAGUE_VIEW_COOKIE, String(id), {
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30,
-      path: "/",
+  if (me.role === "admin") {
+    await logAdminAction({
+      adminId: me.id,
+      action: "league.create",
+      payload: { id: created.id, slug },
     });
   }
-  // Refresca el shell entero — todas las páginas dynamic se reevalúan.
-  revalidatePath("/", "layout");
-}
-
-/**
- * Mueve a un usuario a otra liga. Llamado desde la pestaña de gestión de
- * cada liga (/admin/ligas/[id]). leagueId puede ser un id válido o "none"
- * para dejar al usuario sin liga (volverá a la principal en su próximo
- * `currentLeagueId`).
- */
-export async function moveUserToLeague(formData: FormData) {
-  const me = await requireAdmin();
-  const userId = String(formData.get("userId") ?? "");
-  const leagueRaw = formData.get("leagueId");
-  if (!userId) return;
-  let leagueId: number | null;
-  if (leagueRaw === "none" || leagueRaw === "" || leagueRaw == null) {
-    leagueId = null;
-  } else {
-    const n = Number(leagueRaw);
-    leagueId = Number.isFinite(n) ? n : null;
-  }
-
-  // Lee la liga anterior para revalidar también su path.
-  const [before] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
-  await db.update(profiles).set({ leagueId }).where(eq(profiles.id, userId));
-
-  await logAdminAction({
-    adminId: me.id,
-    action: "league.move_user",
-    payload: { userId, from: before?.leagueId ?? null, to: leagueId },
-  });
 
   revalidatePath("/admin/ligas");
-  if (before?.leagueId != null) revalidatePath(`/admin/ligas/${before.leagueId}`);
-  if (leagueId != null) revalidatePath(`/admin/ligas/${leagueId}`);
-  // Las queries filtradas por liga en /ranking, /dashboard, etc. dependen
-  // del league_id del profile, así que revalidamos el shell entero.
   revalidatePath("/", "layout");
+  return {
+    ok: true,
+    message: `Creada "${created.name}".`,
+    league: {
+      id: created.id,
+      name: created.name,
+      slug: created.slug,
+      joinCode: created.joinCode,
+      inviteToken: created.inviteToken,
+    },
+  };
 }
+
+const codeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{4}$/, "El código debe tener exactamente 4 dígitos."),
+});
 
 /**
- * Hard-delete del usuario. Borra el profile (cascades wipe predicciones,
- * puntos, chat) y borra también el `auth.users` row vía Supabase admin
- * API para invalidar la sesión y forzar un login fresco. Está pensado
- * para limpiar un participante por completo, no para suspender — si lo
- * único que quieres es "echarlo y que vuelva a entrar como nuevo", da
- * lo mismo: tras esto, el siguiente magic-link crea un profile vacío.
+ * Une al usuario actual a una liga buscada por su `joinCode` de 4 dígitos.
+ * Idempotente si ya es miembro. Valida el límite de 5 privadas.
  */
-export async function hardDeleteUser(formData: FormData) {
-  const me = await requireAdmin();
-  const userId = String(formData.get("userId") ?? "");
-  if (!userId) return;
-  // Salvaguarda: el admin no puede borrarse a sí mismo desde aquí.
-  if (userId === me.id) {
-    throw new Error("No puedes eliminar tu propia cuenta de admin desde aquí.");
+export async function joinLeagueByCode(
+  _prev: LeagueFormState,
+  formData: FormData,
+): Promise<LeagueFormState> {
+  const me = await requireUser();
+  const parsed = codeSchema.safeParse({ code: formData.get("code") ?? "" });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Código inválido" };
   }
 
-  const [before] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
-
-  // 1. Borra profile. ON DELETE CASCADE wipea predicciones, puntos, chat,
-  //    match_scorers (si aplica) — toda la huella del usuario.
-  await db.delete(profiles).where(eq(profiles.id, userId));
-
-  // 2. Borra el auth.users row vía Supabase admin API. Esto invalida
-  //    su sesión actual y obliga a re-autenticarse para volver a entrar.
-  try {
-    const supabase = createSupabaseServiceClient();
-    await supabase.auth.admin.deleteUser(userId);
-  } catch (err) {
-    // Si la ruta admin falla (p.ej. el user ya no existe), seguimos —
-    // lo importante era limpiar nuestros datos.
-    console.warn("supabase.auth.admin.deleteUser falló:", err);
+  const [league] = await db
+    .select()
+    .from(leagues)
+    .where(and(eq(leagues.joinCode, parsed.data.code), eq(leagues.isPublic, false)))
+    .limit(1);
+  if (!league) {
+    return { ok: false, error: "No existe ninguna quiniela con ese código." };
   }
 
-  await logAdminAction({
-    adminId: me.id,
-    action: "user.hard_delete",
-    payload: { userId, leagueId: before?.leagueId ?? null },
-  });
+  const already = await isMemberOf(me.id, league.id);
+  if (already) {
+    await db
+      .update(profiles)
+      .set({ leagueId: league.id })
+      .where(eq(profiles.id, me.id));
+    revalidatePath("/", "layout");
+    redirect("/dashboard");
+  }
 
-  revalidatePath("/admin/ligas");
-  if (before?.leagueId != null) revalidatePath(`/admin/ligas/${before.leagueId}`);
-  revalidatePath("/admin/usuarios");
-  revalidatePath("/", "layout");
-}
+  const privateCount = await countPrivateMemberships(me.id);
+  if (privateCount >= PRIVATE_LEAGUES_PER_USER_LIMIT) {
+    return { ok: false, error: PRIVATE_LIMIT_ERROR };
+  }
 
-export async function rotateInviteToken(formData: FormData): Promise<LeagueFormState> {
-  const me = await requireAdmin();
-  const parsed = rotateSchema.safeParse({ id: formData.get("id") });
-  if (!parsed.success) return { ok: false, error: "Datos inválidos" };
-  const fresh = randomUUID().replace(/-/g, "");
   await db
-    .update(leagues)
-    .set({ inviteToken: fresh })
-    .where(and(eq(leagues.id, parsed.data.id), ne(leagues.isPublic, true)));
-  await logAdminAction({
-    adminId: me.id,
-    action: "league.rotate_invite",
-    payload: { id: parsed.data.id },
-  });
-  revalidatePath("/admin/ligas");
-  return { ok: true, message: "Invite link regenerado." };
+    .insert(leagueMemberships)
+    .values({ userId: me.id, leagueId: league.id })
+    .onConflictDoNothing();
+  await db
+    .update(profiles)
+    .set({ leagueId: league.id })
+    .where(eq(profiles.id, me.id));
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
+}
+
+/**
+ * Cambia la liga activa del usuario. Valida que sea miembro.
+ */
+export async function setActiveLeague(formData: FormData) {
+  const me = await requireUser();
+  const id = Number(formData.get("leagueId"));
+  if (!Number.isFinite(id)) return;
+  const member = await isMemberOf(me.id, id);
+  if (!member) return;
+  await db.update(profiles).set({ leagueId: id }).where(eq(profiles.id, me.id));
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Abandona una liga privada. La pública es permanente y nunca se abandona.
+ * Si la liga abandonada era la activa, la activa pasa a la pública.
+ */
+export async function leaveLeague(formData: FormData): Promise<LeagueFormState> {
+  const me = await requireUser();
+  const id = Number(formData.get("leagueId"));
+  if (!Number.isFinite(id)) return { ok: false, error: "Datos inválidos" };
+
+  const [target] = await db
+    .select()
+    .from(leagues)
+    .where(eq(leagues.id, id))
+    .limit(1);
+  if (!target) return { ok: false, error: "Liga no encontrada." };
+  if (target.isPublic) {
+    return {
+      ok: false,
+      error: "La Quiniela Pública es permanente y no se puede abandonar.",
+    };
+  }
+
+  await db
+    .delete(leagueMemberships)
+    .where(
+      and(
+        eq(leagueMemberships.userId, me.id),
+        eq(leagueMemberships.leagueId, id),
+      ),
+    );
+
+  // Si era la activa, mover a la pública.
+  if (me.leagueId === id) {
+    const pub = await getPublicLeague();
+    if (pub) {
+      await db
+        .update(profiles)
+        .set({ leagueId: pub.id })
+        .where(eq(profiles.id, me.id));
+    }
+  }
+  revalidatePath("/", "layout");
+  return { ok: true, message: `Has abandonado "${target.name}".` };
 }
 
 /**
  * Aceptar una invitación. Llamado desde /invite/[token] como server action
- * de un botón. Comportamientos:
- *  - No logueado: setea cookie con el token y redirige a /login. La cookie
- *    la consume getCurrentUser al crear el profile en el primer sight.
- *  - Logueado y admin: la app permite a los admins ver cualquier liga sin
- *    pertenecer a una. Redirige a /admin/ligas.
- *  - Logueado y sin liga (caso raro): asigna y redirige a /dashboard.
- *  - Logueado y misma liga: idempotente, redirige a /dashboard.
- *  - Logueado en otra liga: error explícito (avisa al admin).
+ * de un botón.
+ *  - No logueado: setea cookie con el token y redirige a /login.
+ *  - Logueado, ya miembro: idempotente, set como activa y redirige.
+ *  - Logueado, no miembro: valida límite de 5 privadas, inscribe y set activa.
  */
 export async function acceptInvite(token: string): Promise<{
-  status: "redirected_to_login" | "redirected_home" | "joined" | "already_in_other";
+  status:
+    | "redirected_to_login"
+    | "redirected_home"
+    | "joined"
+    | "private_limit_reached";
   leagueName?: string;
 }> {
   const [league] = await db
     .select()
     .from(leagues)
-    .where(and(eq(leagues.inviteToken, token), ne(leagues.isPublic, true)))
+    .where(and(eq(leagues.inviteToken, token), eq(leagues.isPublic, false)))
     .limit(1);
   if (!league) {
     redirect("/dashboard");
@@ -258,20 +285,15 @@ export async function acceptInvite(token: string): Promise<{
     cookieStore.set(PENDING_INVITE_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 60 * 60 * 24, // 24h para completar el login
+      maxAge: 60 * 60 * 24, // 24h
       path: "/",
     });
     redirect(`/login?next=${encodeURIComponent("/dashboard")}`);
   }
 
-  if (isAdminEmail(user.email)) {
-    redirect("/admin/ligas");
-  }
-
   const [me] = await db.select().from(profiles).where(eq(profiles.id, user.id)).limit(1);
   if (!me) {
-    // Aún no tiene profile (login a medias). Setea cookie y redirige a
-    // la app para que getCurrentUser lo cree con la liga correcta.
+    // Profile aún no creado (callback intermedio). Cookie + redirect.
     const cookieStore = await cookies();
     cookieStore.set(PENDING_INVITE_COOKIE, token, {
       httpOnly: true,
@@ -282,13 +304,145 @@ export async function acceptInvite(token: string): Promise<{
     redirect("/dashboard");
   }
 
-  if (me.leagueId === league.id) {
-    redirect("/dashboard");
+  const result = await joinLeagueByInviteToken(me.id, token);
+  if (!result.ok && result.reason === "private_limit_reached") {
+    return { status: "private_limit_reached", leagueName: result.leagueName };
   }
-  if (me.leagueId != null) {
-    return { status: "already_in_other", leagueName: league.name };
-  }
-  // Sin liga → asignar.
-  await db.update(profiles).set({ leagueId: league.id }).where(eq(profiles.id, me.id));
+  revalidatePath("/", "layout");
   redirect("/dashboard");
+}
+
+// ─────────────────── ADMIN ───────────────────
+
+export async function deleteLeague(formData: FormData) {
+  const me = await requireAdmin();
+  const id = Number(formData.get("id"));
+  if (!Number.isFinite(id)) return;
+  const [target] = await db.select().from(leagues).where(eq(leagues.id, id)).limit(1);
+  if (!target || target.isPublic) return;
+
+  // Mueve `profiles.leagueId` huérfanos a la pública para que no queden con
+  // una liga activa que ya no existe. La FK con onDelete:set null también
+  // cubre, pero forzamos pública para mantener invariante "todo profile
+  // tiene una liga activa válida".
+  const pub = await getPublicLeague();
+  if (pub) {
+    await db
+      .update(profiles)
+      .set({ leagueId: pub.id })
+      .where(eq(profiles.leagueId, id));
+  }
+
+  // El cascade de la FK de league_memberships limpia las membresías.
+  await db.delete(leagues).where(eq(leagues.id, id));
+  await logAdminAction({ adminId: me.id, action: "league.delete", payload: { id } });
+  revalidatePath("/admin/ligas");
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Inscribe a un usuario a una liga (admin). Usado desde /admin/ligas/[id].
+ * Idempotente. La liga pasa a ser activa para ese usuario.
+ */
+export async function moveUserToLeague(formData: FormData) {
+  const me = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const leagueRaw = formData.get("leagueId");
+  if (!userId) return;
+  const n = Number(leagueRaw);
+  const leagueId = Number.isFinite(n) ? n : null;
+  if (leagueId == null) return;
+
+  await db
+    .insert(leagueMemberships)
+    .values({ userId, leagueId })
+    .onConflictDoNothing();
+  await db.update(profiles).set({ leagueId }).where(eq(profiles.id, userId));
+
+  await logAdminAction({
+    adminId: me.id,
+    action: "league.add_member",
+    payload: { userId, leagueId },
+  });
+
+  revalidatePath("/admin/ligas");
+  revalidatePath(`/admin/ligas/${leagueId}`);
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Quita una membership concreta. La liga activa del usuario pasa a la
+ * pública si era la que se acaba de quitar.
+ */
+export async function removeMembership(formData: FormData) {
+  const me = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const leagueId = Number(formData.get("leagueId"));
+  if (!userId || !Number.isFinite(leagueId)) return;
+  const [target] = await db.select().from(leagues).where(eq(leagues.id, leagueId)).limit(1);
+  if (!target || target.isPublic) return; // no se quita la pública
+
+  await db
+    .delete(leagueMemberships)
+    .where(
+      and(
+        eq(leagueMemberships.userId, userId),
+        eq(leagueMemberships.leagueId, leagueId),
+      ),
+    );
+
+  // Si era su activa, fallback a la pública.
+  const pub = await getPublicLeague();
+  if (pub) {
+    await db
+      .update(profiles)
+      .set({ leagueId: pub.id })
+      .where(and(eq(profiles.id, userId), eq(profiles.leagueId, leagueId)));
+  }
+
+  await logAdminAction({
+    adminId: me.id,
+    action: "league.remove_member",
+    payload: { userId, leagueId },
+  });
+
+  revalidatePath(`/admin/ligas/${leagueId}`);
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Hard-delete del usuario. Borra el profile (cascades wipe predicciones,
+ * puntos, chat) y borra también el `auth.users` row vía Supabase admin API
+ * para invalidar la sesión. Sin cambios funcionales con respecto a la
+ * versión single-league.
+ */
+export async function hardDeleteUser(formData: FormData) {
+  const me = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
+  if (userId === me.id) {
+    throw new Error("No puedes eliminar tu propia cuenta de admin desde aquí.");
+  }
+
+  const [before] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
+
+  await db.delete(profiles).where(eq(profiles.id, userId));
+
+  try {
+    const supabase = createSupabaseServiceClient();
+    await supabase.auth.admin.deleteUser(userId);
+  } catch (err) {
+    console.warn("supabase.auth.admin.deleteUser falló:", err);
+  }
+
+  await logAdminAction({
+    adminId: me.id,
+    action: "user.hard_delete",
+    payload: { userId, leagueId: before?.leagueId ?? null },
+  });
+
+  revalidatePath("/admin/ligas");
+  if (before?.leagueId != null) revalidatePath(`/admin/ligas/${before.leagueId}`);
+  revalidatePath("/admin/usuarios");
+  revalidatePath("/", "layout");
 }

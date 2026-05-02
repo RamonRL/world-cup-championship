@@ -1,9 +1,7 @@
 import { cookies } from "next/headers";
-import { asc } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { leagues } from "@/lib/db/schema";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/guards";
-import { currentLeagueId } from "@/lib/leagues";
+import { currentLeagueId, getMembershipsForUser } from "@/lib/leagues";
 import { AppHeader } from "@/components/shell/header";
 import { Sidebar } from "@/components/shell/sidebar";
 import { MobileBottomNav } from "@/components/shell/mobile-nav";
@@ -12,18 +10,19 @@ import { loadDeadlineSummary } from "@/lib/deadlines";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireUser();
+  // Onboarding guard: si el usuario aún no tiene liga activa (cuenta nueva
+  // sin invite cookie consumida), lo mandamos al onboarding antes de
+  // cualquier renderizado del shell. /onboarding vive fuera de este layout.
+  if (me.leagueId == null) {
+    redirect("/onboarding");
+  }
   const isAdmin = me.role === "admin";
   const cookieStore = await cookies();
   const sidebarCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
-  const [{ imminent, pendingCount }, currentView, leagueRows] = await Promise.all([
+  const [{ imminent, pendingCount }, currentView, memberships] = await Promise.all([
     loadDeadlineSummary(me.id),
     currentLeagueId(me),
-    isAdmin
-      ? db
-          .select({ id: leagues.id, name: leagues.name, isPublic: leagues.isPublic })
-          .from(leagues)
-          .orderBy(asc(leagues.isPublic), asc(leagues.name))
-      : Promise.resolve([]),
+    getMembershipsForUser(me.id),
   ]);
   return (
     <div className="flex min-h-dvh">
@@ -40,8 +39,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           nickname={me.nickname}
           avatarUrl={me.avatarUrl}
           isAdmin={isAdmin}
-          leagues={leagueRows}
-          currentLeagueId={currentView}
+          memberships={memberships}
+          activeLeagueId={currentView}
         />
         <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+6rem)] pt-6 lg:px-8 lg:pb-12">
           <div className="mx-auto w-full max-w-6xl">{children}</div>

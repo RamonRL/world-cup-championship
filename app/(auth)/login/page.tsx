@@ -158,7 +158,7 @@ export default async function LoginPage({
             </div>
             <h2 className="font-display text-5xl tracking-tight">Entra a la quiniela</h2>
             <p className="font-editorial text-base italic text-[var(--color-muted-foreground)]">
-              Sin contraseñas. Magic link al email o login con Google y dentro.
+              Inicia sesión con tu cuenta de Google y empieza a predecir.
             </p>
           </div>
 

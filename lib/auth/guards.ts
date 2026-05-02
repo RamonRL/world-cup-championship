@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { leagues, profiles } from "@/lib/db/schema";
+import { leagueMemberships, leagues, profiles } from "@/lib/db/schema";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PENDING_INVITE_COOKIE, getPublicLeague } from "@/lib/leagues";
 import { isAdminEmail } from "./admins";
@@ -37,18 +37,35 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const [existing] = await db.select().from(profiles).where(eq(profiles.id, user.id)).limit(1);
 
   if (!existing) {
-    // Primer login. Resuelve liga: invite token > liga principal. Admin
-    // queda sin liga (puede alternar contexto desde el header).
-    const leagueId = expectedRole === "admin" ? null : await resolvePendingLeague();
+    // Primer login. Liga activa:
+    //   - Si hay invite cookie válida → liga del invite (skipea onboarding).
+    //   - Si no → NULL → el guard del layout redirige a /onboarding para
+    //     que el usuario elija pública o privada.
+    // Memberships: la pública es IMPLÍCITA y PERMANENTE — la insertamos
+    // siempre. Si llega por invite, también la privada del invite.
+    const inviteLeagueId = await resolveInviteLeague();
+    const pub = await getPublicLeague();
+    const activeLeagueId = inviteLeagueId ?? null;
+
     const [created] = await db
       .insert(profiles)
       .values({
         id: user.id,
         email: user.email,
         role: expectedRole,
-        leagueId,
+        leagueId: activeLeagueId,
       })
       .returning();
+
+    const memberships: { userId: string; leagueId: number }[] = [];
+    if (pub) memberships.push({ userId: user.id, leagueId: pub.id });
+    if (inviteLeagueId && inviteLeagueId !== pub?.id) {
+      memberships.push({ userId: user.id, leagueId: inviteLeagueId });
+    }
+    if (memberships.length > 0) {
+      await db.insert(leagueMemberships).values(memberships).onConflictDoNothing();
+    }
+
     await consumeInviteCookie();
     return mapProfile(created);
   }
@@ -67,24 +84,21 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 }
 
 /**
- * Lee la cookie `pending_league_token` (si existe) y devuelve el id de la
- * liga correspondiente, o el de la liga principal si la cookie es vacía /
- * inválida. NO borra la cookie — eso lo hace `consumeInviteCookie` tras
- * insertar el perfil con éxito.
+ * Lee la cookie `pending_league_token` y devuelve el id de la liga privada
+ * correspondiente, o null si no hay cookie o el token no resuelve. NO borra
+ * la cookie — eso lo hace `consumeInviteCookie` tras insertar el perfil
+ * con éxito.
  */
-async function resolvePendingLeague(): Promise<number | null> {
+async function resolveInviteLeague(): Promise<number | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(PENDING_INVITE_COOKIE)?.value;
-  if (token) {
-    const [row] = await db
-      .select({ id: leagues.id })
-      .from(leagues)
-      .where(and(eq(leagues.inviteToken, token), ne(leagues.isPublic, true)))
-      .limit(1);
-    if (row) return row.id;
-  }
-  const pub = await getPublicLeague();
-  return pub?.id ?? null;
+  if (!token) return null;
+  const [row] = await db
+    .select({ id: leagues.id })
+    .from(leagues)
+    .where(and(eq(leagues.inviteToken, token), ne(leagues.isPublic, true)))
+    .limit(1);
+  return row?.id ?? null;
 }
 
 async function consumeInviteCookie() {

@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Check, Copy, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { rotateInviteToken } from "@/lib/league-actions";
 
-export function InviteLinkCopy({ leagueId, token }: { leagueId: number; token: string }) {
+export function InviteLinkCopy({ token }: { token: string }) {
   const [copied, setCopied] = useState(false);
-  const [rotating, startRotate] = useTransition();
 
   const url =
     typeof window === "undefined"
@@ -23,22 +21,6 @@ export function InviteLinkCopy({ leagueId, token }: { leagueId: number; token: s
         setTimeout(() => setCopied(false), 1500);
       })
       .catch(() => toast.error("No se pudo copiar."));
-  }
-
-  function rotate() {
-    if (
-      !window.confirm(
-        "Vas a generar un invite link nuevo. Los enlaces antiguos dejarán de funcionar. ¿Seguir?",
-      )
-    )
-      return;
-    startRotate(async () => {
-      const fd = new FormData();
-      fd.set("id", leagueId.toString());
-      const res = await rotateInviteToken(fd);
-      if (res.ok) toast.success(res.message ?? "Token regenerado.");
-      else toast.error(res.error ?? "Error al regenerar.");
-    });
   }
 
   return (
@@ -58,17 +40,6 @@ export function InviteLinkCopy({ leagueId, token }: { leagueId: number; token: s
           aria-label="Copiar enlace"
         >
           {copied ? <Check className="size-3.5 text-[var(--color-success)]" /> : <Copy className="size-3.5" />}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={rotate}
-          disabled={rotating}
-          aria-label="Regenerar token"
-          title="Regenerar token (los enlaces antiguos dejarán de funcionar)"
-        >
-          <RefreshCw className={`size-3.5 ${rotating ? "animate-spin" : ""}`} />
         </Button>
       </div>
     </div>

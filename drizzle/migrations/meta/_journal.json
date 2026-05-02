@@ -15,6 +15,13 @@
       "when": 1777645238947,
       "tag": "0001_chemical_betty_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777744358341,
+      "tag": "0002_stormy_smiling_tiger",
+      "breakpoints": true
     }
   ]
 }

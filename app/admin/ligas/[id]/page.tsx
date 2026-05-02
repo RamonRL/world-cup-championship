@@ -78,13 +78,12 @@ export default async function AdminLeagueDetailPage({
         description={league.description ?? undefined}
       />
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Miembros" value={members.length} accent />
-        <StatTile
-          label="Slug"
-          value={league.slug}
-          textValue
-        />
+        {league.joinCode ? (
+          <StatTile label="Código" value={league.joinCode} textValue />
+        ) : null}
+        <StatTile label="Slug" value={league.slug} textValue />
         <StatTile
           label="Creada"
           value={formatDateTime(league.createdAt, { day: "2-digit", month: "short", year: "numeric" })}
@@ -97,7 +96,7 @@ export default async function AdminLeagueDetailPage({
           <header className="flex items-center gap-2 pb-3 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
             Invite link
           </header>
-          <InviteLinkCopy leagueId={league.id} token={league.inviteToken} />
+          <InviteLinkCopy token={league.inviteToken} />
         </div>
       ) : null}
 
@@ -166,6 +165,7 @@ export default async function AdminLeagueDetailPage({
                         userEmail={m.email}
                         isAdmin={m.role === "admin"}
                         currentLeagueId={leagueId}
+                        currentLeagueIsPublic={league.isPublic}
                         otherLeagues={otherLeagues}
                       />
                     </TableCell>

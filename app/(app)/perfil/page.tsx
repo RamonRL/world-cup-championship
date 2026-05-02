@@ -4,14 +4,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireUser } from "@/lib/auth/guards";
+import {
+  PRIVATE_LEAGUES_PER_USER_LIMIT,
+  getMembershipsForUser,
+} from "@/lib/leagues";
 import { initials } from "@/lib/utils";
 import { ProfileForm } from "./profile-form";
+import { MyLeaguesSection } from "./my-leagues-section";
 
 export const metadata = { title: "Mi perfil" };
 
 export default async function ProfilePage() {
   const me = await requireUser();
   const display = me.nickname || me.email.split("@")[0];
+  const memberships = await getMembershipsForUser(me.id);
+  const privateCount = memberships.filter((m) => !m.isPublic).length;
 
   return (
     <div className="space-y-6">
@@ -58,6 +65,13 @@ export default async function ProfilePage() {
         email={me.email}
         nickname={me.nickname}
         avatarUrl={me.avatarUrl}
+      />
+
+      <MyLeaguesSection
+        memberships={memberships}
+        activeLeagueId={me.leagueId}
+        privateCount={privateCount}
+        privateLimit={PRIVATE_LEAGUES_PER_USER_LIMIT}
       />
     </div>
   );

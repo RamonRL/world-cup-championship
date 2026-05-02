@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { leagues, profiles } from "@/lib/db/schema";
+import { leagueMemberships, leagues } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { acceptInvite } from "@/lib/league-actions";
 import { ArrowRight, Trophy, Users } from "lucide-react";
@@ -19,26 +19,24 @@ export default async function InviteLandingPage({
   const [league] = await db
     .select()
     .from(leagues)
-    .where(and(eq(leagues.inviteToken, token), ne(leagues.isPublic, true)))
+    .where(and(eq(leagues.inviteToken, token), eq(leagues.isPublic, false)))
     .limit(1);
   if (!league) notFound();
 
   const [memberCount] = await db
     .select({ count: sql<number>`count(*)::int` })
-    .from(profiles)
-    .where(eq(profiles.leagueId, league.id));
+    .from(leagueMemberships)
+    .where(eq(leagueMemberships.leagueId, league.id));
 
-  // Server action wrapper: aceptInvite hace su propio redirect si todo va
-  // bien. Si devuelve estado "already_in_other" es porque el usuario ya
-  // está en otra liga; mostramos el error vía un parámetro.
+  // Server action wrapper. acceptInvite redirige por sí solo en los casos
+  // OK; si devuelve `private_limit_reached` lanzamos un error con el copy
+  // adecuado para que la error boundary lo recoja.
   async function accept() {
     "use server";
     const res = await acceptInvite(token);
-    // Si llegamos aquí es porque acceptInvite no hizo redirect → caso de
-    // error. Lanzamos un error para que el error boundary lo recoja.
-    if (res.status === "already_in_other") {
+    if (res.status === "private_limit_reached") {
       throw new Error(
-        `Ya perteneces a otra liga. Pídele al admin que te mueva si quieres unirte a "${res.leagueName}".`,
+        `Ya tienes 5 quinielas privadas. Para unirte a "${res.leagueName}" abandona alguna desde tu perfil.`,
       );
     }
   }
@@ -52,12 +50,17 @@ export default async function InviteLandingPage({
             <Trophy className="size-5" />
           </span>
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
-            Invitación a una liga privada
+            Invitación a una quiniela privada
           </p>
           <h1 className="font-display text-4xl tracking-tight">{league.name}</h1>
           {league.description ? (
             <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
               {league.description}
+            </p>
+          ) : null}
+          {league.joinCode ? (
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              Código · <span className="text-[var(--color-arena)]">{league.joinCode}</span>
             </p>
           ) : null}
         </header>

@@ -14,6 +14,7 @@ import {
   timestamp,
   unique,
   uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 
 export const userRole = pgEnum("user_role", ["user", "admin"]);
@@ -75,6 +76,10 @@ export const leagues = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     inviteToken: text("invite_token").notNull().unique(),
+    // Código corto de 4 dígitos (0000-9999) para que la gente pueda unirse
+    // sin compartir el invite link entero. NULL en la liga pública (no se une
+    // por código). Se genera al crear la liga y es inmutable.
+    joinCode: varchar("join_code", { length: 4 }).unique(),
     isPublic: boolean("is_public").notNull().default(false),
     createdBy: uuid("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -93,9 +98,9 @@ export const profiles = pgTable(
     nickname: text("nickname"),
     avatarUrl: text("avatar_url"),
     role: userRole("role").notNull().default("user"),
-    // Liga a la que pertenece el participante. Nullable para que el admin
-    // global pueda existir sin liga fija y alternar contexto desde el
-    // header. El resto de perfiles deben tener leagueId.
+    // Liga ACTIVA del participante (la que está viendo ahora mismo). Debe
+    // coincidir con una fila de league_memberships salvo durante el
+    // onboarding (instante entre creación del profile y elección de liga).
     leagueId: integer("league_id").references(() => leagues.id, {
       onDelete: "set null",
     }),
@@ -105,6 +110,29 @@ export const profiles = pgTable(
   (t) => [
     index("profiles_role_idx").on(t.role),
     index("profiles_league_idx").on(t.leagueId),
+  ],
+);
+
+/**
+ * Tabla puente N↔N — un usuario puede pertenecer a la pública (siempre) +
+ * hasta 5 ligas privadas. Reemplaza la semántica antigua de "una liga por
+ * profile" sin tocar profiles.leagueId, que ahora indica solo cuál es la
+ * liga ACTIVA del usuario.
+ */
+export const leagueMemberships = pgTable(
+  "league_memberships",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    leagueId: integer("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.leagueId] }),
+    index("league_memberships_league_idx").on(t.leagueId),
   ],
 );
 

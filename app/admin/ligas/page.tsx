@@ -1,6 +1,6 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { leagues, profiles } from "@/lib/db/schema";
+import { leagueMemberships, leagues } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
@@ -18,30 +18,23 @@ export const dynamic = "force-dynamic";
 export default async function AdminLeaguesPage() {
   const allLeagues = await db.select().from(leagues).orderBy(asc(leagues.isPublic), asc(leagues.createdAt));
 
-  // Conteo de miembros por liga + admins. Cada admin "pertenece" a todas
-  // las ligas, así que sumamos su conteo a cada total.
-  const [memberRows, [adminRow]] = await Promise.all([
-    db
-      .select({ leagueId: profiles.leagueId, count: sql<number>`count(*)::int` })
-      .from(profiles)
-      .where(sql`${profiles.leagueId} is not null AND ${profiles.role} <> 'admin'`)
-      .groupBy(profiles.leagueId),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(profiles)
-      .where(eq(profiles.role, "admin")),
-  ]);
-  const adminCount = adminRow?.count ?? 0;
-  const memberByLeague = new Map(
-    memberRows.map((r) => [r.leagueId ?? 0, r.count]),
-  );
+  // Conteo real de miembros desde league_memberships (multi-liga). El
+  // admin solo cuenta en las ligas en las que esté inscrito explícitamente.
+  const memberRows = await db
+    .select({
+      leagueId: leagueMemberships.leagueId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(leagueMemberships)
+    .groupBy(leagueMemberships.leagueId);
+  const memberByLeague = new Map(memberRows.map((r) => [r.leagueId, r.count]));
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Admin"
         title="Ligas"
-        description="Crea ligas privadas y reparte el invite link a los participantes. Cada cuenta queda atada a una sola liga; admin (tú) puede ver cualquiera."
+        description="Crea ligas privadas y reparte el invite link o el código de 4 dígitos. Los usuarios pueden estar en la pública + hasta 5 privadas."
         actions={<CreateLeagueDialog />}
       />
 
@@ -54,7 +47,7 @@ export default async function AdminLeaguesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {allLeagues.map((league) => {
-            const members = (memberByLeague.get(league.id) ?? 0) + adminCount;
+            const members = memberByLeague.get(league.id) ?? 0;
             return (
               <article
                 key={league.id}
@@ -79,6 +72,11 @@ export default async function AdminLeaguesPage() {
                       <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
                         {league.slug}
                       </span>
+                      {league.joinCode ? (
+                        <span className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-arena)]">
+                          · {league.joinCode}
+                        </span>
+                      ) : null}
                     </div>
                     <h2 className="font-display text-2xl tracking-tight">{league.name}</h2>
                     {league.description ? (
@@ -108,7 +106,7 @@ export default async function AdminLeaguesPage() {
                     <span>Creada {formatDateTime(league.createdAt, { day: "2-digit", month: "short" })}</span>
                   </div>
                   {!league.isPublic ? (
-                    <InviteLinkCopy leagueId={league.id} token={league.inviteToken} />
+                    <InviteLinkCopy token={league.inviteToken} />
                   ) : null}
                   <Link
                     href={`/admin/ligas/${league.id}`}
