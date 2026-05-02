@@ -17,6 +17,7 @@ import type { LucideIcon } from "lucide-react";
 export type NavItem = {
   href: string;
   label: string;
+  mobileLabel?: string;
   icon: LucideIcon;
   group: "main" | "predicciones" | "social";
   primaryMobile?: boolean;
@@ -33,6 +34,7 @@ export function buildNavItems(myId: string): NavItem[] {
     {
       href: "/predicciones",
       label: "Mis predicciones",
+      mobileLabel: "Predicciones",
       icon: ClipboardList,
       group: "predicciones",
       primaryMobile: true,

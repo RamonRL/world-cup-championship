@@ -69,7 +69,7 @@ export function MobileBottomNav({ isAdmin, myId, pendingCount = 0 }: Props) {
                 </span>
               ) : null}
             </span>
-            <span>{item.label}</span>
+            <span>{item.mobileLabel ?? item.label}</span>
           </Link>
         );
       })}
