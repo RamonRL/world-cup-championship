@@ -32,13 +32,13 @@ export default async function PredictSpecialsPage() {
         <PageHeader
           eyebrow="Categoría 6"
           title="Predicciones especiales"
-          description="Balón de Oro, Guante de Oro, gol >6 en grupos…"
+          description="Balón, Guante, anfitrión más lejos…"
         />
         <ScoringBox sections={SPECIALS_SCORING} footnote={SPECIALS_FOOTNOTE} />
         <EmptyState
           icon={<Sparkles className="size-5" />}
           title="Sin predicciones especiales todavía"
-          description="Si has corrido el seed, deberían aparecer las 7 por defecto. Comprueba con `pnpm db:seed`."
+          description="Pendiente de seed."
         />
       </div>
     );
@@ -49,7 +49,7 @@ export default async function PredictSpecialsPage() {
       <PageHeader
         eyebrow="Categoría 6"
         title="Predicciones especiales"
-        description="Una pregunta por especial. Cada una con su propio cierre. Puedes editar hasta el cierre individual."
+        description="Cada una con su propio cierre."
       />
       <ScoringBox sections={SPECIALS_SCORING} footnote={SPECIALS_FOOTNOTE} />
       <SpecialsForm

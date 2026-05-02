@@ -24,13 +24,13 @@ export default async function PredictBracketPage() {
         <PageHeader
           eyebrow="Categoría 2"
           title="Bracket eliminatorio"
-          description="Disponible al terminar la fase de grupos. Predecirás los 32 clasificados que avanzan ronda a ronda hasta el campeón."
+          description="Se desbloquea al cerrar la fase de grupos."
         />
         <ScoringBox sections={BRACKET_SCORING} footnote={BRACKET_FOOTNOTE} />
         <EmptyState
           icon={<Swords className="size-5" />}
           title="Aún no abierto"
-          description="Cuando el admin cierre la fase de grupos y se conozcan los 32 clasificados, podrás rellenar tu bracket. Tendrás de plazo hasta el primer partido de dieciseisavos."
+          description="Se abrirá al cierre de los grupos. Plazo hasta el primer dieciseisavos."
         />
       </div>
     );

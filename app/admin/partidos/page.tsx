@@ -84,7 +84,7 @@ export default async function AdminMatchesPage({
       <PageHeader
         eyebrow="Admin"
         title="Resultados de partidos"
-        description="Introduce el resultado de cada partido y los goleadores. Al guardar, se recalculan los puntos de todos los participantes."
+        description="Resultados y goleadores. Al guardar, recálculo automático."
       />
 
       {/* Quick stats — siempre con conteo total, no afectado por el filtro */}

@@ -75,12 +75,12 @@ export default async function BracketPage() {
         <PageHeader
           eyebrow="Eliminación directa"
           title="Bracket del torneo"
-          description="Aparecerá cuando el admin cargue las llaves de eliminación directa."
+          description="Pendiente de cargar."
         />
         <EmptyState
           icon={<Swords className="size-5" />}
           title="Sin partidos eliminatorios"
-          description="Programa la fase eliminatoria desde /admin/calendario."
+          description="Programa la fase eliminatoria desde admin."
         />
       </div>
     );
@@ -132,8 +132,8 @@ export default async function BracketPage() {
         title="Bracket del torneo"
         description={
           isPreview
-            ? "Vista previa del cuadro FIFA 2026. Los slots aparecen con la fuente del clasificado (1ºA, 2ºB, mejor 3º…). Al cerrar la fase de grupos se rellenarán con las selecciones reales."
-            : "El árbol oficial de eliminación directa: dieciseisavos, octavos, cuartos, semifinales y final. Tus picks aparecen resaltados (●) y los aciertos en verde."
+            ? "Vista previa del cuadro FIFA. Los slots se llenan al cerrar grupos."
+            : "El árbol oficial de FIFA. Picks (●) y aciertos en verde."
         }
         actions={
           <Link
@@ -150,13 +150,7 @@ export default async function BracketPage() {
           <div className="flex items-start gap-3 rounded-xl border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))] p-4">
             <Lock className="mt-0.5 size-4 shrink-0 text-[var(--color-arena)]" />
             <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)]">
-              La fase de grupos sigue abierta. Se muestran las llaves oficiales
-              de FIFA con los slots vacíos identificados como{" "}
-              <strong className="font-semibold not-italic">1ºX</strong>,{" "}
-              <strong className="font-semibold not-italic">2ºX</strong> o{" "}
-              <strong className="font-semibold not-italic">3º A·B·…</strong>{" "}
-              (pool de los mejores terceros). Usa el simulador para ver dónde
-              caería un equipo según su posición final.
+              Simula posiciones para ver dónde caería cada selección.
             </p>
           </div>
           <BracketSlotHighlighter />

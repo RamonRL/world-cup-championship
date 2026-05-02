@@ -46,13 +46,13 @@ export default async function CalendarPage() {
       <PageHeader
         eyebrow="Mundial 2026"
         title="Calendario"
-        description="104 partidos. Pulsa cada uno para ver detalle, alineaciones y comentarios del hilo."
+        description="104 partidos. 39 días."
       />
       {days.length === 0 ? (
         <EmptyState
           icon={<CalendarDays className="size-5" />}
           title="Calendario aún sin cargar"
-          description="El admin todavía no ha publicado las jornadas."
+          description="Pendiente."
         />
       ) : (
         <div className="space-y-12">

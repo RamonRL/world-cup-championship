@@ -52,12 +52,12 @@ export default async function PredictGroupsPage() {
         <PageHeader
           eyebrow="Categoría 1"
           title="Posiciones por grupo"
-          description="Ordena las 4 selecciones de cada grupo. 3 pts exacto, 1 pt adyacente, +1 si aciertas top-2 en cualquier orden."
+          description="Ordena del 1º al 4º. Cierra al kickoff."
         />
         <EmptyState
           icon={<Users className="size-5" />}
           title="Selecciones aún sin asignar a grupos"
-          description="Cuando el admin termine de asignar las 48 selecciones a sus 12 grupos, aquí podrás predecir las posiciones."
+          description="Disponible cuando estén las 48 selecciones."
         />
       </div>
     );

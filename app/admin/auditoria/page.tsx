@@ -28,7 +28,7 @@ export default async function AuditPage() {
       <PageHeader
         eyebrow="Admin"
         title="Auditoría"
-        description="Registro de todas las acciones administrativas. Útil para rastrear cambios."
+        description="Acciones administrativas registradas."
       />
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
         <Table>

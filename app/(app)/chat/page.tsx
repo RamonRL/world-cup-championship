@@ -35,8 +35,8 @@ export default async function ChatPage() {
         title="Hilo global"
         description={
           activeMessages === 0
-            ? "Anuncios, banter y comentarios. Empieza tú la conversación."
-            : `${activeMessages} ${activeMessages === 1 ? "mensaje activo" : "mensajes activos"} · el admin puede borrar lo que se pase de raya.`
+            ? "Empieza tú la conversación."
+            : `${activeMessages} ${activeMessages === 1 ? "mensaje" : "mensajes"}.`
         }
       />
       <ChatThread

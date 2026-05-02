@@ -38,7 +38,7 @@ export default async function StatsPage() {
         <PageHeader
           eyebrow="Datos del torneo"
           title="Estadísticas"
-          description="Goles, empates, tandas de penaltis y partidos goleadores. Calculado en directo desde los resultados."
+          description="El pulso del torneo."
         />
         <EmptyState
           icon={<BarChart3 className="size-5" />}
@@ -128,7 +128,7 @@ export default async function StatsPage() {
       <PageHeader
         eyebrow="Datos del torneo"
         title="Estadísticas"
-        description="Cifras agregadas en directo. Se actualizan cada vez que el admin guarda un resultado."
+        description="El pulso del torneo."
       />
 
       {/* Headline stats */}

@@ -15,7 +15,7 @@ export function LoginForm({ next }: { next?: string }) {
         </Button>
       </form>
       <p className="text-center text-xs text-[var(--color-muted-foreground)]">
-        Iniciamos sesión con tu cuenta de Google. Sin contraseñas.
+        Sin contraseñas.
       </p>
     </div>
   );

@@ -41,7 +41,7 @@ export default async function AdminCalendarioPage() {
       <PageHeader
         eyebrow="Admin"
         title="Calendario"
-        description="Crea las jornadas y los partidos del Mundial. La fecha límite de cada jornada es cuándo se cierran las predicciones de marcadores."
+        description="Jornadas y partidos. El deadline cierra los marcadores."
         actions={<MatchdayDialog />}
       />
 
@@ -49,7 +49,7 @@ export default async function AdminCalendarioPage() {
         <EmptyState
           icon={<CalendarPlus className="size-5" />}
           title="Crea tu primera jornada"
-          description="Una jornada agrupa varios partidos y tiene un único deadline de predicción."
+          description="Cada jornada con su deadline de predicción."
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

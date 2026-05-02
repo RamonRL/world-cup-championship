@@ -144,8 +144,7 @@ export function MyLeaguesSection({
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-[var(--color-border)] pt-4">
         <p className="font-editorial text-xs italic text-[var(--color-muted-foreground)]">
-          La Quiniela Pública es permanente. Las privadas las puedes abandonar
-          libremente.
+          La pública es permanente. Las privadas, libres.
         </p>
         <Button asChild variant="outline" size="sm">
           <Link href="/onboarding?step=privada-elegir">

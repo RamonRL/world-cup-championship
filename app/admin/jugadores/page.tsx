@@ -24,7 +24,7 @@ export default async function AdminPlayersPage({
       <PageHeader
         eyebrow="Admin"
         title="Plantillas y jugadores"
-        description="Gestiona los 26 jugadores de cada selección. Puedes importar plantillas en bulk pegando una lista (Nombre, Dorsal, Posición)."
+        description="26 jugadores por selección. Importa en bulk pegando una lista."
       />
       <JugadoresWorkspace
         teams={allTeams.map((t) => ({ id: t.id, code: t.code, name: t.name, flagUrl: t.flagUrl }))}

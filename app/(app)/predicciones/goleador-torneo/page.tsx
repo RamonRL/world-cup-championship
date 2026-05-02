@@ -41,13 +41,13 @@ export default async function PredictTopScorerPage() {
         <PageHeader
           eyebrow="Categoría 3"
           title="Bota de Oro"
-          description="Tu candidato al máximo goleador del torneo."
+          description="Tu candidato. Cierra al kickoff."
         />
         <ScoringBox sections={TOP_SCORER_SCORING} />
         <EmptyState
           icon={<Target className="size-5" />}
           title="Aún no hay jugadores cargados"
-          description="El admin tiene que subir las plantillas antes de que puedas elegir candidato."
+          description="Pendiente de las plantillas."
         />
       </div>
     );

@@ -25,7 +25,7 @@ export default async function ProfilePage() {
       <PageHeader
         eyebrow="Cuenta"
         title="Mi perfil"
-        description="Personaliza tu apodo y avatar para que el resto de participantes te identifique."
+        description="Apodo y avatar."
       />
 
       {/* Tu ficha — vista pública resumida + atajo al detalle de participante */}

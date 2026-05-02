@@ -108,7 +108,7 @@ export default async function AdminHome() {
       <PageHeader
         eyebrow="Panel admin"
         title="Control de la quiniela"
-        description="Resumen del estado del torneo. Cada tarjeta lleva al CRUD correspondiente."
+        description="Estado del torneo."
       />
 
       {/* Stats grid */}
@@ -167,9 +167,9 @@ export default async function AdminHome() {
             </Link>
           ) : (
             <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-              Sin jornadas activas. Crea la siguiente desde{" "}
+              Sin jornadas activas.{" "}
               <Link href="/admin/calendario" className="underline">
-                /admin/calendario
+                Crear
               </Link>
               .
             </p>
@@ -199,9 +199,9 @@ export default async function AdminHome() {
             </Link>
           ) : (
             <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-              Sin partidos próximos. Carga el calendario en{" "}
+              Sin próximos.{" "}
               <Link href="/admin/calendario" className="underline">
-                /admin/calendario
+                Cargar calendario
               </Link>
               .
             </p>

@@ -54,12 +54,12 @@ export default async function CompararPage({
         <PageHeader
           eyebrow="Cara a cara"
           title="Compara predicciones"
-          description="Necesitas a otro participante registrado para comparar."
+          description="Hace falta alguien con quien medirte."
         />
         <EmptyState
           icon={<Trophy className="size-5" />}
           title="Aún sólo estás tú"
-          description="Comparte el enlace con tus amigos para que se registren."
+          description="Comparte el enlace y a por ello."
         />
       </div>
     );
@@ -171,7 +171,7 @@ export default async function CompararPage({
       <PageHeader
         eyebrow="Cara a cara"
         title="Compara predicciones"
-        description="Mostramos las que ya son públicas: posiciones de grupo, bracket y Bota de Oro a partir del kickoff del torneo."
+        description="Tus picks contra las suyas."
       />
       <OpponentPicker
         currentUserId={me.id}
@@ -188,7 +188,7 @@ export default async function CompararPage({
         <EmptyState
           icon={<Trophy className="size-5" />}
           title="Selecciona un oponente"
-          description="Elige un participante en el desplegable para empezar."
+          description="Elige rival en el desplegable."
         />
       ) : !tournamentPredsPublic ? (
         <PreKickoffTeaser

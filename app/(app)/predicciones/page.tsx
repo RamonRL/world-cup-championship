@@ -138,7 +138,7 @@ export default async function PrediccionesHub() {
       <PageHeader
         eyebrow="Tus apuestas"
         title="Predicciones"
-        description="Tres bloques por momento del torneo: lo que cierras antes del kickoff, lo que se desbloquea con la eliminatoria y lo que respondes ronda a ronda. Tus picks quedan privados hasta cada cierre."
+        description="Tus apuestas. Privadas hasta cada cierre."
       />
 
       <ImportPredictionsBanner userId={me.id} activeLeagueId={leagueId} />
@@ -165,7 +165,7 @@ export default async function PrediccionesHub() {
             href="/predicciones/grupos"
             icon={<Users className="size-5" />}
             label="Posiciones por grupo"
-            description="Ordena las 4 selecciones de cada grupo del 1º al 4º."
+            description="Ordena del 1º al 4º."
             statusBadge={
               groupPredCount === 12
                 ? { variant: "success", text: "Completo" }
@@ -179,7 +179,7 @@ export default async function PrediccionesHub() {
             href="/predicciones/goleador-torneo"
             icon={<Target className="size-5" />}
             label="Bota de Oro"
-            description="Tu candidato al máximo goleador del torneo."
+            description="Tu candidato."
             statusBadge={
               topScorerPred
                 ? { variant: "success", text: "Pick enviado" }
@@ -193,7 +193,7 @@ export default async function PrediccionesHub() {
             href="/predicciones/especiales"
             icon={<Sparkles className="size-5" />}
             label="Especiales"
-            description="Balón de Oro, Guante, anfitrión más lejos…"
+            description="Balón, Guante, anfitrión…"
             statusBadge={
               answeredSpecials >= totalSpecials && totalSpecials > 0
                 ? { variant: "success", text: "Completo" }
@@ -223,7 +223,7 @@ export default async function PrediccionesHub() {
       >
         {dayCards.length === 0 ? (
           <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-            El admin todavía no ha publicado las jornadas. Cuando lo haga, aquí podrás predecirlas.
+            Las jornadas aún no están publicadas.
           </p>
         ) : (
           <div className="space-y-4">
@@ -432,9 +432,9 @@ function BracketCard({
         </div>
         <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
           {status === "waiting"
-            ? "Disponible cuando termine la fase de grupos. Predecirás los 32 clasificados que avanzan ronda a ronda hasta el campeón."
+            ? "Se desbloquea al cerrar la fase de grupos."
             : status === "open"
-              ? `Selecciona quién avanza en cada ronda. Cierre: ${
+              ? `Cierre: ${
                   closesAt
                     ? formatDateTime(closesAt, {
                         day: "2-digit",
@@ -485,7 +485,7 @@ function FeaturedMatchday({ day }: { day: DayCard }) {
           </div>
           <h3 className="font-display text-4xl tracking-tight">{day.name}</h3>
           <p className="font-editorial text-base italic text-[var(--color-muted-foreground)]">
-            Marca el resultado y elige goleador para cada partido. {day.filled}/{day.total}{" "}
+            {day.filled}/{day.total}{" "}
             {day.total === 1 ? "partido predicho" : "partidos predichos"}.
           </p>
         </div>

@@ -18,7 +18,7 @@ export default async function AdminTeamsPage() {
       <PageHeader
         eyebrow="Admin"
         title="Selecciones"
-        description="Las 48 selecciones del Mundial. Sube una bandera para cada una; te recomendamos PNG cuadrado (256×256 o 512×512) para que se vea bien en bracket y rankings."
+        description="Las 48 selecciones. Banderas en PNG cuadrado."
       />
       <TeamsTable teams={allTeams} groups={allGroups} />
     </div>

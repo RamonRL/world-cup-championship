@@ -34,7 +34,7 @@ export default async function AdminLeaguesPage() {
       <PageHeader
         eyebrow="Admin"
         title="Ligas"
-        description="Crea ligas privadas y reparte el invite link o el código de 4 dígitos. Los usuarios pueden estar en la pública + hasta 5 privadas."
+        description="Pública + privadas. Hasta 5 privadas por usuario."
         actions={<CreateLeagueDialog />}
       />
 
@@ -42,7 +42,7 @@ export default async function AdminLeaguesPage() {
         <EmptyState
           icon={<Trophy className="size-5" />}
           title="No hay ligas"
-          description="La migración debería haber creado la liga principal — comprueba la BD."
+          description="Comprueba la BD."
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

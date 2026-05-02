@@ -92,8 +92,6 @@ export default async function LoginPage({
             </h1>
 
             <p className="max-w-md font-editorial text-lg italic leading-relaxed text-[var(--color-muted-foreground)]">
-              48 selecciones · 104 partidos · 6 categorías de predicción.
-              <br />
               Quien mejor lea el torneo, gana.
             </p>
           </div>
@@ -115,8 +113,7 @@ export default async function LoginPage({
               </span>
             </div>
             <p className="text-xs text-[var(--color-muted-foreground)]">
-              Cualquiera con el enlace puede unirse. Tus predicciones quedan privadas hasta el
-              kickoff de cada partido o ronda.
+              Tus picks, sólo tuyas hasta el kickoff.
             </p>
           </footer>
         </div>
@@ -158,7 +155,7 @@ export default async function LoginPage({
             </div>
             <h2 className="font-display text-5xl tracking-tight">Entra a la quiniela</h2>
             <p className="font-editorial text-base italic text-[var(--color-muted-foreground)]">
-              Inicia sesión con tu cuenta de Google y empieza a predecir.
+              Con tu cuenta de Google.
             </p>
           </div>
 
@@ -173,7 +170,7 @@ export default async function LoginPage({
           {/* Mini-tagline para el móvil — refuerza el "qué es esto" para
               quien aterriza sin contexto. En desktop ya lo cubre el aside. */}
           <p className="text-center font-editorial text-xs italic text-[var(--color-muted-foreground)] lg:hidden">
-            48 selecciones · 104 partidos · 6 categorías de predicción.
+            Quien mejor lea el torneo, gana.
           </p>
         </div>
       </main>

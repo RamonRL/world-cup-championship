@@ -33,13 +33,13 @@ export default async function GroupsPage() {
       <PageHeader
         eyebrow="Fase de grupos"
         title="12 grupos"
-        description="2 primeros + 8 mejores terceros pasan a R32. La tabla se actualiza al cierre de cada jornada."
+        description="Los 12 grupos del torneo."
       />
       {allGroups.length === 0 ? (
         <EmptyState
           icon={<Users className="size-5" />}
           title="Sin grupos"
-          description="El admin todavía no ha creado los grupos."
+          description="Aún sin asignar."
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">

@@ -25,7 +25,7 @@ export default async function AdminUsersPage() {
       <PageHeader
         eyebrow="Admin"
         title="Usuarios"
-        description="Participantes registrados. Cambia su rol o suspéndelos / reactívalos según necesites."
+        description="Roles, baneos y suspensiones."
       />
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
         <Table>

@@ -619,7 +619,7 @@ export default async function DashboardPage() {
                   <PreCheck
                     done={topScorerDone}
                     label="Bota de Oro"
-                    hint="Tu candidato al máximo goleador"
+                    hint="Tu candidato"
                     href="/predicciones/goleador-torneo"
                   />
                   <PreCheck
@@ -645,16 +645,16 @@ export default async function DashboardPage() {
             {recentMatch.length === 0 ? (
               <div className="space-y-3">
                 <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-                  Aún no hay partidos finalizados. Mientras tanto:
+                  Aún sin pitidos finales.
                 </p>
                 <Link
                   href="/calendario"
                   className="group flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-sm transition hover:border-[var(--color-arena)]/40"
                 >
                   <span>
-                    <p className="font-medium">Ver el calendario completo</p>
+                    <p className="font-medium">Calendario completo</p>
                     <p className="text-[0.7rem] text-[var(--color-muted-foreground)]">
-                      104 partidos por jornada
+                      104 partidos
                     </p>
                   </span>
                   <ArrowRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1" />
@@ -698,7 +698,7 @@ export default async function DashboardPage() {
               <div className="space-y-3">
                 <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
                   {sorted.length > 1
-                    ? `${sorted.length} jugadores empatados a 0. Que empiece el torneo.`
+                    ? `${sorted.length} jugadores a cero. Que empiece.`
                     : "Esperando más participantes."}
                 </p>
                 <Link
@@ -792,8 +792,8 @@ function OnboardingPanel({
           </h2>
           <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-base">
             {isFresh
-              ? "Tres apuestas que decides ahora y se cierran cuando arranque el torneo. El bracket llega después, ronda a ronda. Marcador y goleador se predicen jornada a jornada."
-              : `Tienes ${daysToKickoff} ${daysToKickoff === 1 ? "día" : "días"} hasta el kickoff para cerrarlas.`}
+              ? "Tres picks ahora. Se cierran al kickoff."
+              : `Quedan ${daysToKickoff} ${daysToKickoff === 1 ? "día" : "días"}.`}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <OnboardingStep n="01" label="Grupos" done={groupsDone} />

@@ -35,7 +35,7 @@ export default async function AdminChatPage() {
       <PageHeader
         eyebrow="Admin"
         title="Moderación de chat"
-        description="Últimos 200 mensajes. Pulsa para eliminar (soft-delete) o banear al autor."
+        description="Modera mensajes y autores."
       />
       {rows.length === 0 ? (
         <p className="rounded-lg border border-dashed border-[var(--color-border)] p-6 text-center text-sm text-[var(--color-muted-foreground)]">

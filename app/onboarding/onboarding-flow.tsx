@@ -49,8 +49,7 @@ export function OnboardingFlow({
             {userNickname ? `Hola, ${userNickname}` : "Bienvenido a la quiniela"}
           </h1>
           <p className="font-editorial text-lg italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-xl">
-            ¿Dónde quieres jugar? Puedes estar en la pública y en tantas
-            privadas como quieras (hasta 5).
+            ¿Dónde quieres jugar?
           </p>
         </header>
 
@@ -58,8 +57,7 @@ export function OnboardingFlow({
           <ChoiceCard
             icon={<Globe className="size-6" />}
             label="Quiniela Pública"
-            description="La gran liga abierta donde compite todo el mundo."
-            footer="Recomendada si quieres comparar tu pulso con la comunidad entera."
+            description="Donde compite todo el mundo."
             primary
             onClick={async () => {
               await chooseActivePublic();
@@ -69,8 +67,7 @@ export function OnboardingFlow({
           <ChoiceCard
             icon={<Lock className="size-6" />}
             label="Quiniela Privada"
-            description="Crea una para tu grupo o únete con un código de 4 dígitos."
-            footer="Pensado para amigos, oficinas, peñas. Hasta 5 privadas por usuario."
+            description="Para tu grupo. Sólo los tuyos."
             onClick={() => {
               router.push("/onboarding?step=privada-elegir");
             }}
@@ -88,7 +85,7 @@ export function OnboardingFlow({
         <Eyebrow>Quiniela privada</Eyebrow>
         <header className="space-y-4">
           <h1 className="font-display text-4xl tracking-tight sm:text-5xl xl:text-6xl">
-            ¿Crear una nueva o unirte a una existente?
+            Crear o unirte.
           </h1>
         </header>
 
@@ -96,8 +93,7 @@ export function OnboardingFlow({
           <ChoiceCard
             icon={<Plus className="size-6" />}
             label="Crear una quiniela"
-            description="Pones nombre, recibes un código de 4 dígitos y un enlace para compartir."
-            footer="Tú serás el primer miembro y la liga aparecerá como activa."
+            description="Le pones nombre y la lanzas."
             primary
             onClick={() => {
               router.push("/onboarding?step=privada-crear");
@@ -107,8 +103,7 @@ export function OnboardingFlow({
           <ChoiceCard
             icon={<Users className="size-6" />}
             label="Unirse a una quiniela"
-            description="Introduce el código de 4 dígitos que te ha pasado el creador."
-            footer="También puedes entrar pulsando el invite link directamente."
+            description="Pega el código y entras."
             onClick={() => {
               router.push("/onboarding?step=privada-unirse");
             }}
@@ -247,11 +242,10 @@ function CreateLeagueForm({ fresh }: { fresh: boolean }) {
       <Eyebrow>Crear quiniela</Eyebrow>
       <header className="space-y-4">
         <h1 className="font-display text-4xl tracking-tight sm:text-5xl xl:text-6xl">
-          ¿Cómo se llamará?
+          Ponle nombre.
         </h1>
         <p className="font-editorial text-lg italic text-[var(--color-muted-foreground)]">
-          Elige un nombre que tu grupo reconozca al verlo. Recibirás un código
-          de 4 dígitos y un invite link para compartir.
+          El que tu grupo reconozca al verlo.
         </p>
       </header>
 
@@ -290,7 +284,7 @@ function CreateLeagueForm({ fresh }: { fresh: boolean }) {
           </Button>
           {!fresh ? (
             <p className="font-editorial text-xs italic text-[var(--color-muted-foreground)] sm:max-w-[18rem]">
-              Quedará añadida a tu lista y será tu liga activa al terminar.
+              Pasará a ser tu liga activa.
             </p>
           ) : null}
         </div>
@@ -369,7 +363,7 @@ function CreatedSuccess({
           {name}
         </h1>
         <p className="font-editorial text-lg italic text-[var(--color-muted-foreground)]">
-          Comparte el código o el link. Quien lo use entra contigo.
+          Comparte el código y a por ello.
         </p>
       </header>
 
@@ -497,10 +491,10 @@ function JoinLeagueForm() {
       <Eyebrow>Unirse a quiniela</Eyebrow>
       <header className="space-y-4">
         <h1 className="font-display text-4xl tracking-tight sm:text-5xl xl:text-6xl">
-          Introduce el código
+          Cuatro dígitos.
         </h1>
         <p className="font-editorial text-lg italic text-[var(--color-muted-foreground)]">
-          Te lo habrá pasado el creador. Cuatro dígitos.
+          Los que te ha pasado quien la creó.
         </p>
       </header>
 
@@ -555,8 +549,7 @@ function JoinLeagueForm() {
               <ArrowRight />
             </Button>
             <p className="font-editorial text-xs italic text-[var(--color-muted-foreground)] sm:max-w-[18rem]">
-              ¿Tienes el invite link? Pulsa el enlace directamente — te lleva
-              dentro sin pedir código.
+              ¿Tienes el invite link? Pulsa y entras directo.
             </p>
           </div>
         </div>

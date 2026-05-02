@@ -21,7 +21,7 @@ export default async function AdminRulesPage() {
       <PageHeader
         eyebrow="Admin"
         title="Reglas de puntuación"
-        description="Cualquier cambio dispara un recálculo automático de todos los puntos. Edita con conocimiento de causa: los participantes verán las nuevas posiciones tras guardar."
+        description="Cada cambio recalcula todos los puntos."
       />
       <RulesEditor rules={rules} />
     </div>

@@ -100,12 +100,12 @@ export default async function RankingPage() {
         <PageHeader
           eyebrow="Quiniela"
           title="Clasificación general"
-          description="El ranking se actualiza automáticamente cuando el admin guarda resultados. Empates: marcadores exactos · puntos en eliminatorias · campeón acertado."
+          description="Quien mejor lea el torneo, gana."
         />
         <EmptyState
           icon={<ListOrdered className="size-5" />}
           title="Sin participantes todavía"
-          description="Cuando alguien se una a tu liga aparecerá aquí."
+          description="Comparte el código y empieza la batalla."
         />
       </div>
     );
@@ -120,13 +120,12 @@ export default async function RankingPage() {
       <PageHeader
         eyebrow="Quiniela"
         title="Clasificación general"
-        description="Empates: marcadores exactos · puntos en eliminatorias · campeón acertado."
+        description="Quien mejor lea el torneo, gana."
       />
 
       {allZero ? (
         <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]/60 px-4 py-3 text-center font-editorial text-xs italic text-[var(--color-muted-foreground)]">
-          Todavía no se ha cerrado ningún resultado — el orden cambiará en cuanto
-          empiece el torneo.
+          Sin resultados aún. El primer pitido lo cambia todo.
         </div>
       ) : null}
 

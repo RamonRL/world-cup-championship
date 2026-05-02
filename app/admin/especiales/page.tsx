@@ -24,7 +24,7 @@ export default async function AdminSpecialsPage() {
       <PageHeader
         eyebrow="Admin"
         title="Predicciones especiales"
-        description="Crea, edita y resuelve preguntas extra de la quiniela. El recálculo de puntos se dispara automáticamente al resolver."
+        description="Preguntas extra de la quiniela."
         actions={<NewSpecialButton />}
       />
       <div className="grid gap-3 lg:grid-cols-2">

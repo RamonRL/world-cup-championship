@@ -41,13 +41,13 @@ export default async function ScorersPage() {
       <PageHeader
         eyebrow="Bota de Oro"
         title="Goleadores del torneo"
-        description="Top en directo. La Bota de Oro va al primero al cierre del torneo · 15 / 5 / 2 puntos según posición predicha."
+        description="Top en directo."
       />
       {rows.length === 0 ? (
         <EmptyState
           icon={<Target className="size-5" />}
           title="Sin goles aún"
-          description="Cuando se carguen los primeros partidos, aparecerá aquí el ranking de goleadores."
+          description="Esperando los primeros partidos."
         />
       ) : (
         <>
