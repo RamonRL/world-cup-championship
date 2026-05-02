@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { formatDateTime } from "@/lib/utils";
+import { CalendarFilters, type ActiveFilter } from "./calendar-filters";
 
 export const metadata = { title: "Calendario" };
 export const dynamic = "force-dynamic";
@@ -22,7 +23,15 @@ const STAGE_LABEL: Record<string, string> = {
   final: "Final",
 };
 
-export default async function CalendarPage() {
+const VALID_STAGE_FILTERS = new Set(["r32", "r16", "qf", "sf", "final"] as const);
+
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ group?: string; team?: string; stage?: string }>;
+}) {
+  const sp = await searchParams;
+
   const [days, matchRows, allTeams, allGroups] = await Promise.all([
     db
       .select()
@@ -34,12 +43,70 @@ export default async function CalendarPage() {
   ]);
   const teamById = new Map(allTeams.map((t) => [t.id, t]));
   const groupById = new Map(allGroups.map((g) => [g.id, g]));
+  const teamsByGroup = new Map<number, typeof allTeams>();
+  for (const t of allTeams) {
+    if (t.groupId == null) continue;
+    const arr = teamsByGroup.get(t.groupId) ?? [];
+    arr.push(t);
+    teamsByGroup.set(t.groupId, arr);
+  }
+
+  // Resolver filtro activo: prioridad team > group > stage > all.
+  const groupCode = sp.group?.toUpperCase();
+  const teamCode = sp.team?.toUpperCase();
+  const stageCode =
+    sp.stage && VALID_STAGE_FILTERS.has(sp.stage as never)
+      ? (sp.stage as "r32" | "r16" | "qf" | "sf" | "final")
+      : null;
+
+  const active: ActiveFilter = teamCode
+    ? { kind: "team", code: teamCode }
+    : groupCode
+      ? { kind: "group", code: groupCode }
+      : stageCode
+        ? { kind: "stage", stage: stageCode }
+        : { kind: "all" };
+
+  // Filtrar matches según el filtro activo.
+  const filteredMatches = matchRows.filter((m) => {
+    if (active.kind === "all") return true;
+    if (active.kind === "team") {
+      const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
+      const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
+      return home?.code === active.code || away?.code === active.code;
+    }
+    if (active.kind === "group") {
+      // Sólo partidos de fase de grupos del grupo seleccionado.
+      if (m.stage !== "group") return false;
+      const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
+      const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
+      const groupId = allGroups.find((g) => g.code === active.code)?.id ?? -1;
+      return home?.groupId === groupId || away?.groupId === groupId;
+    }
+    if (active.kind === "stage") return m.stage === active.stage;
+    return true;
+  });
+
   const matchesByDay = new Map<number | null, typeof matchRows>();
-  for (const m of matchRows) {
+  for (const m of filteredMatches) {
     const arr = matchesByDay.get(m.matchdayId) ?? [];
     arr.push(m);
     matchesByDay.set(m.matchdayId, arr);
   }
+
+  // Solo mostrar jornadas que tengan al menos un partido tras el filtro.
+  const visibleDays = days.filter((d) => (matchesByDay.get(d.id)?.length ?? 0) > 0);
+
+  // Etiqueta humana del filtro para el header pequeño.
+  const filterLabel = ((): string | null => {
+    if (active.kind === "team") {
+      const t = allTeams.find((x) => x.code === active.code);
+      return t ? `${t.name}` : `Selección ${active.code}`;
+    }
+    if (active.kind === "group") return `Grupo ${active.code}`;
+    if (active.kind === "stage") return STAGE_LABEL[active.stage] ?? active.stage;
+    return null;
+  })();
 
   return (
     <div className="space-y-10">
@@ -48,15 +115,35 @@ export default async function CalendarPage() {
         title="Calendario"
         description="104 partidos. 39 días."
       />
+
+      <CalendarFilters groups={allGroups} teamsByGroup={teamsByGroup} active={active} />
+
+      {filterLabel ? (
+        <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+          Filtro · <span className="text-[var(--color-arena)]">{filterLabel}</span>
+          {filteredMatches.length > 0 ? (
+            <span className="ml-2 text-[var(--color-muted-foreground)]">
+              · {filteredMatches.length} {filteredMatches.length === 1 ? "partido" : "partidos"}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+
       {days.length === 0 ? (
         <EmptyState
           icon={<CalendarDays className="size-5" />}
           title="Calendario aún sin cargar"
           description="Pendiente."
         />
+      ) : visibleDays.length === 0 ? (
+        <EmptyState
+          icon={<CalendarDays className="size-5" />}
+          title="Sin partidos para este filtro"
+          description="Prueba con otro grupo o ronda."
+        />
       ) : (
         <div className="space-y-12">
-          {days.map((d) => {
+          {visibleDays.map((d) => {
             const dayMatches = matchesByDay.get(d.id) ?? [];
             return (
               <section key={d.id} className="space-y-4">
