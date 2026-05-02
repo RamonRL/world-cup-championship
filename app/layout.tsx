@@ -42,12 +42,16 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "World Cup Championship";
+const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Quiniela Mundial";
 
+// Forzamos el mismo título en todas las pestañas: aunque cada página
+// declare su propio metadata.title, el template sin %s lo ignora y
+// renderiza siempre "Quiniela Mundial". Cambia con NEXT_PUBLIC_APP_NAME
+// si en algún momento queremos otro nombre global.
 export const metadata: Metadata = {
   title: {
     default: appName,
-    template: `%s · ${appName}`,
+    template: appName,
   },
   description: "Quiniela y seguimiento del Mundial 2026 entre amigos.",
   applicationName: appName,
