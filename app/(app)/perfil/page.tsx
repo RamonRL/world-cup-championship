@@ -44,11 +44,10 @@ export default async function ProfilePage() {
               <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
                 Cómo te ven los demás
               </p>
-              <p className="font-display text-2xl tracking-tight">{display}</p>
-              <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-                {me.email}
+              <p className="font-display text-2xl tracking-tight">
+                {display}
                 {me.role === "admin" ? (
-                  <Badge variant="outline" className="ml-2 text-[0.55rem]">
+                  <Badge variant="outline" className="ml-2 align-middle text-[0.55rem]">
                     Admin
                   </Badge>
                 ) : null}
