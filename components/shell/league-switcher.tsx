@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, ChevronsUpDown, Plus, Trophy } from "lucide-react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,18 +28,15 @@ export function LeagueSwitcher({
         <button
           type="button"
           aria-label="Cambiar quiniela activa"
-          className="inline-flex max-w-[24rem] items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 transition hover:border-[var(--color-arena)]/60"
+          className="group inline-flex max-w-[26rem] items-center gap-2 rounded-sm transition hover:opacity-80"
         >
-          <Trophy className="size-3.5 text-[var(--color-arena)]" />
-          <span className="truncate font-display text-sm tracking-tight text-[var(--color-foreground)]">
+          <span className="truncate font-display text-xl uppercase tracking-[0.06em] text-[var(--color-foreground)] sm:text-2xl">
             {active?.name ?? "Selecciona quiniela"}
           </span>
-          {active && !active.isPublic ? (
-            <span className="hidden font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] sm:inline">
-              · {active.joinCode}
-            </span>
-          ) : null}
-          <ChevronsUpDown className="size-3 opacity-60" />
+          <ChevronsUpDown
+            className="size-3.5 shrink-0 text-[var(--color-muted-foreground)] opacity-40 transition-opacity group-hover:opacity-80"
+            aria-hidden
+          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center" className="w-72">

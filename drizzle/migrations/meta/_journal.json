@@ -29,6 +29,13 @@
       "when": 1777745922380,
       "tag": "0003_remarkable_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777832400000,
+      "tag": "0004_rename_public_league",
+      "breakpoints": true
     }
   ]
 }
