@@ -161,6 +161,30 @@
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /* Cursor pointer en todo lo "clickable". Tailwind v4 dejó de aplicar
+     cursor: pointer por defecto a <button>, y eso hacía que las cards de
+     onboarding, las del league switcher, etc. no mostrasen el dedito.
+     Lo restauramos aquí en una sola regla global. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="button"]:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  label[for]:not([data-disabled="true"]),
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  input:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
 }
 
 @layer utilities {
