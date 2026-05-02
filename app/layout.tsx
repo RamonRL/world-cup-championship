@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Big_Shoulders, DM_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { NavigationProgress } from "@/components/shell/navigation-progress";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -68,6 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body>
         <ThemeProvider>
+          <NavigationProgress />
           {children}
           <Toaster richColors position="top-center" />
         </ThemeProvider>
