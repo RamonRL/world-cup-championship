@@ -27,8 +27,15 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
 
   const update: Record<string, unknown> = { nickname: parsed.data.nickname };
 
+  const MAX_AVATAR_BYTES = 1024 * 1024; // 1 MB
   const avatar = formData.get("avatar");
   if (avatar instanceof File && avatar.size > 0) {
+    if (avatar.size > MAX_AVATAR_BYTES) {
+      return {
+        ok: false,
+        error: "La imagen pesa más de 1 MB. Súbela algo más ligera.",
+      };
+    }
     const url = await uploadImage({
       kind: "avatar",
       path: `${me.id}.png`,
