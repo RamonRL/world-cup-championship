@@ -2,9 +2,8 @@
 
 import Image from "next/image";
 import { useActionState, useMemo, useState } from "react";
-import { Lock, Save, Search } from "lucide-react";
+import { Lock, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { initials, cn } from "@/lib/utils";
 import { saveTopScorerPrediction, type FormState } from "./actions";
@@ -91,7 +90,6 @@ export function TopScorerForm({
   open: boolean;
 }) {
   const [selected, setSelected] = useState<number | null>(existingPlayerId);
-  const [filter, setFilter] = useState("");
   const [teamFilter, setTeamFilter] = useState<string | null>(null);
   const [posFilter, setPosFilter] = useState<Position | null>(null);
   const [state, action, pending] = useActionState(saveTopScorerPrediction, initial);
@@ -100,19 +98,9 @@ export function TopScorerForm({
     return players.filter((p) => {
       if (teamFilter && p.teamCode !== teamFilter) return false;
       if (posFilter && normalizePosition(p.position) !== posFilter) return false;
-      if (filter) {
-        const f = filter.toLowerCase();
-        if (
-          !p.name.toLowerCase().includes(f) &&
-          !p.teamName.toLowerCase().includes(f) &&
-          !p.teamCode.toLowerCase().includes(f)
-        ) {
-          return false;
-        }
-      }
       return true;
     });
-  }, [filter, teamFilter, posFilter, players]);
+  }, [teamFilter, posFilter, players]);
 
   // Agrupar por posición. Orden: DEL → MED → DEF → POR (los goleadores arriba).
   const byPosition = useMemo(() => {
@@ -157,27 +145,25 @@ export function TopScorerForm({
           {groupRows.map((row, rowIdx) => (
             <div
               key={rowIdx}
-              className="-mx-4 overflow-x-auto px-4 sm:-mx-5 sm:px-5"
+              className="flex flex-wrap items-stretch justify-center gap-x-2 gap-y-3 sm:gap-x-3"
             >
-              <div className="flex min-w-max items-stretch gap-3 sm:gap-4">
-                {row.map((g, gIdx) => (
-                  <div key={g.code} className="flex items-stretch gap-3 sm:gap-4">
-                    <GroupColumn
-                      group={g}
-                      activeTeam={teamFilter}
-                      onPickTeam={(code) =>
-                        setTeamFilter(teamFilter === code ? null : code)
-                      }
+              {row.map((g, gIdx) => (
+                <div key={g.code} className="flex items-stretch gap-x-2 sm:gap-x-3">
+                  <GroupColumn
+                    group={g}
+                    activeTeam={teamFilter}
+                    onPickTeam={(code) =>
+                      setTeamFilter(teamFilter === code ? null : code)
+                    }
+                  />
+                  {gIdx < row.length - 1 ? (
+                    <span
+                      aria-hidden
+                      className="self-stretch w-px bg-[var(--color-border)]/60"
                     />
-                    {gIdx < row.length - 1 ? (
-                      <span
-                        aria-hidden
-                        className="self-stretch w-px bg-[var(--color-border)]/60"
-                      />
-                    ) : null}
-                  </div>
-                ))}
-              </div>
+                  ) : null}
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -219,17 +205,6 @@ export function TopScorerForm({
               Limpiar filtros
             </button>
           ) : null}
-        </div>
-
-        {/* Búsqueda libre */}
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-          <Input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Buscar jugador o selección…"
-            className="h-10 pl-9 text-sm"
-          />
         </div>
       </section>
 
