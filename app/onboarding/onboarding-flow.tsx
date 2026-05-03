@@ -46,7 +46,7 @@ export function OnboardingFlow({
         <Eyebrow>Onboarding</Eyebrow>
         <header className="space-y-4">
           <h1 className="font-display text-5xl tracking-tight sm:text-6xl xl:text-7xl">
-            {userNickname ? `Hola, ${userNickname}` : "Bienvenido a la quiniela"}
+            Bienvenido a Quiniela Mundial
           </h1>
           <p className="font-editorial text-lg italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-xl">
             ¿Dónde quieres jugar?

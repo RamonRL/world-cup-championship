@@ -71,7 +71,7 @@ export default async function OnboardingPage({
               width={1919}
               height={660}
               priority
-              className="h-9 w-auto sm:h-10"
+              className="h-12 w-auto sm:h-14"
             />
           </Link>
           <div className="flex items-center gap-4">
