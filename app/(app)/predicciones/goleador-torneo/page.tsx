@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { players, predTournamentTopScorer, teams } from "@/lib/db/schema";
+import { groups, players, predTournamentTopScorer, teams } from "@/lib/db/schema";
 import { Target } from "lucide-react";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
@@ -20,9 +20,10 @@ const KICKOFF = new Date(
 export default async function PredictTopScorerPage() {
   const me = await requireUser();
   const leagueId = (await currentLeagueId(me))!;
-  const [allPlayers, allTeams, mine] = await Promise.all([
+  const [allPlayers, allTeams, allGroups, mine] = await Promise.all([
     db.select().from(players).orderBy(asc(players.name)),
     db.select().from(teams),
+    db.select().from(groups).orderBy(asc(groups.code)),
     db
       .select()
       .from(predTournamentTopScorer)
@@ -54,6 +55,20 @@ export default async function PredictTopScorerPage() {
   }
 
   const teamById = new Map(allTeams.map((t) => [t.id, t]));
+  const groupById = new Map(allGroups.map((g) => [g.id, g]));
+  const teamsByGroup = new Map<string, { code: string; name: string }[]>();
+  for (const t of allTeams) {
+    const g = t.groupId ? groupById.get(t.groupId) : null;
+    if (!g) continue;
+    const arr = teamsByGroup.get(g.code) ?? [];
+    arr.push({ code: t.code, name: t.name });
+    teamsByGroup.set(g.code, arr);
+  }
+  const groupOpts = allGroups.map((g) => ({
+    code: g.code,
+    teams: (teamsByGroup.get(g.code) ?? []).sort((a, b) => a.code.localeCompare(b.code)),
+  }));
+
   const open = KICKOFF.getTime() > Date.now();
   return (
     <div className="space-y-6">
@@ -70,8 +85,10 @@ export default async function PredictTopScorerPage() {
       <TopScorerForm
         open={open}
         existingPlayerId={mine[0]?.playerId ?? null}
+        groups={groupOpts}
         players={allPlayers.map((p) => {
           const t = teamById.get(p.teamId);
+          const g = t?.groupId ? groupById.get(t.groupId) : null;
           return {
             id: p.id,
             name: p.name,
@@ -80,6 +97,7 @@ export default async function PredictTopScorerPage() {
             photoUrl: p.photoUrl,
             teamCode: t?.code ?? "?",
             teamName: t?.name ?? "—",
+            groupCode: g?.code ?? null,
           };
         })}
       />
