@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useMemo } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   CircleHelp,
@@ -9,6 +9,7 @@ import {
   ListChecks,
   Lock,
   Save,
+  Search,
   User,
   X,
 } from "lucide-react";
@@ -199,9 +200,13 @@ export function SpecialsForm({ specials, existing, players, teams }: Props) {
               {/* Footer · puntos */}
               {maxPts != null ? (
                 <footer className="flex items-center justify-between gap-2 border-t border-dashed border-[var(--color-border)] pt-3">
-                  <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-                    {perRound ? "Hasta" : "Vale"}
-                  </p>
+                  {perRound ? (
+                    <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+                      Hasta
+                    </p>
+                  ) : (
+                    <span aria-hidden />
+                  )}
                   <p className="font-display tabular text-2xl tracking-tight text-[var(--color-arena)] glow-arena">
                     +{maxPts}
                     <span className="ml-1 text-[0.55rem] uppercase tracking-[0.18em] opacity-70">
@@ -516,12 +521,11 @@ function PlayerField({
   const normalizedFilter = positionFilter
     ? (POSITION_FILTER_MAP[positionFilter.toUpperCase()] ?? positionFilter)
     : undefined;
+  // TODOS los candidatos (sin slice). El render se filtra por búsqueda
+  // y el listado se limita visualmente a los primeros 30 hits para que
+  // no se renderice una lista de cientos.
   const candidates = useMemo(
-    () =>
-      (normalizedFilter
-        ? players.filter((p) => p.position === normalizedFilter)
-        : players
-      ).slice(0, 80),
+    () => (normalizedFilter ? players.filter((p) => p.position === normalizedFilter) : players),
     [players, normalizedFilter],
   );
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
@@ -529,53 +533,123 @@ function PlayerField({
   const selectedPlayer = v ? players.find((p) => p.id === v) : null;
   const selectedTeam = selectedPlayer ? teamById.get(selectedPlayer.teamId) : null;
 
-  return (
-    <div className="space-y-2">
-      {selectedPlayer ? (
-        <div className="flex items-center justify-between rounded-md border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_5%,var(--color-surface-2))] px-3 py-2">
-          <div className="flex items-center gap-2">
-            <TeamFlag code={selectedTeam?.code} size={20} />
-            <span className="font-display text-base tracking-tight">{selectedPlayer.name}</span>
-            {selectedPlayer.position ? (
-              <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-                {selectedPlayer.position}
-              </span>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange({ playerId: null })}
-            aria-label="Quitar selección"
-            className="text-[var(--color-muted-foreground)] hover:text-[var(--color-danger)] disabled:opacity-50"
-          >
-            <X className="size-4" />
-          </button>
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar al click fuera.
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return candidates.slice(0, 30);
+    const q = query.toLowerCase();
+    return candidates
+      .filter((p) => {
+        if (p.name.toLowerCase().includes(q)) return true;
+        const t = teamById.get(p.teamId);
+        if (t?.code.toLowerCase().includes(q)) return true;
+        if (t?.name.toLowerCase().includes(q)) return true;
+        return false;
+      })
+      .slice(0, 30);
+  }, [candidates, query, teamById]);
+
+  if (selectedPlayer) {
+    return (
+      <div className="flex items-center justify-between rounded-md border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_5%,var(--color-surface-2))] px-3 py-2">
+        <div className="flex items-center gap-2">
+          <TeamFlag code={selectedTeam?.code} size={20} />
+          <span className="font-display text-base tracking-tight">{selectedPlayer.name}</span>
+          {selectedPlayer.position ? (
+            <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+              {selectedPlayer.position}
+            </span>
+          ) : null}
         </div>
-      ) : (
-        <select
-          value={v?.toString() ?? ""}
-          onChange={(e) => onChange({ playerId: Number(e.target.value) })}
+        <button
+          type="button"
           disabled={disabled}
-          className="h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2.5 text-sm outline-none focus:border-[var(--color-arena)] disabled:opacity-50"
+          onClick={() => onChange({ playerId: null })}
+          aria-label="Quitar selección"
+          className="text-[var(--color-muted-foreground)] hover:text-[var(--color-danger)] disabled:opacity-50"
         >
-          <option value="">Selecciona un jugador</option>
-          {candidates.map((p) => {
-            const t = teamById.get(p.teamId);
-            return (
-              <option key={p.id} value={p.id}>
-                {p.name}
-                {t ? ` · ${t.code}` : ""}
-                {p.position ? ` · ${p.position}` : ""}
-              </option>
-            );
-          })}
-        </select>
-      )}
-      {candidates.length === 0 ? (
-        <p className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-          Aún sin candidatos cargados.
-        </p>
+          <X className="size-4" />
+        </button>
+      </div>
+    );
+  }
+
+  if (candidates.length === 0) {
+    return (
+      <p className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+        Aún sin candidatos cargados.
+      </p>
+    );
+  }
+
+  return (
+    <div ref={wrapperRef} className="relative space-y-1.5">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
+        <input
+          type="text"
+          value={query}
+          disabled={disabled}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="Buscar jugador o selección…"
+          className="h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] pl-8 pr-3 text-sm outline-none focus:border-[var(--color-arena)] disabled:opacity-50"
+        />
+      </div>
+      {open && !disabled ? (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-elev-2)]">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-[var(--color-muted-foreground)]">
+              Sin coincidencias.
+            </p>
+          ) : (
+            <ul>
+              {filtered.map((p) => {
+                const t = teamById.get(p.teamId);
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange({ playerId: p.id });
+                        setQuery("");
+                        setOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-2)]"
+                    >
+                      <TeamFlag code={t?.code} size={16} />
+                      <span className="flex-1 truncate">{p.name}</span>
+                      <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                        {t?.code ?? ""}
+                        {p.position ? ` · ${p.position}` : ""}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {!query && candidates.length > 30 ? (
+            <p className="border-t border-[var(--color-border)] px-3 py-1.5 text-[0.65rem] text-[var(--color-muted-foreground)]">
+              Mostrando 30 de {candidates.length}. Escribe para buscar más.
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
