@@ -138,7 +138,7 @@ export function SpecialsForm({ specials, existing, players, teams }: Props) {
             <article
               key={s.id}
               className={cn(
-                "relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-5 transition-all",
+                "relative flex flex-col gap-4 rounded-2xl border p-5 transition-all",
                 done
                   ? "border-[var(--color-arena)]/50 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))]"
                   : "border-[var(--color-border)] bg-[var(--color-surface)]",
