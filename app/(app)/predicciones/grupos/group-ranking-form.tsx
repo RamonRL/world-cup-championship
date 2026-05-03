@@ -92,10 +92,10 @@ export function GroupRankingForm({
         </p>
       ) : null}
       {open ? (
-        <div className="flex justify-end">
+        <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-10 flex items-center justify-end gap-3 rounded-xl border border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-surface)_92%,transparent)] p-3 backdrop-blur-md sm:bottom-3">
           <Button type="submit" size="lg" disabled={pending}>
             <Save />
-            {pending ? "Guardando…" : "Guardar predicción"}
+            {pending ? "Guardando…" : "Guardar"}
           </Button>
         </div>
       ) : null}
