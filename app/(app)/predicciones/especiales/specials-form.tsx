@@ -1,21 +1,20 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { Lock, Save } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useActionState, useState, useMemo } from "react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { formatDateTime } from "@/lib/utils";
+  Check,
+  CircleHelp,
+  Globe2,
+  Hash,
+  ListChecks,
+  Lock,
+  Save,
+  User,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TeamFlag } from "@/components/brand/team-flag";
+import { cn, formatDateTime } from "@/lib/utils";
 import { saveSpecialPredictions, type FormState } from "./actions";
 
 const initial: FormState = { ok: false };
@@ -32,6 +31,36 @@ type SpecialDef = {
   closesAt: string;
 };
 
+type Existing = { specialId: number; valueJson: Record<string, unknown> };
+
+type Props = {
+  specials: SpecialDef[];
+  existing: Existing[];
+  players: { id: number; name: string; position: string | null; teamId: number }[];
+  teams: { id: number; code: string; name: string }[];
+};
+
+const TYPE_META: Record<
+  SpecialType,
+  { label: string; icon: typeof Hash; accent: string }
+> = {
+  yes_no: { label: "Sí o no", icon: CircleHelp, accent: "text-amber-500" },
+  single_choice: { label: "Elige una", icon: ListChecks, accent: "text-sky-400" },
+  team_with_round: { label: "Selección + ronda", icon: Globe2, accent: "text-emerald-500" },
+  number_range: { label: "Número", icon: Hash, accent: "text-[var(--color-arena)]" },
+  player: { label: "Jugador", icon: User, accent: "text-indigo-400" },
+};
+
+const ROUND_LABEL: Record<string, string> = {
+  group: "Fase de grupos",
+  r32: "Dieciseisavos",
+  r16: "Octavos",
+  qf: "Cuartos",
+  sf: "Semifinales",
+  final: "Final",
+  champion: "Campeón",
+};
+
 function maxPointsFor(config: unknown): number | null {
   if (!config || typeof config !== "object") return null;
   const obj = config as Record<string, unknown>;
@@ -46,14 +75,19 @@ function maxPointsFor(config: unknown): number | null {
   return null;
 }
 
-type Existing = { specialId: number; valueJson: Record<string, unknown> };
-
-type Props = {
-  specials: SpecialDef[];
-  existing: Existing[];
-  players: { id: number; name: string; position: string | null; teamId: number }[];
-  teams: { id: number; code: string; name: string }[];
-};
+function isAnswered(v: Record<string, unknown> | undefined, type: SpecialType): boolean {
+  if (!v) return false;
+  if (type === "yes_no" || type === "single_choice" || type === "number_range") {
+    return v.value !== undefined && v.value !== null && v.value !== "";
+  }
+  if (type === "team_with_round") {
+    return Boolean(v.teamCode) && Boolean(v.round);
+  }
+  if (type === "player") {
+    return v.playerId !== undefined && v.playerId !== null;
+  }
+  return false;
+}
 
 export function SpecialsForm({ specials, existing, players, teams }: Props) {
   const initialMap: Record<number, Record<string, unknown>> = Object.fromEntries(
@@ -71,69 +105,112 @@ export function SpecialsForm({ specials, existing, players, teams }: Props) {
     })),
   };
 
+  const answered = specials.filter((s) => isAnswered(values[s.id], s.type)).length;
+
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="payload" value={JSON.stringify(payload)} />
-      <div className="grid gap-4">
+
+      {/* Cabecera de progreso */}
+      <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
+        <div className="flex items-center gap-3">
+          <span className="font-display tabular text-2xl tracking-tight text-[var(--color-arena)] glow-arena">
+            {answered}
+            <span className="text-base text-[var(--color-muted-foreground)]"> / {specials.length}</span>
+          </span>
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            respondidas
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
         {specials.map((s) => {
           const open = new Date(s.closesAt).getTime() > Date.now();
           const maxPts = maxPointsFor(s.pointsConfigJson);
+          const meta = TYPE_META[s.type];
+          const Icon = meta.icon;
+          const v = values[s.id] ?? {};
+          const done = isAnswered(v, s.type);
+          const perRound = !!(s.pointsConfigJson as { perRound?: unknown })?.perRound;
           return (
-            <Card key={s.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <Badge variant="outline" className="text-[0.65rem] uppercase">
-                      {s.type.replace(/_/g, " ")}
-                    </Badge>
-                    <CardTitle className="text-base">{s.question}</CardTitle>
-                    <CardDescription>
-                      Cierra {formatDateTime(s.closesAt)}
-                    </CardDescription>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {maxPts != null ? (
-                      <span
-                        className="inline-flex items-baseline gap-1 rounded-md border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_12%,transparent)] px-2 py-1 font-display tabular leading-none text-[var(--color-arena)] glow-arena"
-                        title={
-                          (s.pointsConfigJson as { perRound?: unknown })?.perRound
-                            ? "Escala por ronda. El máximo se logra acertando la ronda más alta."
-                            : "Puntos por respuesta correcta."
-                        }
-                      >
-                        {(s.pointsConfigJson as { perRound?: unknown })?.perRound ? (
-                          <span className="text-[0.55rem] uppercase tracking-[0.18em] opacity-70">
-                            Hasta
-                          </span>
-                        ) : null}
-                        <span className="text-xl">{maxPts}</span>
-                        <span className="text-[0.55rem] uppercase tracking-[0.18em] opacity-70">
-                          {maxPts === 1 ? "pt" : "pts"}
-                        </span>
-                      </span>
-                    ) : null}
-                    {!open ? (
-                      <Badge variant="warning" className="gap-1 text-[0.6rem]">
-                        <Lock className="size-3" />
-                        Cerrada
-                      </Badge>
-                    ) : null}
+            <article
+              key={s.id}
+              className={cn(
+                "relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-5 transition-all",
+                done
+                  ? "border-[var(--color-arena)]/50 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))]"
+                  : "border-[var(--color-border)] bg-[var(--color-surface)]",
+                !open && "opacity-75",
+              )}
+            >
+              {/* Header */}
+              <header className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={cn(
+                      "grid size-9 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)]",
+                      meta.accent,
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </span>
+                  <div className="leading-tight">
+                    <p className={cn("font-mono text-[0.55rem] uppercase tracking-[0.28em]", meta.accent)}>
+                      {meta.label}
+                    </p>
+                    <p className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                      Cierra · {formatDateTime(s.closesAt, { day: "2-digit", month: "short" })}
+                    </p>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
+                <div className="flex items-center gap-1.5">
+                  {done ? (
+                    <span className="grid size-6 place-items-center rounded-full bg-[var(--color-arena)] text-white">
+                      <Check className="size-3.5" />
+                    </span>
+                  ) : null}
+                  {!open ? (
+                    <span className="inline-flex items-center gap-1 rounded-md border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 px-2 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-warning)]">
+                      <Lock className="size-3" />
+                      Cerrada
+                    </span>
+                  ) : null}
+                </div>
+              </header>
+
+              {/* Pregunta */}
+              <h3 className="font-display text-xl leading-snug tracking-tight sm:text-2xl">
+                {s.question}
+              </h3>
+
+              {/* Field */}
+              <div className="flex-1">
                 <FieldFor
                   special={s}
-                  value={values[s.id] ?? {}}
-                  onChange={(v) =>
-                    setValues((prev) => ({ ...prev, [s.id]: v }))
-                  }
+                  value={v}
+                  onChange={(next) => setValues((prev) => ({ ...prev, [s.id]: next }))}
                   disabled={!open}
                   players={players}
                   teams={teams}
                 />
-              </CardContent>
-            </Card>
+              </div>
+
+              {/* Footer · puntos */}
+              {maxPts != null ? (
+                <footer className="flex items-center justify-between gap-2 border-t border-dashed border-[var(--color-border)] pt-3">
+                  <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+                    {perRound ? "Hasta" : "Vale"}
+                  </p>
+                  <p className="font-display tabular text-2xl tracking-tight text-[var(--color-arena)] glow-arena">
+                    +{maxPts}
+                    <span className="ml-1 text-[0.55rem] uppercase tracking-[0.18em] opacity-70">
+                      {maxPts === 1 ? "pt" : "pts"}
+                    </span>
+                  </p>
+                </footer>
+              ) : null}
+            </article>
           );
         })}
       </div>
@@ -143,15 +220,17 @@ export function SpecialsForm({ specials, existing, players, teams }: Props) {
         <p className="text-sm text-[var(--color-success)]">Predicciones guardadas.</p>
       ) : null}
 
-      <div className="flex justify-end">
+      <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-10 flex items-center justify-end gap-3 rounded-xl border border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-surface)_92%,transparent)] p-3 backdrop-blur-md sm:bottom-3">
         <Button type="submit" size="lg" disabled={pending}>
           <Save />
-          {pending ? "Guardando…" : "Guardar especiales"}
+          {pending ? "Guardando…" : "Guardar"}
         </Button>
       </div>
     </form>
   );
 }
+
+// ──────────────── Fields ────────────────
 
 function FieldFor({
   special,
@@ -169,173 +248,367 @@ function FieldFor({
   teams: { id: number; code: string; name: string }[];
 }) {
   switch (special.type) {
-    case "yes_no": {
-      const v = value.value as boolean | undefined;
+    case "yes_no":
+      return <YesNoField value={value} onChange={onChange} disabled={disabled} />;
+    case "single_choice":
+      return <SingleChoiceField special={special} value={value} onChange={onChange} disabled={disabled} />;
+    case "number_range":
+      return <NumberField special={special} value={value} onChange={onChange} disabled={disabled} />;
+    case "team_with_round":
       return (
-        <RadioGroup
-          value={v == null ? "" : v ? "yes" : "no"}
-          onValueChange={(val) => onChange({ value: val === "yes" })}
+        <TeamRoundField
+          special={special}
+          value={value}
+          onChange={onChange}
           disabled={disabled}
-        >
-          <div className="flex gap-6">
-            <Label className="flex items-center gap-2">
-              <RadioGroupItem value="yes" />
-              Sí
-            </Label>
-            <Label className="flex items-center gap-2">
-              <RadioGroupItem value="no" />
-              No
-            </Label>
-          </div>
-        </RadioGroup>
+          teams={teams}
+        />
       );
-    }
-    case "number_range": {
-      const tolerance = (special.optionsJson as { tolerance?: number } | null)?.tolerance ?? 0;
-      const v = value.value as number | undefined;
+    case "player":
       return (
-        <div className="space-y-1.5">
-          <Input
-            type="number"
-            value={v ?? ""}
-            onChange={(e) =>
-              onChange({ value: e.target.value === "" ? null : Number(e.target.value) })
-            }
-            disabled={disabled}
-            placeholder="Tu cifra"
-          />
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            Tolerancia: ±{tolerance}.
-          </p>
-        </div>
-      );
-    }
-    case "single_choice": {
-      const opts = (special.optionsJson as { values?: string[] } | null)?.values ?? [];
-      const v = (value.value as string | undefined) ?? "";
-      return (
-        <Select
-          value={v}
-          onValueChange={(val) => onChange({ value: val })}
+        <PlayerField
+          special={special}
+          value={value}
+          onChange={onChange}
           disabled={disabled}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Selecciona una opción" />
-          </SelectTrigger>
-          <SelectContent>
-            {opts.map((o) => (
-              <SelectItem key={o} value={o}>
-                {o}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          players={players}
+          teams={teams}
+        />
       );
-    }
-    case "team_with_round": {
-      const opts = special.optionsJson as { teamCodes?: string[]; rounds?: string[] } | null;
-      const teamCode = (value.teamCode as string | undefined) ?? "";
-      const round = (value.round as string | undefined) ?? "";
-      const allowedTeams = teams.filter((t) => opts?.teamCodes?.includes(t.code));
-      const rounds = opts?.rounds ?? [];
-      return (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Selección</Label>
-            <Select
-              value={teamCode}
-              onValueChange={(val) =>
-                onChange({ ...value, teamCode: val })
-              }
-              disabled={disabled}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
-              <SelectContent>
-                {allowedTeams.map((t) => (
-                  <SelectItem key={t.code} value={t.code}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Hasta qué ronda</Label>
-            <Select
-              value={round}
-              onValueChange={(val) => onChange({ ...value, round: val })}
-              disabled={disabled}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
-              <SelectContent>
-                {rounds.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {ROUND_LABEL[r] ?? r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      );
-    }
-    case "player": {
-      const positionFilter = (special.optionsJson as { positionFilter?: string } | null)
-        ?.positionFilter;
-      // The seed script maps wiki position codes (GK, DF, MF, FW) to Spanish
-      // abbreviations (POR, DEF, MED, DEL) before storing them. Normalize here
-      // so that a positionFilter of "GK" still matches players stored as "POR".
-      const POSITION_FILTER_MAP: Record<string, string> = {
-        GK: "POR",
-        DF: "DEF",
-        MF: "MED",
-        FW: "DEL",
-      };
-      const normalizedFilter = positionFilter
-        ? (POSITION_FILTER_MAP[positionFilter.toUpperCase()] ?? positionFilter)
-        : undefined;
-      const candidates = normalizedFilter
-        ? players.filter((p) => p.position === normalizedFilter)
-        : players;
-      const v = (value.playerId as number | undefined) ?? "";
-      return (
-        <Select
-          value={v?.toString() ?? ""}
-          onValueChange={(val) => onChange({ playerId: Number(val) })}
-          disabled={disabled}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Selecciona un jugador" />
-          </SelectTrigger>
-          <SelectContent>
-            {candidates.map((p) => (
-              <SelectItem key={p.id} value={p.id.toString()}>
-                {p.name}
-                {p.position ? ` · ${p.position}` : ""}
-              </SelectItem>
-            ))}
-            {candidates.length === 0 ? (
-              <div className="px-2 py-1.5 text-xs text-[var(--color-muted-foreground)]">
-                Aún no hay candidatos cargados.
-              </div>
-            ) : null}
-          </SelectContent>
-        </Select>
-      );
-    }
   }
 }
 
-const ROUND_LABEL: Record<string, string> = {
-  group: "Fase de grupos",
-  r32: "Dieciseisavos",
-  r16: "Octavos",
-  qf: "Cuartos",
-  sf: "Semifinales",
-  final: "Final",
-  champion: "Campeón",
-};
+function YesNoField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Record<string, unknown>;
+  onChange: (v: Record<string, unknown>) => void;
+  disabled: boolean;
+}) {
+  const v = value.value as boolean | undefined;
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <ChoicePill
+        active={v === true}
+        disabled={disabled}
+        onClick={() => onChange({ value: v === true ? null : true })}
+        accent="success"
+      >
+        <Check className="size-4" /> Sí
+      </ChoicePill>
+      <ChoicePill
+        active={v === false}
+        disabled={disabled}
+        onClick={() => onChange({ value: v === false ? null : false })}
+        accent="danger"
+      >
+        <X className="size-4" /> No
+      </ChoicePill>
+    </div>
+  );
+}
+
+function SingleChoiceField({
+  special,
+  value,
+  onChange,
+  disabled,
+}: {
+  special: SpecialDef;
+  value: Record<string, unknown>;
+  onChange: (v: Record<string, unknown>) => void;
+  disabled: boolean;
+}) {
+  const opts = (special.optionsJson as { values?: string[] } | null)?.values ?? [];
+  const v = (value.value as string | undefined) ?? "";
+  return (
+    <div className="flex flex-wrap gap-2">
+      {opts.map((o) => {
+        const active = v === o;
+        return (
+          <button
+            key={o}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange({ value: active ? null : o })}
+            className={cn(
+              "rounded-full border px-3.5 py-1.5 text-sm transition disabled:opacity-50",
+              active
+                ? "border-[var(--color-arena)] bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]"
+                : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-foreground)] hover:border-[var(--color-arena)]/50",
+            )}
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function NumberField({
+  special,
+  value,
+  onChange,
+  disabled,
+}: {
+  special: SpecialDef;
+  value: Record<string, unknown>;
+  onChange: (v: Record<string, unknown>) => void;
+  disabled: boolean;
+}) {
+  const tolerance = (special.optionsJson as { tolerance?: number } | null)?.tolerance ?? 0;
+  const v = value.value as number | null | undefined;
+  const update = (n: number | null) => onChange({ value: n });
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={disabled || (v ?? 0) <= 0}
+          onClick={() => update(Math.max(0, (v ?? 0) - 1))}
+          className="grid size-10 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] font-display text-xl tracking-tight transition hover:border-[var(--color-arena)]/50 disabled:opacity-40"
+          aria-label="Restar"
+        >
+          −
+        </button>
+        <input
+          type="number"
+          inputMode="numeric"
+          value={v ?? ""}
+          onChange={(e) => update(e.target.value === "" ? null : Number(e.target.value))}
+          disabled={disabled}
+          placeholder="0"
+          className="h-12 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-center font-display tabular text-3xl tracking-tight outline-none focus:border-[var(--color-arena)] disabled:opacity-50"
+        />
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => update((v ?? -1) + 1)}
+          className="grid size-10 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] font-display text-xl tracking-tight transition hover:border-[var(--color-arena)]/50 disabled:opacity-40"
+          aria-label="Sumar"
+        >
+          +
+        </button>
+      </div>
+      {tolerance > 0 ? (
+        <p className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+          Tolerancia ±{tolerance}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function TeamRoundField({
+  special,
+  value,
+  onChange,
+  disabled,
+  teams,
+}: {
+  special: SpecialDef;
+  value: Record<string, unknown>;
+  onChange: (v: Record<string, unknown>) => void;
+  disabled: boolean;
+  teams: { id: number; code: string; name: string }[];
+}) {
+  const opts = special.optionsJson as { teamCodes?: string[]; rounds?: string[] } | null;
+  const teamCode = (value.teamCode as string | undefined) ?? "";
+  const round = (value.round as string | undefined) ?? "";
+  const allowedTeams = useMemo(
+    () => teams.filter((t) => opts?.teamCodes?.includes(t.code)),
+    [teams, opts?.teamCodes],
+  );
+  const rounds = opts?.rounds ?? [];
+
+  return (
+    <div className="space-y-3">
+      {/* Selecciones — fila scrollable de banderas */}
+      <div className="space-y-1.5">
+        <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+          Selección
+        </p>
+        <div
+          className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+          style={{ touchAction: "pan-x", overscrollBehaviorY: "contain" }}
+        >
+          {allowedTeams.map((t) => {
+            const active = teamCode === t.code;
+            return (
+              <button
+                key={t.code}
+                type="button"
+                disabled={disabled}
+                onClick={() => onChange({ ...value, teamCode: active ? "" : t.code })}
+                title={t.name}
+                aria-label={t.name}
+                className={cn(
+                  "shrink-0 rounded-full transition disabled:opacity-50",
+                  active
+                    ? "ring-2 ring-[var(--color-arena)] ring-offset-2 ring-offset-[var(--color-surface)]"
+                    : "opacity-90 hover:opacity-100",
+                )}
+              >
+                <TeamFlag code={t.code} size={32} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Rondas — pills */}
+      <div className="space-y-1.5">
+        <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+          Hasta qué ronda
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {rounds.map((r) => {
+            const active = round === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                disabled={disabled}
+                onClick={() => onChange({ ...value, round: active ? "" : r })}
+                className={cn(
+                  "rounded-full border px-3 py-1 font-mono text-[0.6rem] uppercase tracking-[0.18em] transition disabled:opacity-50",
+                  active
+                    ? "border-[var(--color-arena)] bg-[var(--color-arena)] text-white"
+                    : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-foreground)] hover:border-[var(--color-arena)]/50",
+                )}
+              >
+                {ROUND_LABEL[r] ?? r}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlayerField({
+  special,
+  value,
+  onChange,
+  disabled,
+  players,
+  teams,
+}: {
+  special: SpecialDef;
+  value: Record<string, unknown>;
+  onChange: (v: Record<string, unknown>) => void;
+  disabled: boolean;
+  players: { id: number; name: string; position: string | null; teamId: number }[];
+  teams: { id: number; code: string; name: string }[];
+}) {
+  const positionFilter = (special.optionsJson as { positionFilter?: string } | null)
+    ?.positionFilter;
+  const POSITION_FILTER_MAP: Record<string, string> = {
+    GK: "POR",
+    DF: "DEF",
+    MF: "MED",
+    FW: "DEL",
+  };
+  const normalizedFilter = positionFilter
+    ? (POSITION_FILTER_MAP[positionFilter.toUpperCase()] ?? positionFilter)
+    : undefined;
+  const candidates = useMemo(
+    () =>
+      (normalizedFilter
+        ? players.filter((p) => p.position === normalizedFilter)
+        : players
+      ).slice(0, 80),
+    [players, normalizedFilter],
+  );
+  const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
+  const v = value.playerId as number | undefined;
+  const selectedPlayer = v ? players.find((p) => p.id === v) : null;
+  const selectedTeam = selectedPlayer ? teamById.get(selectedPlayer.teamId) : null;
+
+  return (
+    <div className="space-y-2">
+      {selectedPlayer ? (
+        <div className="flex items-center justify-between rounded-md border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_5%,var(--color-surface-2))] px-3 py-2">
+          <div className="flex items-center gap-2">
+            <TeamFlag code={selectedTeam?.code} size={20} />
+            <span className="font-display text-base tracking-tight">{selectedPlayer.name}</span>
+            {selectedPlayer.position ? (
+              <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                {selectedPlayer.position}
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange({ playerId: null })}
+            aria-label="Quitar selección"
+            className="text-[var(--color-muted-foreground)] hover:text-[var(--color-danger)] disabled:opacity-50"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ) : (
+        <select
+          value={v?.toString() ?? ""}
+          onChange={(e) => onChange({ playerId: Number(e.target.value) })}
+          disabled={disabled}
+          className="h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2.5 text-sm outline-none focus:border-[var(--color-arena)] disabled:opacity-50"
+        >
+          <option value="">Selecciona un jugador</option>
+          {candidates.map((p) => {
+            const t = teamById.get(p.teamId);
+            return (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {t ? ` · ${t.code}` : ""}
+                {p.position ? ` · ${p.position}` : ""}
+              </option>
+            );
+          })}
+        </select>
+      )}
+      {candidates.length === 0 ? (
+        <p className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+          Aún sin candidatos cargados.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ChoicePill({
+  active,
+  disabled,
+  onClick,
+  accent,
+  children,
+}: {
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  accent: "success" | "danger";
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "flex items-center justify-center gap-2 rounded-md border px-4 py-3 font-display text-base tracking-tight transition disabled:opacity-50",
+        active
+          ? accent === "success"
+            ? "border-[var(--color-success)] bg-[color-mix(in_oklch,var(--color-success)_18%,transparent)] text-[var(--color-success)]"
+            : "border-[var(--color-danger)] bg-[color-mix(in_oklch,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]"
+          : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-foreground)] hover:border-[var(--color-arena)]/50",
+      )}
+    >
+      {children}
+    </button>
+  );
+}

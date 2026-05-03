@@ -30,7 +30,7 @@ export default async function PredictSpecialsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow="Categoría 6"
+          eyebrow="Categoría 3"
           title="Predicciones especiales"
           description="Balón, Guante, anfitrión más lejos…"
         />
@@ -47,7 +47,7 @@ export default async function PredictSpecialsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Categoría 6"
+        eyebrow="Categoría 3"
         title="Predicciones especiales"
         description="Cada una con su propio cierre."
       />

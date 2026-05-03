@@ -40,7 +40,7 @@ export default async function PredictTopScorerPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow="Categoría 3"
+          eyebrow="Categoría 2"
           title="Bota de Oro"
           description="Tu candidato. Cierra al kickoff."
         />
@@ -73,7 +73,7 @@ export default async function PredictTopScorerPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Categoría 3"
+        eyebrow="Categoría 2"
         title="Bota de Oro"
         description={
           open

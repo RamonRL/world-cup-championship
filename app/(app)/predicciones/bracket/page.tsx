@@ -22,7 +22,7 @@ export default async function PredictBracketPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow="Categoría 2"
+          eyebrow="Categoría 4"
           title="Bracket eliminatorio"
           description="Se desbloquea al cerrar la fase de grupos."
         />
@@ -84,7 +84,7 @@ export default async function PredictBracketPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Categoría 2"
+        eyebrow="Categoría 4"
         title="Bracket eliminatorio"
         description={
           status.state === "open"
