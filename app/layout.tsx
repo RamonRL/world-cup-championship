@@ -56,6 +56,22 @@ export const metadata: Metadata = {
   description: "Quiniela y seguimiento del Mundial 2026 entre amigos.",
   applicationName: appName,
   formatDetection: { telephone: false, email: false, address: false },
+  // ─── PWA (iOS + Android) ──────────────────────────────────────────
+  // appleWebApp = meta tags apple-mobile-web-app-* que hacen que Safari
+  // abra la app en modo standalone (sin barra de navegación) al
+  // lanzarla desde el icono del Home Screen. Sin esto, las páginas
+  // distintas de la del start_url se abren con la chrome de Safari.
+  // statusBarStyle "black-translucent" hace que el contenido suba bajo
+  // el status bar para sensación full-bleed.
+  appleWebApp: {
+    capable: true,
+    title: appName,
+    statusBarStyle: "black-translucent",
+  },
+  // El manifest.webmanifest se genera en app/manifest.ts. Chrome/Android
+  // lo usa para abrir la app en modo standalone tras "Añadir a la
+  // pantalla de inicio".
+  manifest: "/manifest.webmanifest",
 };
 
 export const viewport: Viewport = {
