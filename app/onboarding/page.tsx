@@ -62,35 +62,51 @@ export default async function OnboardingPage({
       />
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-6 py-8 sm:px-10 sm:py-12 lg:px-12 lg:py-16">
-        {/* FIFA World Cup 2026 mark — centrado, arriba del todo */}
-        <div className="mb-8 flex flex-col items-center gap-2">
-          <Image
-            src="/fwc26.png"
-            alt="FIFA World Cup 26"
-            width={1500}
-            height={1500}
-            priority
-            className="h-16 w-auto sm:h-20"
-          />
-          <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] sm:text-[0.65rem]">
-            Copa Mundial de la FIFA 2026
-          </p>
-        </div>
+        {/* Header — Quiniela Mundial · FWC26 mark · counter
+            Desktop: 3 columnas en una sola fila a la misma altura.
+            Mobile: stack — primero Quiniela, luego el mark FIFA. */}
+        <header className="mb-12 flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          {/* Quiniela Mundial */}
+          <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:order-1">
+            <Link href="/dashboard" className="block" aria-label="Quiniela Mundial">
+              <Image
+                src="/hlogo.png"
+                alt="Quiniela Mundial"
+                width={1919}
+                height={660}
+                priority
+                className="h-12 w-auto sm:h-14"
+              />
+            </Link>
+            {/* Dashboard link inline en mobile (a la derecha del logo) */}
+            {!fresh ? (
+              <Link
+                href="/dashboard"
+                className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-foreground)] sm:hidden"
+              >
+                ← Dashboard
+              </Link>
+            ) : null}
+          </div>
 
-        {/* Header — logo Quiniela Mundial + counter */}
-        <header className="mb-12 flex items-center justify-between gap-4">
-          <Link href="/dashboard" className="block" aria-label="Quiniela Mundial">
+          {/* FIFA World Cup 26 mark — centro */}
+          <div className="flex flex-col items-center gap-1.5 sm:order-2">
             <Image
-              src="/hlogo.png"
-              alt="Quiniela Mundial"
-              width={1919}
-              height={660}
+              src="/fwc26.png"
+              alt="FIFA World Cup 26"
+              width={1500}
+              height={1500}
               priority
               className="h-12 w-auto sm:h-14"
             />
-          </Link>
-          <div className="flex items-center gap-4">
-            <div className="hidden items-center gap-2 sm:flex">
+            <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] sm:text-[0.6rem]">
+              Copa Mundial de la FIFA 2026
+            </p>
+          </div>
+
+          {/* Counter + dashboard link (desktop) */}
+          <div className="hidden items-center gap-4 sm:order-3 sm:flex">
+            <div className="flex items-center gap-2">
               <span className="relative flex size-2">
                 <span
                   aria-hidden
