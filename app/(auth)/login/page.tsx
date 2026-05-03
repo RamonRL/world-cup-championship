@@ -10,8 +10,6 @@ export const metadata: Metadata = {
 
 const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z";
 
-const HOSTS = ["CANADÁ", "MÉXICO", "USA"];
-
 export default async function LoginPage({
   searchParams,
 }: {
@@ -31,149 +29,123 @@ export default async function LoginPage({
   );
 
   return (
-    <div className="relative grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
-      <aside className="spotlight relative hidden overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
-        <div className="pitch-grid absolute inset-0 opacity-50" aria-hidden />
-        <span
-          aria-hidden
-          className="halftone pointer-events-none absolute inset-x-0 top-0 h-40 opacity-[0.08]"
-        />
+    <div className="relative min-h-dvh overflow-hidden bg-[var(--color-bg)]">
+      {/* ─── Fondo dinámico (mismo lenguaje que onboarding) ─── */}
+      <div className="pitch-grid pointer-events-none absolute inset-0 opacity-30" aria-hidden />
+      <div
+        className="halftone pointer-events-none absolute inset-x-0 top-0 h-72 opacity-[0.05]"
+        aria-hidden
+      />
+      <div
+        aria-hidden
+        className="onboarding-orb pointer-events-none absolute -left-40 top-1/4 h-[420px] w-[420px] rounded-full opacity-50 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, color-mix(in oklch, var(--color-arena) 22%, transparent), transparent 70%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="onboarding-orb-2 pointer-events-none absolute -right-32 bottom-0 h-[360px] w-[360px] rounded-full opacity-40 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, color-mix(in oklch, var(--color-pitch) 28%, transparent), transparent 70%)",
+        }}
+      />
 
-        <div className="relative flex h-full flex-col justify-between p-14">
-          <header className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/logo.png"
-                alt="Copa Mundial de la FIFA 2026"
-                width={44}
-                height={44}
-                priority
-                className="size-11 rounded-md object-cover shadow-[var(--shadow-arena)]"
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-6 py-8 sm:px-10 sm:py-12 lg:px-12 lg:py-16">
+        {/* Header — 3 columnas en desktop, stack en mobile.
+            Mismo patrón que el onboarding. */}
+        <header className="mb-12 flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          {/* Quiniela Mundial */}
+          <div className="flex w-full items-center justify-center sm:w-auto sm:order-1 sm:justify-start">
+            <Image
+              src="/hlogo.png"
+              alt="Quiniela Mundial"
+              width={1919}
+              height={660}
+              priority
+              className="h-12 w-auto sm:h-14"
+            />
+          </div>
+
+          {/* FWC26 mark */}
+          <div className="flex flex-col items-center gap-1.5 sm:order-2">
+            <Image
+              src="/fwc26.png"
+              alt="FIFA World Cup 26"
+              width={1500}
+              height={1500}
+              priority
+              className="h-12 w-auto sm:h-14"
+            />
+            <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] sm:text-[0.6rem]">
+              Copa Mundial de la FIFA 2026
+            </p>
+          </div>
+
+          {/* Counter */}
+          <div className="hidden items-center gap-2 sm:order-3 sm:flex">
+            <span className="relative flex size-2">
+              <span
+                aria-hidden
+                className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70"
               />
-              <div className="leading-tight">
-                <p className="text-[0.7rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                  {process.env.NEXT_PUBLIC_APP_NAME ?? "World Cup Championship"}
-                </p>
-                <p className="font-display text-xl tracking-tight">
-                  La quiniela de la Copa Mundial de la FIFA 2026
-                </p>
-              </div>
-            </div>
-            <span className="hidden font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] xl:inline">
-              MMXXVI
+              <span className="relative inline-flex size-2 rounded-full bg-[var(--color-arena)]" />
             </span>
-          </header>
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              T-{daysLeft.toString().padStart(2, "0")} días al kickoff
+            </p>
+          </div>
+        </header>
 
-          <div className="space-y-8">
-            <div className="flex items-center gap-3">
-              <span className="relative flex size-2">
-                <span
-                  aria-hidden
-                  className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70"
-                />
-                <span className="relative inline-flex size-2 rounded-full bg-[var(--color-arena)]" />
-              </span>
-              <p className="font-mono text-xs uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                T-{daysLeft.toString().padStart(2, "0")} días al kickoff
+        {/* Cuerpo centrado */}
+        <main className="flex flex-1 flex-col items-center justify-center">
+          <div className="w-full max-w-md space-y-10">
+            <div className="space-y-4 text-center">
+              <div className="flex items-center justify-center gap-3">
+                <span className="h-px w-10 bg-[var(--color-arena)]" />
+                <p className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                  Acceso
+                </p>
+                <span className="h-px w-10 bg-[var(--color-arena)]" />
+              </div>
+              <h1 className="font-display text-5xl leading-tight tracking-tight sm:text-6xl">
+                Entra a Quiniela Mundial
+              </h1>
+              <p className="font-editorial text-lg italic text-[var(--color-muted-foreground)]">
+                Con tu cuenta de Google.
               </p>
             </div>
 
-            <h1 className="font-display text-[6.5rem] leading-[0.85] tracking-tight">
-              <span className="block">Predice</span>
-              <span className="block">
-                cada{" "}
-                <span className="font-editorial italic font-light text-[var(--color-arena)]">
-                  gol
-                </span>
-                .
-              </span>
-              <span className="block opacity-90">Discútelo</span>
-              <span className="block opacity-70">con los tuyos.</span>
-            </h1>
+            {params.reason === "banned" ? (
+              <div className="rounded-md border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 p-3 text-center text-sm text-[var(--color-danger)]">
+                Tu cuenta ha sido suspendida por el admin.
+              </div>
+            ) : null}
 
-            <p className="max-w-md font-editorial text-lg italic leading-relaxed text-[var(--color-muted-foreground)]">
+            <LoginForm next={params.next} />
+
+            <p className="text-center font-editorial text-sm italic text-[var(--color-muted-foreground)]">
               Quien mejor lea el torneo, gana.
             </p>
           </div>
+        </main>
 
-          <footer className="space-y-6">
-            <div className="flex items-center gap-3 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
-              {HOSTS.map((host, i) => (
-                <span key={host} className="flex items-center gap-3">
-                  {i > 0 ? (
-                    <span className="size-1 rounded-full bg-[var(--color-border-strong)]" />
-                  ) : null}
-                  <span className="font-display text-sm tracking-[0.16em] text-[var(--color-muted-foreground)]">
-                    {host}
-                  </span>
-                </span>
-              ))}
-              <span className="ml-auto font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                Anfitriones
-              </span>
-            </div>
-            <p className="text-xs text-[var(--color-muted-foreground)]">
-              Tus picks, sólo tuyas hasta el kickoff.
-            </p>
-          </footer>
-        </div>
-      </aside>
-
-      <main className="relative flex items-center justify-center overflow-hidden px-6 py-12 sm:px-10">
-        <div className="halftone pointer-events-none absolute right-0 top-0 h-40 w-40 opacity-[0.05]" aria-hidden />
-        <div className="w-full max-w-md space-y-8">
-          <div className="flex flex-col items-center space-y-4 text-center lg:hidden">
-            <Image
-              src="/logo.png"
-              alt="Copa Mundial de la FIFA 2026"
-              width={72}
-              height={72}
-              priority
-              className="size-[72px] rounded-md object-cover shadow-[var(--shadow-arena)]"
+        {/* Footer mobile — counter abajo cuando no cabe arriba */}
+        <footer className="mt-8 flex items-center justify-center gap-2 sm:hidden">
+          <span className="relative flex size-2">
+            <span
+              aria-hidden
+              className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70"
             />
-            <p className="font-display text-3xl leading-tight tracking-tight sm:text-4xl">
-              Copa Mundial de la FIFA 2026
-            </p>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] px-3 py-1 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
-              <span className="relative flex size-1.5">
-                <span
-                  aria-hidden
-                  className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70"
-                />
-                <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-arena)]" />
-              </span>
-              T-{daysLeft.toString().padStart(2, "0")} días al kickoff
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="h-px w-8 bg-[var(--color-arena)]" />
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                Acceso
-              </p>
-            </div>
-            <h2 className="font-display text-5xl tracking-tight">Entra a la quiniela</h2>
-            <p className="font-editorial text-base italic text-[var(--color-muted-foreground)]">
-              Con tu cuenta de Google.
-            </p>
-          </div>
-
-          {params.reason === "banned" ? (
-            <div className="rounded-md border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 p-3 text-sm text-[var(--color-danger)]">
-              Tu cuenta ha sido suspendida por el admin.
-            </div>
-          ) : null}
-
-          <LoginForm next={params.next} />
-
-          {/* Mini-tagline para el móvil — refuerza el "qué es esto" para
-              quien aterriza sin contexto. En desktop ya lo cubre el aside. */}
-          <p className="text-center font-editorial text-xs italic text-[var(--color-muted-foreground)] lg:hidden">
-            Quien mejor lea el torneo, gana.
+            <span className="relative inline-flex size-2 rounded-full bg-[var(--color-arena)]" />
+          </span>
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            T-{daysLeft.toString().padStart(2, "0")} días al kickoff
           </p>
-        </div>
-      </main>
+        </footer>
+      </div>
     </div>
   );
 }
