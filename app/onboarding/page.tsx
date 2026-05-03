@@ -62,7 +62,22 @@ export default async function OnboardingPage({
       />
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-6 py-8 sm:px-10 sm:py-12 lg:px-12 lg:py-16">
-        {/* Header — logo + branding + counter */}
+        {/* FIFA World Cup 2026 mark — centrado, arriba del todo */}
+        <div className="mb-8 flex flex-col items-center gap-2">
+          <Image
+            src="/fwc26.png"
+            alt="FIFA World Cup 26"
+            width={1500}
+            height={1500}
+            priority
+            className="h-16 w-auto sm:h-20"
+          />
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] sm:text-[0.65rem]">
+            Copa Mundial de la FIFA 2026
+          </p>
+        </div>
+
+        {/* Header — logo Quiniela Mundial + counter */}
         <header className="mb-12 flex items-center justify-between gap-4">
           <Link href="/dashboard" className="block" aria-label="Quiniela Mundial">
             <Image
