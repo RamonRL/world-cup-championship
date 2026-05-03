@@ -64,23 +64,15 @@ export default async function OnboardingPage({
       <div className="relative mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-6 py-8 sm:px-10 sm:py-12 lg:px-12 lg:py-16">
         {/* Header — logo + branding + counter */}
         <header className="mb-12 flex items-center justify-between gap-4">
-          <Link href="/dashboard" className="flex items-center gap-3">
+          <Link href="/dashboard" className="block" aria-label="Quiniela Mundial">
             <Image
-              src="/logo.png"
-              alt="Copa Mundial de la FIFA 2026"
-              width={44}
-              height={44}
+              src="/hlogo.png"
+              alt="Quiniela Mundial"
+              width={1919}
+              height={660}
               priority
-              className="size-10 rounded-md object-cover shadow-[var(--shadow-arena)] sm:size-11"
+              className="h-9 w-auto sm:h-10"
             />
-            <span className="leading-tight">
-              <span className="block font-display text-lg tracking-tight sm:text-xl">
-                Copa Mundial de la FIFA 2026
-              </span>
-              <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] sm:text-[0.6rem]">
-                Quiniela
-              </span>
-            </span>
           </Link>
           <div className="flex items-center gap-4">
             <div className="hidden items-center gap-2 sm:flex">
