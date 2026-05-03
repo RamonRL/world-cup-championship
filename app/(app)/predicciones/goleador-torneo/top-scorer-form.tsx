@@ -141,8 +141,18 @@ export function TopScorerForm({
 
       {/* ─── Filtros: banderas + posiciones ─── */}
       <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
-        {/* Mobile: una sola fila con scroll horizontal */}
-        <div className="-mx-4 overflow-x-auto px-4 sm:hidden">
+        {/* Mobile: una sola fila con scroll horizontal.
+            touch-action: pan-x + overscroll-behavior + overflow-y:hidden
+            evitan que el deslizamiento horizontal arrastre la página
+            verticalmente, que era irritante en iOS. */}
+        <div
+          className="-mx-4 overflow-x-auto overflow-y-hidden px-4 sm:hidden"
+          style={{
+            touchAction: "pan-x",
+            overscrollBehaviorY: "contain",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           <div className="flex min-w-max items-stretch gap-x-2 pb-1">
             {groupRows.flat().map((g, gIdx, all) => (
               <div key={g.code} className="flex items-stretch gap-x-2">
