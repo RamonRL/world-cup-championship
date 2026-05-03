@@ -99,14 +99,9 @@ export const DEFAULT_SPECIAL_PREDICTIONS = [
     pointsConfigJson: { correct: 8 },
     orderIndex: 6,
   },
-  {
-    key: "pens_in_r16",
-    question: "¿Habrá alguna tanda de penaltis en octavos?",
-    type: "yes_no" as const,
-    optionsJson: null,
-    pointsConfigJson: { correct: 3 },
-    orderIndex: 7,
-  },
+  // pens_in_r16 ("¿Penaltis en octavos?") se pospone hasta que termine
+  // la fase de grupos y se publiquen las especiales de la fase final.
+  // La migración 0005 borra el row si existe en una DB pre-existente.
 ] as const;
 
 export const DEFAULT_GROUPS = [

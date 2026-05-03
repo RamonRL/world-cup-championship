@@ -76,7 +76,6 @@ export const SPECIALS_SCORING: ScoringSection[] = [
       { points: 5, label: "Total de goles en fase de grupos (±5 del real)" },
       { points: 4, label: "¿África llega a semifinales?" },
       { points: 3, label: "¿Resultado con +6 goles en grupos?" },
-      { points: 3, label: "¿Penaltis en octavos?" },
       { points: 8, label: "Anfitrión que llega más lejos (escala por ronda)" },
     ],
   },
