@@ -141,14 +141,38 @@ export function TopScorerForm({
 
       {/* ─── Filtros: banderas + posiciones ─── */}
       <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
-        <div className="space-y-3">
+        {/* Mobile: una sola fila con scroll horizontal */}
+        <div className="-mx-4 overflow-x-auto px-4 sm:hidden">
+          <div className="flex min-w-max items-stretch gap-x-2 pb-1">
+            {groupRows.flat().map((g, gIdx, all) => (
+              <div key={g.code} className="flex items-stretch gap-x-2">
+                <GroupColumn
+                  group={g}
+                  activeTeam={teamFilter}
+                  onPickTeam={(code) =>
+                    setTeamFilter(teamFilter === code ? null : code)
+                  }
+                />
+                {gIdx < all.length - 1 ? (
+                  <span
+                    aria-hidden
+                    className="self-stretch w-px bg-[var(--color-border)]/60"
+                  />
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop: dos filas centradas, sin scroll */}
+        <div className="hidden space-y-3 sm:block">
           {groupRows.map((row, rowIdx) => (
             <div
               key={rowIdx}
-              className="flex flex-wrap items-stretch justify-center gap-x-2 gap-y-3 sm:gap-x-3"
+              className="flex flex-wrap items-stretch justify-center gap-x-3 gap-y-3"
             >
               {row.map((g, gIdx) => (
-                <div key={g.code} className="flex items-stretch gap-x-2 sm:gap-x-3">
+                <div key={g.code} className="flex items-stretch gap-x-3">
                   <GroupColumn
                     group={g}
                     activeTeam={teamFilter}
