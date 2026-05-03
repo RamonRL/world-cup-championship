@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Clock, MapPin } from "lucide-react";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, matchdays, matches, teams } from "@/lib/db/schema";
@@ -221,83 +221,176 @@ function MatchCard({
   away: { name: string; code: string; flagUrl: string | null } | null | undefined;
   groupCode: string | null;
 }) {
-  const status =
-    m.status === "finished" ? "FINAL" : m.status === "live" ? "EN VIVO" : "PROGRAMADO";
+  const isFinished = m.status === "finished";
+  const isLive = m.status === "live";
+  const winnerHome =
+    isFinished && m.homeScore != null && m.awayScore != null && m.homeScore > m.awayScore;
+  const winnerAway =
+    isFinished && m.homeScore != null && m.awayScore != null && m.awayScore > m.homeScore;
   return (
     <Link
       href={`/partido/${m.id}`}
       className="group relative block overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)]"
     >
-      {/* Top bar — match code + status */}
-      <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2">
-        <span className="flex flex-wrap items-center gap-2 font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+      {/* Top strip — code · grupo · status */}
+      <header className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2">
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
           <span>{m.code}</span>
           {groupCode ? (
-            <span className="rounded-sm border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.6rem] tracking-[0.18em] text-[var(--color-arena)]">
+            <span className="rounded-sm border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] px-1.5 py-0.5 text-[0.55rem] tracking-[0.18em] text-[var(--color-arena)]">
               Grupo {groupCode}
             </span>
           ) : null}
-          <span className="opacity-60">·</span>
-          <span>
-            {formatDateTime(m.scheduledAt, {
-              weekday: "short",
-              day: "2-digit",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        </span>
-        <Badge
-          variant={
-            m.status === "finished" ? "success" : m.status === "live" ? "warning" : "outline"
-          }
-        >
-          {status}
-        </Badge>
+        </div>
+        <StatusPill status={m.status} />
+      </header>
+
+      {/* Versus body */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-5 sm:gap-3 sm:py-6">
+        <TeamSide team={home} side="home" winner={winnerHome} />
+        <ScoreCenter
+          home={m.homeScore}
+          away={m.awayScore}
+          status={m.status}
+          scheduledAt={m.scheduledAt}
+        />
+        <TeamSide team={away} side="away" winner={winnerAway} />
       </div>
 
-      <div className="space-y-3 p-4">
-        <TeamRow team={home} score={m.homeScore} status={m.status} />
-        <TeamRow team={away} score={m.awayScore} status={m.status} />
+      {/* Bottom strip — date · venue */}
+      <footer className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+        <span className="inline-flex items-center gap-1.5">
+          <Clock className="size-3 shrink-0" />
+          {formatDateTime(m.scheduledAt, {
+            weekday: "short",
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
         {m.venue ? (
-          <p className="border-t border-dashed border-[var(--color-border)] pt-2 font-editorial !text-xs italic !leading-snug text-[var(--color-muted-foreground)]">
-            {m.venue}
-          </p>
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <MapPin className="size-3 shrink-0" />
+            <span className="truncate">{m.venue}</span>
+          </span>
         ) : null}
-      </div>
+      </footer>
+
+      {isLive ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-arena)] to-transparent"
+        />
+      ) : null}
     </Link>
   );
 }
 
-function TeamRow({
+function StatusPill({ status }: { status: MatchRow["status"] }) {
+  if (status === "finished") {
+    return (
+      <Badge variant="success" className="text-[0.55rem]">
+        Final
+      </Badge>
+    );
+  }
+  if (status === "live") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_12%,transparent)] px-2 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-arena)]">
+        <span className="relative flex size-1.5">
+          <span
+            aria-hidden
+            className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70"
+          />
+          <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-arena)]" />
+        </span>
+        En vivo
+      </span>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-[0.55rem]">
+      Programado
+    </Badge>
+  );
+}
+
+function TeamSide({
   team,
-  score,
-  status,
+  side,
+  winner,
 }: {
   team: { name: string; code: string; flagUrl: string | null } | null | undefined;
-  score: number | null;
-  status: "scheduled" | "live" | "finished";
+  side: "home" | "away";
+  winner: boolean;
 }) {
+  const isHome = side === "home";
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <TeamFlag code={team?.code} size={28} />
-        <div className="min-w-0">
-          <p className="truncate font-display text-base leading-none tracking-tight">
-            {team?.name ?? "TBD"}
-          </p>
-          <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-            {team?.code ?? "—"}
-          </p>
-        </div>
-      </div>
+    <div
+      className={`flex min-w-0 items-center gap-2 sm:gap-3 ${
+        isHome ? "flex-row-reverse text-right" : "text-left"
+      }`}
+    >
       <span
-        className={`font-display tabular text-3xl tracking-tight ${
-          status === "live" ? "text-[var(--color-arena)] glow-arena" : ""
-        }`}
+        className={`shrink-0 transition-transform ${winner ? "scale-105" : ""}`}
+        style={{ filter: !team ? "grayscale(1) opacity(0.4)" : undefined }}
       >
-        {score != null ? score : <span className="text-[var(--color-muted-foreground)]">·</span>}
+        <TeamFlag code={team?.code} size={42} />
+      </span>
+      <div className="min-w-0">
+        <p
+          className={`truncate font-display text-base leading-tight tracking-tight sm:text-lg ${
+            winner ? "text-[var(--color-foreground)]" : "text-[var(--color-foreground)]"
+          }`}
+        >
+          {team?.name ?? "TBD"}
+        </p>
+        <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+          {team?.code ?? "—"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ScoreCenter({
+  home,
+  away,
+  status,
+  scheduledAt,
+}: {
+  home: number | null;
+  away: number | null;
+  status: MatchRow["status"];
+  scheduledAt: Date;
+}) {
+  if (status === "scheduled") {
+    return (
+      <div className="flex flex-col items-center gap-0.5 px-1 sm:px-2">
+        <span className="font-display text-xl tracking-tight text-[var(--color-muted-foreground)]/70 sm:text-2xl">
+          vs
+        </span>
+        <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+          {formatDateTime(scheduledAt, { hour: "2-digit", minute: "2-digit" })}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`flex items-baseline gap-1.5 px-1 sm:gap-2 sm:px-2 ${
+        status === "live" ? "text-[var(--color-arena)] glow-arena" : ""
+      }`}
+    >
+      <span className="font-display tabular text-3xl leading-none tracking-tighter sm:text-4xl">
+        {home ?? 0}
+      </span>
+      <span className="font-display text-lg leading-none text-[var(--color-muted-foreground)]/70 sm:text-xl">
+        ·
+      </span>
+      <span className="font-display tabular text-3xl leading-none tracking-tighter sm:text-4xl">
+        {away ?? 0}
       </span>
     </div>
   );
