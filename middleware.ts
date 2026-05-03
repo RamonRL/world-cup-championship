@@ -10,9 +10,10 @@ export const config = {
     /*
      * Run on all routes except:
      * - _next static & images
-     * - public files (svg, png, jpg, jpeg, gif, webp, avif, ico)
+     * - public files (svg, png, jpg, jpeg, gif, webp, avif, ico, webmanifest)
+     * - manifest.webmanifest (PWA — debe ser pública sin auth round-trip)
      * - api routes (we keep them stateless; auth checks run inside)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|webmanifest)$).*)",
   ],
 };

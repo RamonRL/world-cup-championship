@@ -3,10 +3,30 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/auth/error"];
+// Rutas que NO requieren sesión. Crítico que aquí estén los recursos
+// PWA (manifest) y la landing del invite link, porque si el middleware
+// las redirige se rompe la instalación de la PWA y los invites
+// inválidos generan loops de 307→/login en cada navegación.
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth/callback",
+  "/auth/error",
+  "/invite",
+  "/manifest.webmanifest",
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  const pathname = request.nextUrl.pathname;
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
+  // Skip getUser() para rutas públicas: ahorra un round-trip a Supabase
+  // en cada navegación (Chrome refetcha manifest.webmanifest a menudo;
+  // si pasaba por el middleware completo, era un cuello de botella).
+  if (isPublic) {
+    return response;
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -33,10 +53,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-
-  if (!user && !isPublic) {
+  if (!user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", pathname);
