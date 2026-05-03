@@ -437,7 +437,7 @@ function TeamRoundField({
           Selección
         </p>
         <div
-          className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 py-2"
           style={{ touchAction: "pan-x", overscrollBehaviorY: "contain" }}
         >
           {allowedTeams.map((t) => {
@@ -451,7 +451,7 @@ function TeamRoundField({
                 title={t.name}
                 aria-label={t.name}
                 className={cn(
-                  "shrink-0 rounded-full transition disabled:opacity-50",
+                  "block size-8 shrink-0 rounded-full transition disabled:opacity-50",
                   active
                     ? "ring-2 ring-[var(--color-arena)] ring-offset-2 ring-offset-[var(--color-surface)]"
                     : "opacity-90 hover:opacity-100",
