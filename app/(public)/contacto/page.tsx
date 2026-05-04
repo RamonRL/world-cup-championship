@@ -90,10 +90,12 @@ export default function ContactoPage() {
             Hola, soy Ramón.
           </h2>
           <p className="font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
-            Ingeniero de software, fanático del fútbol y obseso de las
-            quinielas entre amigos. Quiniela Mundial 2026 nació para mi peña
-            del Mundial — un excel infinito con marcadores, capturas en el
-            grupo de WhatsApp y 0% manera fiable de saber quién iba ganando.
+            Científico e ingeniero de datos, desarrollador de IA, fanático del 
+            fútbol y obseso de las apps de Fantasy entre amigos. Quiniela 
+            Mundial 2026 nació para mi grupo de amigos, como una alternativa
+            a los juegos fantasy tradicionales — excels infinitos, capturas en el
+            grupo de WhatsApp, batallas de clausulazos sin control pero nunca
+            satisfechos con la experiencia de usuario de algunas apps.
             Decidí construir la app que nos faltaba y abrirla para que la
             usara cualquiera.
           </p>
