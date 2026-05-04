@@ -1,7 +1,7 @@
 import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Clock, MapPin, Trophy } from "lucide-react";
+import { ArrowLeft, Clock, MapPin } from "lucide-react";
 import { and, asc, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
@@ -163,7 +163,7 @@ export default async function GroupDetailPage({
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-3">
               <Stat
                 label="Partidos"
                 value={`${matchesPlayed} / ${groupMatches.length}`}
@@ -172,7 +172,6 @@ export default async function GroupDetailPage({
               />
               <Stat label="Finalizados" value={finishedMatches.toString()} />
               <Stat label="Goles" value={goalsFor.toString()} />
-              <Stat label="Pasan a R32" value="2 + 1/8" hint="top 2 + mejor 3º" />
             </div>
           </div>
         </div>
@@ -211,10 +210,6 @@ export default async function GroupDetailPage({
               );
             })}
           </ul>
-          <footer className="flex items-center gap-2 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-5 py-2.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-            <Trophy className="size-3 shrink-0 text-[var(--color-arena)]" />
-            Top 2 + 8 mejores 3º → R32
-          </footer>
         </article>
       </section>
 

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { groups, groupStandings, teams } from "@/lib/db/schema";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
-import { ArrowUpRight, Trophy, Users } from "lucide-react";
+import { ArrowUpRight, Users } from "lucide-react";
 
 export const metadata = { title: "Grupos" };
 
@@ -33,7 +33,7 @@ export default async function GroupsPage() {
       <PageHeader
         eyebrow="Fase de grupos"
         title="12 grupos"
-        description="Los 12 grupos del torneo."
+        description="Los 12 grupos del torneo. Top 2 + los 8 mejores 3os pasan a R32."
       />
       {allGroups.length === 0 ? (
         <EmptyState
@@ -125,13 +125,6 @@ export default async function GroupsPage() {
                   </ul>
                 )}
 
-                {/* Footer — leyenda de clasificación */}
-                <footer className="flex items-center justify-between gap-3 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-5 py-2.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Trophy className="size-3 shrink-0 text-[var(--color-arena)]" />
-                    Top 2 + 8 mejores 3º → R32
-                  </span>
-                </footer>
               </Link>
             );
           })}
