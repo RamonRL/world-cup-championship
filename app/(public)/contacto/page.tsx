@@ -92,7 +92,7 @@ export default function ContactoPage() {
           <p className="font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
             Científico e ingeniero de datos, desarrollador de IA, fanático del 
             fútbol y obseso de las apps de Fantasy entre amigos. Quiniela 
-            Mundial 2026 nació para mi grupo de amigos, como una alternativa
+            Mundial nació para mi grupo de amigos, como una alternativa
             a los juegos fantasy tradicionales — excels infinitos, capturas en el
             grupo de WhatsApp, batallas de clausulazos sin control pero nunca
             satisfechos con la experiencia de usuario de algunas apps.
