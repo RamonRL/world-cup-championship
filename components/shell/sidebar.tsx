@@ -65,15 +65,15 @@ export function Sidebar({
             title={collapsed ? "Inicio" : undefined}
           >
             {collapsed ? (
-              // Colapsado: el icon.png cuadrado (mismo PNG que el favicon)
-              // como mark compacto.
+              // Colapsado: mark cuadrado de Quiniela Mundial
+              // (favicon/croppedalpha.png).
               <Image
-                src="/icon.png"
+                src="/qm-mark.png"
                 alt="Quiniela Mundial"
-                width={1074}
-                height={1074}
+                width={940}
+                height={973}
                 priority
-                className="size-12 rounded-md object-contain"
+                className="size-12 object-contain"
               />
             ) : (
               // Expandido: logo horizontal "Quiniela Mundial".
