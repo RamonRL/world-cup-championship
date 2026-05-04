@@ -3,8 +3,10 @@ import {
   CalendarDays,
   CircleUser,
   ClipboardList,
+  HelpCircle,
   Home,
   ListOrdered,
+  Mail,
   MessagesSquare,
   Settings2,
   Swords,
@@ -20,7 +22,7 @@ export type NavItem = {
   label: string;
   mobileLabel?: string;
   icon: LucideIcon;
-  group: "main" | "predicciones" | "social";
+  group: "main" | "predicciones" | "social" | "ayuda";
   primaryMobile?: boolean;
   /** Si true, el item solo se muestra a usuarios con sesión activa. */
   requiresAuth?: boolean;
@@ -114,6 +116,23 @@ export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] 
     group: "social",
     requiresAuth: true,
   });
+  // Ayuda — públicas para que también las indexen Googlebot y compañía.
+  // FAQ tiene su propio FAQPageLD; Contacto contiene la presentación del
+  // creador, email y redes sociales.
+  all.push(
+    {
+      href: "/faq",
+      label: "FAQs",
+      icon: HelpCircle,
+      group: "ayuda",
+    },
+    {
+      href: "/contacto",
+      label: "Contacto",
+      icon: Mail,
+      group: "ayuda",
+    },
+  );
   if (opts.isAuthenticated === false) {
     return all.filter((it) => !it.requiresAuth);
   }

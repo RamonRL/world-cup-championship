@@ -41,6 +41,7 @@ export function Sidebar({
   const main = items.filter((i) => i.group === "main");
   const preds = items.filter((i) => i.group === "predicciones");
   const social = items.filter((i) => i.group === "social");
+  const ayuda = items.filter((i) => i.group === "ayuda");
   const admin = isAdmin ? ADMIN_NAV : [];
   const activeHref = pickActiveHref(pathname, [...items, ...admin]);
 
@@ -163,6 +164,12 @@ export function Sidebar({
                 />
               ) : null
             }
+          />
+          <NavGroup
+            title="Ayuda"
+            items={ayuda}
+            activeHref={activeHref}
+            collapsed={collapsed}
           />
           {admin.length > 0 ? (
             <NavGroup

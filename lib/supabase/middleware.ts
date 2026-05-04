@@ -22,6 +22,8 @@ const PUBLIC_PATHS = [
   "/equipos",
   "/sedes",
   "/partido",
+  "/faq",
+  "/contacto",
   "/sitemap.xml",
   "/robots.txt",
   "/opengraph-image",

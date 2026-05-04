@@ -1,0 +1,214 @@
+import Image from "next/image";
+import Link from "next/link";
+import { Bug, Lightbulb, Mail, MessageSquare } from "lucide-react";
+import { PageHeader } from "@/components/shell/page-header";
+import { BreadcrumbLD } from "@/components/seo/jsonld";
+
+export const metadata = {
+  title: "Contacto",
+  description:
+    "Contacto de Quiniela Mundial 2026. Bugs, mejoras o dudas: admin@quinielamundial.es. Redes sociales y sobre el creador.",
+  alternates: { canonical: "/contacto" },
+  openGraph: {
+    title: "Contacto · Quiniela Mundial 2026",
+    description:
+      "Habla con el creador de Quiniela Mundial 2026. Email, redes sociales y formas de reportar bugs o sugerir mejoras.",
+    url: "/contacto",
+  },
+};
+
+const EMAIL = "admin@quinielamundial.es";
+
+// Redes sociales — los handles los rellena el dueño cuando estén
+// creados. Mantén el array para que la sección renderice un link por
+// item; basta cambiar el href para activarlos. Si no hay redes todavía,
+// pon el array vacío y la sección se oculta sola.
+const SOCIALS: { label: string; href: string; handle: string }[] = [
+  // { label: "Instagram", href: "https://instagram.com/quinielamundial", handle: "@quinielamundial" },
+  // { label: "X (Twitter)", href: "https://x.com/quinielamundial", handle: "@quinielamundial" },
+];
+
+export default function ContactoPage() {
+  return (
+    <div className="space-y-12">
+      <BreadcrumbLD
+        items={[
+          { name: "Inicio", href: "/" },
+          { name: "Contacto", href: "/contacto" },
+        ]}
+      />
+
+      <PageHeader
+        eyebrow="Ayuda"
+        title="Contacto"
+        description="Habla con el creador de Quiniela Mundial. Bugs, mejoras o cualquier asunto — respondo lo antes que puedo."
+      />
+
+      {/* ─── Email hero ─── */}
+      <section className="relative overflow-hidden rounded-2xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))] p-8 sm:p-12">
+        <div
+          aria-hidden
+          className="halftone pointer-events-none absolute inset-0 opacity-[0.06]"
+        />
+        <div className="relative flex flex-col items-center gap-4 text-center">
+          <span className="grid size-12 place-items-center rounded-full bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]">
+            <Mail className="size-5" />
+          </span>
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+            Email
+          </p>
+          <a
+            href={`mailto:${EMAIL}`}
+            className="font-display text-3xl tracking-tight text-[var(--color-foreground)] underline-offset-4 hover:underline sm:text-5xl"
+          >
+            {EMAIL}
+          </a>
+          <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+            Click para abrir tu cliente de correo.
+          </p>
+        </div>
+      </section>
+
+      {/* ─── Sobre el creador ─── */}
+      <section className="grid gap-6 lg:grid-cols-[auto_1fr] lg:items-start lg:gap-10">
+        <div className="flex justify-center lg:block">
+          <div className="size-32 overflow-hidden rounded-full border-2 border-[var(--color-arena)]/40 bg-[var(--color-surface)] shadow-[var(--shadow-elev-2)]">
+            <Image
+              src="/qm-mark.png"
+              alt="Quiniela Mundial"
+              width={940}
+              height={973}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        </div>
+        <div className="space-y-4">
+          <p className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            Sobre el creador
+          </p>
+          <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
+            Hola, soy Ramón.
+          </h2>
+          <p className="font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
+            Ingeniero de software, fanático del fútbol y obseso de las
+            quinielas entre amigos. Quiniela Mundial 2026 nació para mi peña
+            del Mundial — un excel infinito con marcadores, capturas en el
+            grupo de WhatsApp y 0% manera fiable de saber quién iba ganando.
+            Decidí construir la app que nos faltaba y abrirla para que la
+            usara cualquiera.
+          </p>
+          <p className="font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
+            Si te encuentras un bug, tienes una idea, quieres sugerir una
+            categoría nueva o solo darme feedback, escríbeme a{" "}
+            <a
+              href={`mailto:${EMAIL}`}
+              className="text-[var(--color-arena)] underline-offset-2 hover:underline"
+            >
+              {EMAIL}
+            </a>
+            . No hay equipo detrás — soy yo y el código, así que puede tardar
+            un día o dos en responder, pero leo todo.
+          </p>
+        </div>
+      </section>
+
+      {/* ─── Atajos de email ─── */}
+      <section className="space-y-4">
+        <header className="flex items-center gap-3 border-b border-[var(--color-border)] pb-2">
+          <span className="h-px w-6 bg-[var(--color-arena)]" />
+          <h2 className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            Por qué escribir
+          </h2>
+        </header>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <ContactCard
+            icon={<Bug className="size-5" />}
+            title="Bugs"
+            text="Algo no funciona o se ve raro. Cuéntame qué pasó y, si puedes, manda captura."
+            href={`mailto:${EMAIL}?subject=${encodeURIComponent("Bug en Quiniela Mundial")}`}
+          />
+          <ContactCard
+            icon={<Lightbulb className="size-5" />}
+            title="Mejoras"
+            text="Una idea para una categoría nueva, una pantalla, una funcionalidad. Soy todo oídos."
+            href={`mailto:${EMAIL}?subject=${encodeURIComponent("Mejora para Quiniela Mundial")}`}
+          />
+          <ContactCard
+            icon={<MessageSquare className="size-5" />}
+            title="Otros"
+            text="Lo que sea: prensa, colaboraciones, dudas legales, peticiones de borrado."
+            href={`mailto:${EMAIL}?subject=${encodeURIComponent("Quiniela Mundial · ")}`}
+          />
+        </div>
+      </section>
+
+      {/* ─── Redes sociales ─── */}
+      {SOCIALS.length > 0 ? (
+        <section className="space-y-4">
+          <header className="flex items-center gap-3 border-b border-[var(--color-border)] pb-2">
+            <span className="h-px w-6 bg-[var(--color-arena)]" />
+            <h2 className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              Redes sociales
+            </h2>
+          </header>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {SOCIALS.map((s) => (
+              <Link
+                key={s.label}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:border-[var(--color-arena)]/40"
+              >
+                <div className="min-w-0">
+                  <p className="font-display text-base tracking-tight">
+                    {s.label}
+                  </p>
+                  <p className="truncate font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                    {s.handle}
+                  </p>
+                </div>
+                <span
+                  aria-hidden
+                  className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]"
+                >
+                  ↗
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function ContactCard({
+  icon,
+  title,
+  text,
+  href,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+  href: string;
+}) {
+  return (
+    <a
+      href={href}
+      className="group flex flex-col gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition hover:border-[var(--color-arena)]/40"
+    >
+      <span className="grid size-9 place-items-center rounded-md border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] text-[var(--color-arena)]">
+        {icon}
+      </span>
+      <h3 className="font-display text-lg tracking-tight">{title}</h3>
+      <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)]">
+        {text}
+      </p>
+      <span className="mt-auto font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-arena)] transition group-hover:translate-x-0.5">
+        Escribir →
+      </span>
+    </a>
+  );
+}
