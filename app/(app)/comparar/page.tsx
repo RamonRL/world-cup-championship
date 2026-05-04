@@ -27,7 +27,7 @@ import { OpponentPicker } from "./opponent-picker";
 export const metadata = { title: "Comparar predicciones" };
 
 const KICKOFF = new Date(
-  process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z",
+  process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T19:00:00Z",
 );
 
 export default async function CompararPage({

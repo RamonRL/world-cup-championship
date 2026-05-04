@@ -11,7 +11,7 @@ import { currentLeagueId } from "@/lib/leagues";
 export type FormState = { ok: boolean; error?: string };
 
 const KICKOFF = new Date(
-  process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z",
+  process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T19:00:00Z",
 );
 
 const stageEnum = z.enum(["r16", "qf", "sf", "final"]);

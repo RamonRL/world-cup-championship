@@ -14,7 +14,7 @@ import { GroupRankingForm } from "./group-ranking-form";
 export const metadata = { title: "Posiciones por grupo · Predicciones" };
 
 const KICKOFF = new Date(
-  process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z",
+  process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T19:00:00Z",
 );
 
 export default async function PredictGroupsPage() {

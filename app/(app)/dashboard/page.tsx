@@ -28,7 +28,7 @@ import { formatDateTime } from "@/lib/utils";
 import { loadActivityFeed } from "@/lib/activity-feed";
 import { ImportPredictionsBanner } from "@/components/predictions/import-banner";
 
-const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z";
+const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T19:00:00Z";
 
 const MARQUEE_TOKENS = [
   "MUNDIAL FIFA 26",

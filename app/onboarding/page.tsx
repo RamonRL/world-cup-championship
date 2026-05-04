@@ -11,7 +11,7 @@ type Step = "root" | "privada-elegir" | "privada-crear" | "privada-unirse";
 
 const VALID_STEPS: Step[] = ["root", "privada-elegir", "privada-crear", "privada-unirse"];
 
-const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T20:00:00Z";
+const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T19:00:00Z";
 
 export default async function OnboardingPage({
   searchParams,
