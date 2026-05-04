@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { groups, groupStandings, teams } from "@/lib/db/schema";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
-import { ArrowUpRight, Users } from "lucide-react";
+import { ArrowUpRight, Trophy, Users } from "lucide-react";
 
 export const metadata = { title: "Grupos" };
 
@@ -42,7 +42,7 @@ export default async function GroupsPage() {
           description="Aún sin asignar."
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
           {allGroups.map((g) => {
             const groupTeams = teamsByGroup.get(g.id) ?? [];
             const sorted = [...groupTeams].sort((a, b) => {
@@ -50,20 +50,51 @@ export default async function GroupsPage() {
               const sb = standingByPair.get(`${g.id}-${b.id}`)?.position ?? 99;
               return sa - sb;
             });
+            const totalPlayed = sorted.reduce(
+              (acc, t) => acc + (standingByPair.get(`${g.id}-${t.id}`)?.played ?? 0),
+              0,
+            );
+            // Cada grupo tiene 6 partidos (4 selecciones, todos contra todos).
+            // El total de "played" suma 2 por cada partido (cuenta a los dos
+            // bandos), así que played/2 da los partidos disputados.
+            const matchesPlayed = Math.floor(totalPlayed / 2);
             return (
               <Link
                 key={g.id}
                 href={`/grupos/${g.code}`}
-                className="group block overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)]"
+                className="group relative block overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--color-arena)]/50 hover:shadow-[var(--shadow-elev-2)]"
               >
-                <header className="flex items-baseline justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3">
-                  <div className="flex items-baseline gap-3">
-                    <span className="font-display text-3xl tracking-tight text-[var(--color-arena)] glow-arena">
+                {/* Halftone sutil sobre la letra del grupo */}
+                <div
+                  aria-hidden
+                  className="halftone pointer-events-none absolute inset-x-0 top-0 h-32 opacity-[0.05]"
+                />
+
+                {/* Header — letra del grupo dominante */}
+                <header className="relative flex items-end justify-between gap-3 border-b border-[var(--color-border)] px-5 pb-4 pt-5">
+                  <div>
+                    <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                      Grupo
+                    </p>
+                    <h2 className="font-display text-7xl leading-none tracking-tight text-[var(--color-arena)] glow-arena sm:text-8xl">
                       {g.code}
-                    </span>
-                    <span className="font-display text-xl tracking-tight">{g.name}</span>
+                    </h2>
                   </div>
-                  <ArrowUpRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:text-[var(--color-arena)]" />
+                  <div className="flex flex-col items-end gap-2 pb-1">
+                    {matchesPlayed > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                        <span className="font-display tabular text-base text-[var(--color-foreground)]">
+                          {matchesPlayed}
+                        </span>
+                        / 6 jugados
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                        Sin jugar
+                      </span>
+                    )}
+                    <ArrowUpRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[var(--color-arena)]" />
+                  </div>
                 </header>
 
                 <StandingsHeader />
@@ -72,7 +103,7 @@ export default async function GroupsPage() {
                     Selecciones aún sin asignar.
                   </p>
                 ) : (
-                  <ul className="pointer-events-none">
+                  <ul>
                     {sorted.map((t, i) => {
                       const s = standingByPair.get(`${g.id}-${t.id}`);
                       const pos = i + 1;
@@ -93,6 +124,14 @@ export default async function GroupsPage() {
                     })}
                   </ul>
                 )}
+
+                {/* Footer — leyenda de clasificación */}
+                <footer className="flex items-center justify-between gap-3 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-5 py-2.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Trophy className="size-3 shrink-0 text-[var(--color-arena)]" />
+                    Top 2 + 8 mejores 3º → R32
+                  </span>
+                </footer>
               </Link>
             );
           })}
@@ -106,7 +145,7 @@ function StandingsHeader() {
   return (
     <>
       {/* Mobile header: # · Selección · PJ · DG · Pts */}
-      <div className="grid grid-cols-[28px_1fr_28px_36px_36px] gap-2 border-b border-[var(--color-border)] px-4 py-2 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)] sm:hidden">
+      <div className="grid grid-cols-[24px_1fr_28px_36px_44px] gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-5 py-2 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)] sm:hidden">
         <span>#</span>
         <span>Selección</span>
         <span className="text-right">PJ</span>
@@ -114,7 +153,7 @@ function StandingsHeader() {
         <span className="text-right">Pts</span>
       </div>
       {/* Desktop header: full table */}
-      <div className="hidden grid-cols-[28px_1fr_28px_28px_28px_28px_36px_36px_44px] gap-2 border-b border-[var(--color-border)] px-4 py-2 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)] sm:grid">
+      <div className="hidden grid-cols-[24px_1fr_28px_28px_28px_28px_36px_36px_44px] gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-5 py-2 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)] sm:grid">
         <span>#</span>
         <span>Selección</span>
         <span className="text-right">PJ</span>
@@ -155,58 +194,90 @@ function StandingRow({
   const advances = pos <= 2;
   const limbo = pos === 3;
   const goalDiff = goalsFor - goalsAgainst;
-  const bg = advances
-    ? "bg-[color-mix(in_oklch,var(--color-success)_6%,transparent)]"
+  // Banda lateral izquierda con color de clasificación. Top 2 arena fuerte,
+  // 3º amber/warning sutil, 4º sin acento.
+  const stripe = advances
+    ? "before:bg-[var(--color-arena)]"
     : limbo
-      ? "bg-[color-mix(in_oklch,var(--color-accent)_6%,transparent)]"
+      ? "before:bg-[var(--color-warning)]/70"
+      : "before:bg-transparent";
+  const posColor = advances
+    ? "text-[var(--color-arena)]"
+    : limbo
+      ? "text-[var(--color-warning)]"
+      : "text-[var(--color-muted-foreground)]";
+  // Fondo sutil por estado.
+  const rowBg = advances
+    ? "bg-[color-mix(in_oklch,var(--color-arena)_5%,transparent)]"
+    : limbo
+      ? "bg-[color-mix(in_oklch,var(--color-warning)_4%,transparent)]"
       : "";
-  const posClass = advances
-    ? "text-[var(--color-success)]"
-    : "text-[var(--color-muted-foreground)]";
 
   return (
-    <li className={`border-b border-[var(--color-border)] last:border-b-0 ${bg}`}>
+    <li
+      className={`relative border-b border-[var(--color-border)] last:border-b-0 before:absolute before:inset-y-0 before:left-0 before:w-0.5 ${stripe} ${rowBg}`}
+    >
       {/* Mobile row */}
-      <div className="grid grid-cols-[28px_1fr_28px_36px_36px] items-center gap-2 px-4 py-2.5 sm:hidden">
-        <span className={`font-display tabular text-base ${posClass}`}>{pos}</span>
-        <span className="flex items-center gap-2 truncate">
+      <div className="grid grid-cols-[24px_1fr_28px_36px_44px] items-center gap-2 px-5 py-2.5 sm:hidden">
+        <span className={`font-display tabular text-base ${posColor}`}>{pos}</span>
+        <span className="flex min-w-0 items-center gap-2">
           <TeamFlag code={team.code} size={20} />
           <span className="truncate text-sm font-medium">{team.name}</span>
         </span>
-        <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+        <span className="text-right font-mono text-xs tabular text-[var(--color-muted-foreground)]">
           {played}
         </span>
-        <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+        <span
+          className={`text-right font-mono text-xs tabular ${
+            goalDiff > 0
+              ? "text-[var(--color-success)]"
+              : goalDiff < 0
+                ? "text-[var(--color-danger)]"
+                : "text-[var(--color-muted-foreground)]"
+          }`}
+        >
           {goalDiff > 0 ? `+${goalDiff}` : goalDiff}
         </span>
-        <span className="text-right font-display tabular text-lg">{points}</span>
+        <span
+          className={`text-right font-display tabular text-lg ${
+            advances ? "text-[var(--color-arena)] glow-arena" : ""
+          }`}
+        >
+          {points}
+        </span>
       </div>
       {/* Desktop row */}
-      <div className="hidden grid-cols-[28px_1fr_28px_28px_28px_28px_36px_36px_44px] items-center gap-2 px-4 py-2.5 sm:grid">
-        <span className={`font-display tabular text-base ${posClass}`}>{pos}</span>
-        <span className="flex items-center gap-2 truncate">
+      <div className="hidden grid-cols-[24px_1fr_28px_28px_28px_28px_36px_36px_44px] items-center gap-2 px-5 py-2.5 sm:grid">
+        <span className={`font-display tabular text-base ${posColor}`}>{pos}</span>
+        <span className="flex min-w-0 items-center gap-2">
           <TeamFlag code={team.code} size={20} />
           <span className="truncate text-sm font-medium">{team.name}</span>
         </span>
-        <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+        <span className="text-right font-mono text-xs tabular text-[var(--color-muted-foreground)]">
           {played}
         </span>
-        <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+        <span className="text-right font-mono text-xs tabular text-[var(--color-muted-foreground)]">
           {won}
         </span>
-        <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+        <span className="text-right font-mono text-xs tabular text-[var(--color-muted-foreground)]">
           {drawn}
         </span>
-        <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+        <span className="text-right font-mono text-xs tabular text-[var(--color-muted-foreground)]">
           {lost}
         </span>
-        <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+        <span className="text-right font-mono text-xs tabular text-[var(--color-muted-foreground)]">
           {goalsFor}
         </span>
-        <span className="text-right text-xs tabular text-[var(--color-muted-foreground)]">
+        <span className="text-right font-mono text-xs tabular text-[var(--color-muted-foreground)]">
           {goalsAgainst}
         </span>
-        <span className="text-right font-display tabular text-lg">{points}</span>
+        <span
+          className={`text-right font-display tabular text-lg ${
+            advances ? "text-[var(--color-arena)] glow-arena" : ""
+          }`}
+        >
+          {points}
+        </span>
       </div>
     </li>
   );
