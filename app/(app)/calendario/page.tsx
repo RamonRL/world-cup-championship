@@ -336,17 +336,30 @@ function TeamSide({
         className={`shrink-0 transition-transform ${winner ? "scale-105" : ""}`}
         style={{ filter: !team ? "grayscale(1) opacity(0.4)" : undefined }}
       >
-        <TeamFlag code={team?.code} size={42} />
+        {/* Bandera más pequeña en mobile para ceder espacio al nombre */}
+        <span className="block sm:hidden">
+          <TeamFlag code={team?.code} size={30} />
+        </span>
+        <span className="hidden sm:block">
+          <TeamFlag code={team?.code} size={42} />
+        </span>
       </span>
       <div className="min-w-0">
         <p
-          className={`truncate font-display text-base leading-tight tracking-tight sm:text-lg ${
+          className={`font-display text-sm leading-[1.05] tracking-tight sm:text-lg ${
             winner ? "text-[var(--color-foreground)]" : "text-[var(--color-foreground)]"
           }`}
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            wordBreak: "break-word",
+          }}
         >
           {team?.name ?? "TBD"}
         </p>
-        <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+        <p className="mt-0.5 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
           {team?.code ?? "—"}
         </p>
       </div>
