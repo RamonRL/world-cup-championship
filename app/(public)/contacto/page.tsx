@@ -71,15 +71,29 @@ export default function ContactoPage() {
 
       {/* ─── Sobre el creador ─── */}
       <section className="grid gap-6 lg:grid-cols-[auto_1fr] lg:items-start lg:gap-10">
+        {/* Pareja de círculos: retrato del creador + mark de la app,
+            ligeramente solapados para sugerir "yo + el proyecto". El
+            retrato delante porque pesa más como elemento. */}
         <div className="flex justify-center lg:block">
-          <div className="size-32 overflow-hidden rounded-full border-2 border-[var(--color-arena)]/40 bg-[var(--color-surface)] shadow-[var(--shadow-elev-2)]">
-            <Image
-              src="/qm-mark.png"
-              alt="Quiniela Mundial"
-              width={940}
-              height={973}
-              className="h-full w-full object-cover"
-            />
+          <div className="relative flex items-center">
+            <div className="relative z-10 size-32 overflow-hidden rounded-full border-2 border-[var(--color-arena)]/40 bg-[var(--color-surface)] shadow-[var(--shadow-elev-2)]">
+              <Image
+                src="/yo-portrait.jpg"
+                alt="Ramón Romero, creador de Quiniela Mundial"
+                width={640}
+                height={640}
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="-ml-6 size-24 overflow-hidden rounded-full border-2 border-[var(--color-arena)]/40 bg-[var(--color-surface)] shadow-[var(--shadow-elev-2)]">
+              <Image
+                src="/qm-mark.png"
+                alt="Quiniela Mundial"
+                width={940}
+                height={973}
+                className="h-full w-full object-cover"
+              />
+            </div>
           </div>
         </div>
         <div className="space-y-4">
