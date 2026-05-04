@@ -58,31 +58,34 @@ export function Sidebar({
           <Link
             href="/dashboard"
             className={cn(
-              "flex items-center transition-colors",
-              collapsed
-                ? "justify-center"
-                : "min-w-0 flex-1 gap-3 hover:opacity-80",
+              "flex items-center transition-opacity hover:opacity-80",
+              collapsed ? "justify-center" : "min-w-0 flex-1",
             )}
+            aria-label="Quiniela Mundial"
             title={collapsed ? "Inicio" : undefined}
           >
-            <Image
-              src="/logo.png"
-              alt="Copa Mundial de la FIFA 2026"
-              width={40}
-              height={40}
-              priority
-              className="size-10 rounded-md object-cover shadow-[var(--shadow-arena)]"
-            />
-            {!collapsed ? (
-              <span className="min-w-0 leading-tight">
-                <span className="block font-display text-2xl tracking-tight">
-                  Copa Mundial de la FIFA 2026
-                </span>
-                <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                  La Quiniela
-                </span>
-              </span>
-            ) : null}
+            {collapsed ? (
+              // Colapsado: el icon.png cuadrado (mismo PNG que el favicon)
+              // como mark compacto.
+              <Image
+                src="/icon.png"
+                alt="Quiniela Mundial"
+                width={1074}
+                height={1074}
+                priority
+                className="size-10 rounded-md object-contain"
+              />
+            ) : (
+              // Expandido: logo horizontal "Quiniela Mundial".
+              <Image
+                src="/hlogo.png"
+                alt="Quiniela Mundial"
+                width={1919}
+                height={660}
+                priority
+                className="h-9 w-auto"
+              />
+            )}
           </Link>
           <button
             type="button"

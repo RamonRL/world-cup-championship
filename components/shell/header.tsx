@@ -23,21 +23,19 @@ export function AppHeader({
 }: Props) {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-bg)_88%,transparent)] px-4 backdrop-blur-md lg:px-8">
-      <Link href="/dashboard" className="flex items-center gap-2.5 lg:hidden">
+      <Link
+        href="/dashboard"
+        aria-label="Quiniela Mundial"
+        className="block transition-opacity hover:opacity-80 lg:hidden"
+      >
         <Image
-          src="/logo.png"
-          alt="Copa Mundial de la FIFA 2026"
-          width={36}
-          height={36}
+          src="/hlogo.png"
+          alt="Quiniela Mundial"
+          width={1919}
+          height={660}
           priority
-          className="size-9 rounded-md object-cover"
+          className="h-7 w-auto"
         />
-        <span className="leading-tight">
-          <span className="block font-display text-xl tracking-tight">Copa Mundial de la FIFA 2026</span>
-          <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-            Quiniela
-          </span>
-        </span>
       </Link>
       <div className="flex flex-1 justify-center">
         <LeagueSwitcher memberships={memberships} activeLeagueId={activeLeagueId} />
