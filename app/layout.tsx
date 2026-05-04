@@ -64,12 +64,16 @@ export const metadata: Metadata = {
   // abra la app en modo standalone (sin barra de navegación) al
   // lanzarla desde el icono del Home Screen. Sin esto, las páginas
   // distintas de la del start_url se abren con la chrome de Safari.
-  // statusBarStyle "black-translucent" hace que el contenido suba bajo
-  // el status bar para sensación full-bleed.
+  // statusBarStyle "default" hace que iOS reserve la zona del status bar
+  // como overlay del sistema (con texto adaptado al theme) y el WebView
+  // empieza justo debajo. Si en su día se vuelve a "black-translucent"
+  // hay que añadir pt-[env(safe-area-inset-top)] a la sticky header,
+  // top: env(safe-area-inset-top) y mirror para la deadline-banner —
+  // sin eso, el header se queda detrás del notch / Dynamic Island.
   appleWebApp: {
     capable: true,
     title: appName,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
   // El manifest.webmanifest se genera en app/manifest.ts. Chrome/Android
   // lo usa para abrir la app en modo standalone tras "Añadir a la
