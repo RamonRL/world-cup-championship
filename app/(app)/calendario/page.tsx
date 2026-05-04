@@ -128,7 +128,7 @@ export default async function CalendarPage({
               104 partidos. 39 días.
             </p>
           </div>
-          <div className="order-1 flex flex-col items-center gap-1.5 sm:order-2 sm:col-start-2 sm:pb-2">
+          <div className="order-1 hidden flex-col items-center gap-1.5 sm:order-2 sm:col-start-2 sm:flex sm:pb-2">
             <Image
               src="/fwc26.png"
               alt="FIFA World Cup 26"
