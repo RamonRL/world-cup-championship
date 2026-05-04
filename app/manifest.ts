@@ -22,10 +22,13 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#0e1014",
     theme_color: "#0e1014",
     lang: "es",
+    // Sizes coinciden con los archivos físicos en app/. Multi-purpose:
+    // any (genérico) y maskable (Android adaptativo). favicon.ico va por
+    // la convención de app/favicon.ico, no se declara aquí.
     icons: [
       {
         src: "/icon.png",
-        sizes: "192x192",
+        sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
@@ -33,7 +36,7 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/icon.png",
         sizes: "512x512",
         type: "image/png",
-        purpose: "any",
+        purpose: "maskable",
       },
       {
         src: "/apple-icon.png",
