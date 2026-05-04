@@ -21,6 +21,7 @@ import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { deleteOwnLeague } from "@/lib/league-actions";
 import { formatDateTime, initials } from "@/lib/utils";
 import { InviteLinkCopy } from "@/app/admin/ligas/invite-link-copy";
+import { CodeDisplay } from "./code-display";
 import { KickButton, LeaveButton } from "./member-actions";
 
 export const metadata = { title: "Mi Quiniela" };
@@ -86,11 +87,10 @@ export default async function MyLeaguePage() {
         }
       />
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      {league.joinCode ? <CodeDisplay code={league.joinCode} /> : null}
+
+      <section className="grid gap-3 sm:grid-cols-2">
         <StatTile label="Miembros" value={members.length} accent />
-        {league.joinCode ? (
-          <StatTile label="Código" value={league.joinCode} textValue />
-        ) : null}
         <StatTile
           label="Creada"
           value={formatDateTime(league.createdAt, {
@@ -104,12 +104,7 @@ export default async function MyLeaguePage() {
 
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
         <header className="flex items-center justify-between gap-3 pb-3 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-          <span>Compartir</span>
-          {league.joinCode ? (
-            <span className="text-[var(--color-arena)]">
-              Código · {league.joinCode}
-            </span>
-          ) : null}
+          <span>Invite link</span>
         </header>
         <InviteLinkCopy token={league.inviteToken} />
         <p className="pt-3 font-editorial text-xs italic leading-relaxed text-[var(--color-muted-foreground)]">
