@@ -49,6 +49,9 @@ const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Quiniela Mundial";
 // renderiza siempre "Quiniela Mundial". Cambia con NEXT_PUBLIC_APP_NAME
 // si en algún momento queremos otro nombre global.
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://quinielamundial.es",
+  ),
   title: {
     default: appName,
     template: appName,
