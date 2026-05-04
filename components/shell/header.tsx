@@ -34,7 +34,7 @@ export function AppHeader({
           width={1919}
           height={660}
           priority
-          className="h-7 w-auto"
+          className="h-9 w-auto"
         />
       </Link>
       <div className="flex flex-1 justify-center">

@@ -73,7 +73,7 @@ export function Sidebar({
                 width={1074}
                 height={1074}
                 priority
-                className="size-10 rounded-md object-contain"
+                className="size-12 rounded-md object-contain"
               />
             ) : (
               // Expandido: logo horizontal "Quiniela Mundial".
@@ -83,7 +83,7 @@ export function Sidebar({
                 width={1919}
                 height={660}
                 priority
-                className="h-9 w-auto"
+                className="h-12 w-auto"
               />
             )}
           </Link>
