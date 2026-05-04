@@ -314,6 +314,74 @@ export async function acceptInvite(token: string): Promise<{
   redirect("/dashboard");
 }
 
+// ─────────────────── CREADOR DE QUINIELA PRIVADA ───────────────────
+
+/**
+ * Borra una quiniela privada. Solo la puede llamar el creador (createdBy).
+ * Misma mecánica que la versión admin: empuja a los miembros a la pública
+ * antes del delete y deja que el cascade limpie las membresías.
+ */
+export async function deleteOwnLeague(formData: FormData) {
+  const me = await requireUser();
+  const id = Number(formData.get("id"));
+  if (!Number.isFinite(id)) return;
+
+  const [target] = await db.select().from(leagues).where(eq(leagues.id, id)).limit(1);
+  if (!target) return;
+  if (target.isPublic) return;
+  if (target.createdBy !== me.id) return;
+
+  const pub = await getPublicLeague();
+  if (pub) {
+    await db
+      .update(profiles)
+      .set({ leagueId: pub.id })
+      .where(eq(profiles.leagueId, id));
+  }
+
+  await db.delete(leagues).where(eq(leagues.id, id));
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
+}
+
+/**
+ * El creador echa a un miembro de su propia quiniela. No puede echarse a sí
+ * mismo (para eso existe leaveLeague). Si el miembro tenía esta liga como
+ * activa, le movemos a la pública.
+ */
+export async function kickFromOwnLeague(formData: FormData) {
+  const me = await requireUser();
+  const userId = String(formData.get("userId") ?? "");
+  const leagueId = Number(formData.get("leagueId"));
+  if (!userId || !Number.isFinite(leagueId)) return;
+
+  const [target] = await db.select().from(leagues).where(eq(leagues.id, leagueId)).limit(1);
+  if (!target) return;
+  if (target.isPublic) return;
+  if (target.createdBy !== me.id) return;
+  if (userId === me.id) return; // el creador no se autoexpulsa
+
+  await db
+    .delete(leagueMemberships)
+    .where(
+      and(
+        eq(leagueMemberships.userId, userId),
+        eq(leagueMemberships.leagueId, leagueId),
+      ),
+    );
+
+  const pub = await getPublicLeague();
+  if (pub) {
+    await db
+      .update(profiles)
+      .set({ leagueId: pub.id })
+      .where(and(eq(profiles.id, userId), eq(profiles.leagueId, leagueId)));
+  }
+
+  revalidatePath("/mi-quiniela");
+  revalidatePath("/", "layout");
+}
+
 // ─────────────────── ADMIN ───────────────────
 
 export async function deleteLeague(formData: FormData) {

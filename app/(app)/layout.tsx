@@ -24,6 +24,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     loadDeadlineSummary(me.id, currentView ?? me.leagueId!),
     getMembershipsForUser(me.id),
   ]);
+  // Mostramos "Mi Quiniela" en la nav solo cuando la liga activa es privada.
+  // En la pública no hay nada que gestionar (no es del usuario, no se invita,
+  // no se sale).
+  const activeMembership = memberships.find((m) => m.id === currentView);
+  const showMyLeague = activeMembership ? !activeMembership.isPublic : false;
   return (
     <div className="flex min-h-dvh">
       <Sidebar
@@ -31,6 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         myId={me.id}
         pendingCount={pendingCount}
         defaultCollapsed={sidebarCollapsed}
+        showMyLeague={showMyLeague}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <DeadlineBanner deadline={imminent} />
@@ -45,7 +51,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <main className="flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+6rem)] pt-6 lg:px-8 lg:pb-12">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
-        <MobileBottomNav isAdmin={isAdmin} myId={me.id} pendingCount={pendingCount} />
+        <MobileBottomNav
+          isAdmin={isAdmin}
+          myId={me.id}
+          pendingCount={pendingCount}
+          showMyLeague={showMyLeague}
+        />
       </div>
     </div>
   );

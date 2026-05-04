@@ -11,6 +11,7 @@ import {
   Target,
   Trophy,
   Users,
+  UsersRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -23,8 +24,17 @@ export type NavItem = {
   primaryMobile?: boolean;
 };
 
-export function buildNavItems(myId: string): NavItem[] {
-  return [
+type BuildOptions = {
+  /**
+   * Si la liga activa del usuario es privada, mostramos el item "Mi
+   * Quiniela" (gestión de la liga: miembros, código, invite link). En la
+   * pública no tiene sentido — no hay nada que gestionar.
+   */
+  showMyLeague?: boolean;
+};
+
+export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] {
+  const items: NavItem[] = [
     { href: "/dashboard", label: "Inicio", icon: Home, group: "main", primaryMobile: true },
     { href: "/calendario", label: "Calendario", icon: CalendarDays, group: "main" },
     { href: "/grupos", label: "Grupos", icon: Users, group: "main" },
@@ -45,6 +55,16 @@ export function buildNavItems(myId: string): NavItem[] {
       icon: CircleUser,
       group: "predicciones",
     },
+  ];
+  if (opts.showMyLeague) {
+    items.push({
+      href: "/mi-quiniela",
+      label: "Mi Quiniela",
+      icon: UsersRound,
+      group: "predicciones",
+    });
+  }
+  items.push(
     {
       href: "/ranking",
       label: "Ranking",
@@ -54,7 +74,8 @@ export function buildNavItems(myId: string): NavItem[] {
     },
     { href: "/comparar", label: "Comparar", icon: Trophy, group: "social" },
     { href: "/chat", label: "Chat", icon: MessagesSquare, group: "social" },
-  ];
+  );
+  return items;
 }
 
 export const ADMIN_NAV: NavItem[] = [

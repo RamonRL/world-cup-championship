@@ -16,11 +16,21 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV, buildNavItems, type NavItem } from "./nav-data";
 
-type Props = { isAdmin: boolean; myId: string; pendingCount?: number };
+type Props = {
+  isAdmin: boolean;
+  myId: string;
+  pendingCount?: number;
+  showMyLeague?: boolean;
+};
 
-export function MobileBottomNav({ isAdmin, myId, pendingCount = 0 }: Props) {
+export function MobileBottomNav({
+  isAdmin,
+  myId,
+  pendingCount = 0,
+  showMyLeague = false,
+}: Props) {
   const pathname = usePathname();
-  const items = buildNavItems(myId);
+  const items = buildNavItems(myId, { showMyLeague });
   const primary = items.filter((i) => i.primaryMobile);
   const overflow = items.filter((i) => !i.primaryMobile).concat(isAdmin ? ADMIN_NAV : []);
   const activeHref = pickActiveHref(pathname, [...items, ...ADMIN_NAV]);

@@ -13,6 +13,8 @@ type Props = {
   myId: string;
   pendingCount?: number;
   defaultCollapsed?: boolean;
+  /** Liga activa privada → mostrar el item "Mi Quiniela". */
+  showMyLeague?: boolean;
 };
 
 // Cookie name compartido con el server-side reader del layout para que el
@@ -24,10 +26,11 @@ export function Sidebar({
   myId,
   pendingCount = 0,
   defaultCollapsed = false,
+  showMyLeague = false,
 }: Props) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  const items = buildNavItems(myId);
+  const items = buildNavItems(myId, { showMyLeague });
   const main = items.filter((i) => i.group === "main");
   const preds = items.filter((i) => i.group === "predicciones");
   const social = items.filter((i) => i.group === "social");
