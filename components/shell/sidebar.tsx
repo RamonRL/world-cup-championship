@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Globe2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV, buildNavItems, type NavItem } from "./nav-data";
 
@@ -133,12 +133,36 @@ export function Sidebar({
             badgeFor="/predicciones"
             badgeCount={pendingCount}
             collapsed={collapsed}
+            fallback={
+              !isAuthenticated ? (
+                <VisitorCTA
+                  collapsed={collapsed}
+                  icon={<Plus className="size-5" />}
+                  title="Empieza a predecir"
+                  copy="Crea tu quiniela y predice los 104 partidos."
+                  ctaLabel="Crear quiniela"
+                  href="/login?next=%2Fonboarding"
+                />
+              ) : null
+            }
           />
           <NavGroup
             title="Comunidad"
             items={social}
             activeHref={activeHref}
             collapsed={collapsed}
+            fallback={
+              !isAuthenticated ? (
+                <VisitorCTA
+                  collapsed={collapsed}
+                  icon={<Globe2 className="size-5" />}
+                  title="Quiniela Pública"
+                  copy="Compite contra todos sin necesitar código."
+                  ctaLabel="Unirme"
+                  href="/login?next=%2Fonboarding"
+                />
+              ) : null
+            }
           />
           {admin.length > 0 ? (
             <NavGroup
@@ -169,6 +193,7 @@ function NavGroup({
   badgeFor,
   badgeCount = 0,
   collapsed,
+  fallback,
 }: {
   title: string;
   items: NavItem[];
@@ -176,7 +201,17 @@ function NavGroup({
   badgeFor?: string;
   badgeCount?: number;
   collapsed: boolean;
+  /**
+   * Contenido a renderizar cuando `items` está vacío. Sin él, la sección
+   * solo enseña el eyebrow y queda visualmente colgada — caso típico:
+   * visitante sin sesión en Predicciones / Comunidad.
+   */
+  fallback?: React.ReactNode;
 }) {
+  // Si no hay items y tampoco fallback, escondemos el grupo entero (el
+  // eyebrow sin items se ve "roto"). Si hay fallback (CTA visitante),
+  // renderizamos eyebrow + fallback.
+  if (items.length === 0 && !fallback) return null;
   return (
     <div className={collapsed ? "space-y-1" : "space-y-1"}>
       {collapsed ? (
@@ -192,6 +227,7 @@ function NavGroup({
           </p>
         </div>
       )}
+      {items.length === 0 ? fallback : null}
       {items.map((item) => {
         const active = item.href === activeHref;
         const showBadge = badgeFor === item.href && badgeCount > 0;
@@ -243,6 +279,63 @@ function NavGroup({
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Card que reemplaza un grupo vacío (Predicciones / Comunidad) cuando el
+ * usuario no tiene sesión. En modo expandido pinta una mini-card con
+ * headline, copy y CTA; colapsado, solo el icono accent (con title para
+ * tooltip). Las dos variantes apuntan a /login con ?next=/onboarding —
+ * tras el login, Supabase redirige al onboarding y el usuario crea o se
+ * une a una quiniela. No abrimos /onboarding directamente porque es
+ * auth-gated y haría un round-trip inútil.
+ */
+function VisitorCTA({
+  collapsed,
+  icon,
+  title,
+  copy,
+  ctaLabel,
+  href,
+}: {
+  collapsed: boolean;
+  icon: React.ReactNode;
+  title: string;
+  copy: string;
+  ctaLabel: string;
+  href: string;
+}) {
+  if (collapsed) {
+    return (
+      <Link
+        href={href}
+        title={title}
+        aria-label={title}
+        className="mx-auto grid size-11 place-items-center rounded-md border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] text-[var(--color-arena)] transition hover:bg-[color-mix(in_oklch,var(--color-arena)_15%,transparent)]"
+      >
+        {icon}
+      </Link>
+    );
+  }
+  return (
+    <div className="space-y-2 rounded-md border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_5%,transparent)] p-3">
+      <div className="flex items-center gap-2 text-[var(--color-arena)]">
+        {icon}
+        <p className="font-display text-sm tracking-tight text-[var(--color-foreground)]">
+          {title}
+        </p>
+      </div>
+      <p className="font-editorial text-xs italic leading-snug text-[var(--color-muted-foreground)]">
+        {copy}
+      </p>
+      <Link
+        href={href}
+        className="block w-full rounded-md border border-[var(--color-arena)] bg-[var(--color-arena)] px-3 py-1.5 text-center font-mono text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-white shadow-[var(--shadow-arena)]"
+      >
+        {ctaLabel}
+      </Link>
     </div>
   );
 }
