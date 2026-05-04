@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
@@ -57,16 +58,22 @@ export default async function LoginPage({
         {/* Header — 3 columnas en desktop, stack en mobile.
             Mismo patrón que el onboarding. */}
         <header className="mb-12 flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          {/* Quiniela Mundial */}
+          {/* Quiniela Mundial — clic devuelve al landing público. */}
           <div className="flex w-full items-center justify-center sm:w-auto sm:order-1 sm:justify-start">
-            <Image
-              src="/hlogo.png"
-              alt="Quiniela Mundial"
-              width={1919}
-              height={660}
-              priority
-              className="h-12 w-auto sm:h-14"
-            />
+            <Link
+              href="/"
+              aria-label="Volver al inicio"
+              className="block transition-opacity hover:opacity-80"
+            >
+              <Image
+                src="/hlogo.png"
+                alt="Quiniela Mundial"
+                width={1919}
+                height={660}
+                priority
+                className="h-12 w-auto sm:h-14"
+              />
+            </Link>
           </div>
 
           {/* FWC26 mark */}
