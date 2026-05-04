@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { ArrowRight, ArrowUpRight, CheckCircle2, Flame, Sparkles } from "lucide-react";
@@ -252,6 +253,21 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-10">
       <ImportPredictionsBanner userId={me.id} activeLeagueId={leagueId} />
+
+      {/* FWC26 mark — centrado, encima de la barra dinámica */}
+      <div className="flex flex-col items-center gap-1.5 pt-2">
+        <Image
+          src="/fwc26.png"
+          alt="FIFA World Cup 26"
+          width={1500}
+          height={1500}
+          priority
+          className="h-14 w-auto sm:h-16"
+        />
+        <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] sm:text-[0.6rem]">
+          Copa Mundial de la FIFA 2026
+        </p>
+      </div>
 
       {/* Marquee strip */}
       <div className="-mx-4 overflow-hidden border-y border-[var(--color-border)] bg-[var(--color-surface)] py-2 lg:-mx-8">
