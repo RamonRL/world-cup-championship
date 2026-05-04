@@ -53,11 +53,6 @@ export default async function InviteLandingPage({
             Invitación a una quiniela privada
           </p>
           <h1 className="font-display text-4xl tracking-tight">{league.name}</h1>
-          {league.description ? (
-            <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-              {league.description}
-            </p>
-          ) : null}
           {league.joinCode ? (
             <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
               Código · <span className="text-[var(--color-arena)]">{league.joinCode}</span>

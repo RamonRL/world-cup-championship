@@ -48,23 +48,14 @@ export function CreateLeagueDialog() {
         </DialogHeader>
         <form action={action} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="name">Nombre</Label>
+            <Label htmlFor="name">Nombre · máx 25 caracteres</Label>
             <Input
               id="name"
               name="name"
               required
               minLength={2}
-              maxLength={60}
-              placeholder="Quiniela del Curro 2026"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Descripción (opcional)</Label>
-            <Input
-              id="description"
-              name="description"
-              maxLength={280}
-              placeholder="Una frase para presentarla"
+              maxLength={25}
+              placeholder="QUINIELA MUNDIAL 2026"
             />
           </div>
           {state.error ? (

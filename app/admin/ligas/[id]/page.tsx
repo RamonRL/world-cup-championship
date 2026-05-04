@@ -76,7 +76,6 @@ export default async function AdminLeagueDetailPage({
       <PageHeader
         eyebrow={league.isPublic ? "Liga pública" : "Liga privada"}
         title={league.name}
-        description={league.description ?? undefined}
       />
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

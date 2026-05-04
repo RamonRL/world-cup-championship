@@ -79,11 +79,6 @@ export default async function AdminLeaguesPage() {
                       ) : null}
                     </div>
                     <h2 className="font-display text-2xl tracking-tight">{league.name}</h2>
-                    {league.description ? (
-                      <p className="font-editorial text-xs italic text-[var(--color-muted-foreground)]">
-                        {league.description}
-                      </p>
-                    ) : null}
                   </div>
                   {league.isPublic ? null : (
                     <DeleteButton

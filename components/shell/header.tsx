@@ -22,14 +22,12 @@ export function AppHeader({
   activeLeagueId,
 }: Props) {
   return (
-    // Grid 1fr_auto_1fr: las dos columnas laterales reparten ancho a partes
-    // iguales, así el LeagueSwitcher central queda en el centro geométrico
-    // de la barra independientemente de lo ancho que sea el UserMenu.
-    // Antes era flex flex-1 justify-center y el switcher se desplazaba a la
-    // izquierda compensando el avatar de la derecha — y eso desalineaba con
-    // el logo FWC26 que sí está centrado en la columna de contenido.
-    <header className="sticky top-0 z-20 grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-bg)_88%,transparent)] px-4 backdrop-blur-md lg:px-8">
-      {/* Columna izquierda: logo mobile o vacía en desktop. */}
+    // Mobile: flex con LeagueSwitcher en flex-1 → se centra en el espacio
+    //   entre logo y UserMenu (no en el centro geométrico de la pantalla).
+    //   Comportamiento original; el desfase con el FWC26 da igual aquí.
+    // Desktop (lg+): grid 1fr_auto_1fr → centro geométrico para alinear
+    //   con el logo FWC26 que vive centrado en la columna de contenido.
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-bg)_88%,transparent)] px-4 backdrop-blur-md lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-8">
       <div className="flex items-center">
         <Link
           href="/dashboard"
@@ -46,7 +44,7 @@ export function AppHeader({
           />
         </Link>
       </div>
-      <div className="flex justify-center">
+      <div className="flex flex-1 justify-center lg:flex-initial">
         <LeagueSwitcher memberships={memberships} activeLeagueId={activeLeagueId} />
       </div>
       <div className="flex items-center justify-end gap-3">

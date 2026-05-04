@@ -37,9 +37,13 @@ function slugify(input: string): string {
 
 const PRIVATE_LIMIT_ERROR = `Tienes ${PRIVATE_LEAGUES_PER_USER_LIMIT} quinielas privadas. Para unirte a una nueva, abandona alguna desde tu perfil.`;
 
+const NAME_MAX = 25;
 const createSchema = z.object({
-  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(60),
-  description: z.string().trim().max(280).optional(),
+  name: z
+    .string()
+    .trim()
+    .min(2, "El nombre debe tener al menos 2 caracteres.")
+    .max(NAME_MAX, `El nombre no puede pasar de ${NAME_MAX} caracteres.`),
 });
 
 export type CreateLeagueResult = LeagueFormState & {
@@ -64,7 +68,6 @@ export async function createLeague(
   const me = await requireUser();
   const parsed = createSchema.safeParse({
     name: formData.get("name") ?? "",
-    description: (formData.get("description") as string) || undefined,
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
@@ -95,7 +98,6 @@ export async function createLeague(
     .values({
       slug,
       name: parsed.data.name,
-      description: parsed.data.description ?? null,
       inviteToken,
       joinCode,
       isPublic: false,

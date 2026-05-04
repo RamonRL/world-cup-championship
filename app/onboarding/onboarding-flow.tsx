@@ -252,20 +252,13 @@ function CreateLeagueForm({ fresh }: { fresh: boolean }) {
       <form action={action} className="space-y-8">
         <FloatingField
           name="name"
-          label="Nombre de la quiniela"
+          label="Nombre de la quiniela · máx 25 caracteres"
           placeholder="QUINIELA MUNDIAL 2026"
           required
-          maxLength={60}
+          maxLength={25}
           autoComplete="off"
           autoFocus
           big
-        />
-        <FloatingField
-          name="description"
-          label="Descripción · opcional"
-          placeholder="Una frase que la presente"
-          maxLength={280}
-          autoComplete="off"
         />
 
         {state.error ? (
