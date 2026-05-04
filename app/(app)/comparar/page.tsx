@@ -1,9 +1,11 @@
 import { TeamFlag } from "@/components/brand/team-flag";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   groups,
+  leagues,
   players,
   predBracketSlot,
   predGroupRanking,
@@ -35,6 +37,15 @@ export default async function CompararPage({
 }) {
   const me = await requireUser();
   const leagueId = (await currentLeagueId(me))!;
+  // Comparar solo aplica a quinielas privadas. Si el usuario está en la
+  // pública (caso típico: aterriza por URL guardada o tras abandonar la
+  // privada activa), redirigimos al dashboard.
+  const [activeLeague] = await db
+    .select({ isPublic: leagues.isPublic })
+    .from(leagues)
+    .where(eq(leagues.id, leagueId))
+    .limit(1);
+  if (activeLeague?.isPublic) redirect("/dashboard");
   const params = await searchParams;
   const vsId = params.vs ?? null;
   // Oponentes: miembros de la misma liga + admins (globales). Excluido yo.

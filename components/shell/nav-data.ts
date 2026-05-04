@@ -87,30 +87,33 @@ export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] 
       requiresAuth: true,
     });
   }
-  all.push(
-    {
-      href: "/ranking",
-      label: "Ranking",
-      icon: ListOrdered,
-      group: "social",
-      primaryMobile: true,
-      requiresAuth: true,
-    },
-    {
+  all.push({
+    href: "/ranking",
+    label: "Ranking",
+    icon: ListOrdered,
+    group: "social",
+    primaryMobile: true,
+    requiresAuth: true,
+  });
+  // Comparar solo tiene sentido en quinielas privadas (la pública es
+  // demasiado masiva como para que comparar predicción a predicción
+  // aporte algo). Reusamos el mismo flag que filtra "Mi Quiniela".
+  if (opts.showMyLeague) {
+    all.push({
       href: "/comparar",
       label: "Comparar",
       icon: Trophy,
       group: "social",
       requiresAuth: true,
-    },
-    {
-      href: "/chat",
-      label: "Chat",
-      icon: MessagesSquare,
-      group: "social",
-      requiresAuth: true,
-    },
-  );
+    });
+  }
+  all.push({
+    href: "/chat",
+    label: "Chat",
+    icon: MessagesSquare,
+    group: "social",
+    requiresAuth: true,
+  });
   if (opts.isAuthenticated === false) {
     return all.filter((it) => !it.requiresAuth);
   }
