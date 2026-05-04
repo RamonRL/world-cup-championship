@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -183,6 +184,21 @@ function FinalColumn({
         </span>
       </div>
       <div className="flex flex-1 flex-col items-stretch justify-center gap-6">
+        {/* FWC26 mark — corona la columna central, justo encima del cuadro
+            de la final. Solo se muestra en desktop porque el árbol entero
+            es desktop-only. */}
+        <div className="flex flex-col items-center gap-1.5">
+          <Image
+            src="/fwc26.png"
+            alt="FIFA World Cup 26"
+            width={1500}
+            height={1500}
+            className="h-12 w-auto"
+          />
+          <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            Copa Mundial 2026
+          </p>
+        </div>
         {finalMatch ? (
           <FinalCard match={finalMatch} championTeamId={myPicks.championTeamId} />
         ) : null}
