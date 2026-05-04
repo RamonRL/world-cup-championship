@@ -66,7 +66,9 @@ export function Sidebar({
           )}
         >
           <Link
-            href="/dashboard"
+            // Visitante sin sesión → al landing público; logueado → a su
+            // /dashboard (tablero de la liga activa).
+            href={isAuthenticated ? "/dashboard" : "/"}
             className={cn(
               "flex items-center transition-opacity hover:opacity-80",
               collapsed ? "justify-center" : "min-w-0 flex-1",

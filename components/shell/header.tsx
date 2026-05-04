@@ -31,7 +31,10 @@ export function AppHeader({
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-[var(--color-border)] bg-[color-mix(in_oklch,var(--color-bg)_88%,transparent)] px-4 backdrop-blur-md lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-8">
       <div className="flex items-center">
         <Link
-          href="/dashboard"
+          // Si no hay sesión (visitante en pages públicas), el logo lleva
+          // a la landing en /. Con sesión activa, sigue siendo el atajo a
+          // /dashboard como hasta ahora.
+          href={isAuthenticated ? "/dashboard" : "/"}
           aria-label="Quiniela Mundial"
           className="block transition-opacity hover:opacity-80 lg:hidden"
         >
