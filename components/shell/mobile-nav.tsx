@@ -21,6 +21,7 @@ type Props = {
   myId: string;
   pendingCount?: number;
   showMyLeague?: boolean;
+  isAuthenticated?: boolean;
 };
 
 export function MobileBottomNav({
@@ -28,9 +29,10 @@ export function MobileBottomNav({
   myId,
   pendingCount = 0,
   showMyLeague = false,
+  isAuthenticated = true,
 }: Props) {
   const pathname = usePathname();
-  const items = buildNavItems(myId, { showMyLeague });
+  const items = buildNavItems(myId, { showMyLeague, isAuthenticated });
   const primary = items.filter((i) => i.primaryMobile);
   const overflow = items.filter((i) => !i.primaryMobile).concat(isAdmin ? ADMIN_NAV : []);
   const activeHref = pickActiveHref(pathname, [...items, ...ADMIN_NAV]);

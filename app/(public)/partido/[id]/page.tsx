@@ -22,11 +22,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChatThread } from "@/app/(app)/chat/chat-thread";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
-import { requireUser } from "@/lib/auth/guards";
+import { getCurrentUser } from "@/lib/auth/guards";
 import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
 import { formatRemaining } from "@/lib/deadlines";
 import { Edit3, Settings2 } from "lucide-react";
+import { BreadcrumbLD, MatchLD } from "@/components/seo/jsonld";
 
 const STAGE_LABEL: Record<string, string> = {
   group: "Fase de grupos",
@@ -38,13 +39,59 @@ const STAGE_LABEL: Record<string, string> = {
   final: "Final",
 };
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const matchId = Number(id);
+  if (!Number.isFinite(matchId)) return { title: "Partido" };
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, matchId))
+    .limit(1);
+  if (!match) return { title: "Partido" };
+  const teamIds = [match.homeTeamId, match.awayTeamId].filter(
+    (x): x is number => x != null,
+  );
+  const allTeams =
+    teamIds.length > 0
+      ? await db.select().from(teams).where(inArray(teams.id, teamIds))
+      : [];
+  const tById = new Map(allTeams.map((t) => [t.id, t]));
+  const home = match.homeTeamId ? tById.get(match.homeTeamId)?.name : null;
+  const away = match.awayTeamId ? tById.get(match.awayTeamId)?.name : null;
+  const stage = STAGE_LABEL[match.stage] ?? match.stage;
+  const matchup = home && away ? `${home} vs ${away}` : `Partido ${match.code}`;
+  const date = formatDateTime(match.scheduledAt, {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+  return {
+    title: matchup,
+    description: `${matchup} · ${stage} del Mundial 2026 · ${date}${
+      match.venue ? ` · ${match.venue}` : ""
+    }. Resultado, goleadores, predicciones y comentarios.`,
+    alternates: { canonical: `/partido/${match.id}` },
+    openGraph: {
+      title: `${matchup} · ${stage} · Mundial 2026`,
+      description: `${matchup} · ${stage} del Mundial 2026.`,
+      url: `/partido/${match.id}`,
+    },
+  };
+}
+
 export default async function MatchDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const me = await requireUser();
-  const leagueId = await currentLeagueId(me);
+  const me = await getCurrentUser();
+  const leagueId = me ? await currentLeagueId(me) : null;
   const { id } = await params;
   const matchId = Number(id);
   if (!Number.isFinite(matchId)) notFound();
@@ -58,38 +105,44 @@ export default async function MatchDetailPage({
       ? db.select().from(teams).where(inArray(teams.id, teamIds))
       : Promise.resolve([]),
     db.select().from(matchScorers).where(eq(matchScorers.matchId, matchId)),
-    db
-      .select()
-      .from(predMatchResult)
-      .where(
-        and(
-          eq(predMatchResult.userId, me.id),
-          eq(predMatchResult.leagueId, leagueId!),
-          eq(predMatchResult.matchId, matchId),
-        ),
-      )
-      .limit(1),
-    db
-      .select()
-      .from(predMatchScorer)
-      .where(
-        and(
-          eq(predMatchScorer.userId, me.id),
-          eq(predMatchScorer.leagueId, leagueId!),
-          eq(predMatchScorer.matchId, matchId),
-        ),
-      )
-      .limit(1),
-    db
-      .select()
-      .from(pointsLedger)
-      .where(
-        and(
-          eq(pointsLedger.userId, me.id),
-          eq(pointsLedger.leagueId, leagueId!),
-          sql`${pointsLedger.sourceKey} like ${matchSourceKeyPrefix + "%"}`,
-        ),
-      ),
+    me && leagueId != null
+      ? db
+          .select()
+          .from(predMatchResult)
+          .where(
+            and(
+              eq(predMatchResult.userId, me.id),
+              eq(predMatchResult.leagueId, leagueId),
+              eq(predMatchResult.matchId, matchId),
+            ),
+          )
+          .limit(1)
+      : Promise.resolve([] as Array<typeof predMatchResult.$inferSelect>),
+    me && leagueId != null
+      ? db
+          .select()
+          .from(predMatchScorer)
+          .where(
+            and(
+              eq(predMatchScorer.userId, me.id),
+              eq(predMatchScorer.leagueId, leagueId),
+              eq(predMatchScorer.matchId, matchId),
+            ),
+          )
+          .limit(1)
+      : Promise.resolve([] as Array<typeof predMatchScorer.$inferSelect>),
+    me && leagueId != null
+      ? db
+          .select()
+          .from(pointsLedger)
+          .where(
+            and(
+              eq(pointsLedger.userId, me.id),
+              eq(pointsLedger.leagueId, leagueId),
+              sql`${pointsLedger.sourceKey} like ${matchSourceKeyPrefix + "%"}`,
+            ),
+          )
+      : Promise.resolve([] as Array<typeof pointsLedger.$inferSelect>),
   ]);
   const myResult = myResultRows[0] ?? null;
   const myScorer = myScorerRows[0] ?? null;
@@ -102,22 +155,33 @@ export default async function MatchDetailPage({
     playerIds.length > 0
       ? db.select().from(players).where(inArray(players.id, playerIds))
       : Promise.resolve([]),
-    db
-      .select({
-        id: chatMessages.id,
-        body: chatMessages.body,
-        createdAt: chatMessages.createdAt,
-        userId: chatMessages.userId,
-        deletedAt: chatMessages.deletedAt,
-        authorEmail: profiles.email,
-        authorNickname: profiles.nickname,
-        authorAvatar: profiles.avatarUrl,
-      })
-      .from(chatMessages)
-      .leftJoin(profiles, eq(chatMessages.userId, profiles.id))
-      .where(eq(chatMessages.matchId, matchId))
-      .orderBy(desc(chatMessages.createdAt))
-      .limit(100),
+    me
+      ? db
+          .select({
+            id: chatMessages.id,
+            body: chatMessages.body,
+            createdAt: chatMessages.createdAt,
+            userId: chatMessages.userId,
+            deletedAt: chatMessages.deletedAt,
+            authorEmail: profiles.email,
+            authorNickname: profiles.nickname,
+            authorAvatar: profiles.avatarUrl,
+          })
+          .from(chatMessages)
+          .leftJoin(profiles, eq(chatMessages.userId, profiles.id))
+          .where(eq(chatMessages.matchId, matchId))
+          .orderBy(desc(chatMessages.createdAt))
+          .limit(100)
+      : Promise.resolve([] as {
+          id: number;
+          body: string;
+          createdAt: Date;
+          userId: string;
+          deletedAt: Date | null;
+          authorEmail: string | null;
+          authorNickname: string | null;
+          authorAvatar: string | null;
+        }[]),
     predsPublic && leagueId != null
       ? db
           .select({
@@ -262,6 +326,28 @@ export default async function MatchDetailPage({
 
   return (
     <div className="space-y-8">
+      <BreadcrumbLD
+        items={[
+          { name: "Inicio", href: "/" },
+          { name: "Calendario", href: "/calendario" },
+          {
+            name: home && away ? `${home.name} vs ${away.name}` : match.code,
+            href: `/partido/${match.id}`,
+          },
+        ]}
+      />
+      <MatchLD
+        match={{
+          id: match.id,
+          code: match.code,
+          scheduledAt: match.scheduledAt,
+          stage: match.stage,
+          venue: match.venue ?? null,
+          homeName: home?.name ?? null,
+          awayName: away?.name ?? null,
+        }}
+        stageLabel={STAGE_LABEL[match.stage] ?? match.stage}
+      />
       <RealtimeRefresher
         channelKey={`partido:${matchId}`}
         subscriptions={[
@@ -276,7 +362,7 @@ export default async function MatchDetailPage({
             Volver al calendario
           </Link>
         </Button>
-        {me.role === "admin" ? (
+        {me?.role === "admin" ? (
           <Button asChild variant="outline" size="sm" className="gap-2">
             <Link href={`/admin/partidos/${match.id}`}>
               <Settings2 className="size-3.5" />
@@ -347,16 +433,37 @@ export default async function MatchDetailPage({
         </div>
       </section>
 
-      {/* My pick */}
-      <MyPickPanel
-        match={match}
-        home={home ?? null}
-        away={away ?? null}
-        myResult={myResult}
-        myScorerPlayer={myScorer ? playerById.get(myScorer.playerId) ?? null : null}
-        myLedger={myLedgerRows}
-        teamById={teamById}
-      />
+      {/* My pick — visible solo para usuarios autenticados; para visitantes
+          mostramos un CTA invitando a crear su quiniela. */}
+      {me ? (
+        <MyPickPanel
+          match={match}
+          home={home ?? null}
+          away={away ?? null}
+          myResult={myResult}
+          myScorerPlayer={myScorer ? playerById.get(myScorer.playerId) ?? null : null}
+          myLedger={myLedgerRows}
+          teamById={teamById}
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>¿Cómo va a quedar?</CardTitle>
+            <CardDescription>
+              Crea tu quiniela y predice marcador, ganador y goleadores de cada
+              partido del Mundial 2026.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link
+              href="/login?next=%2Fpredicciones"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-arena)] bg-[var(--color-arena)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[var(--shadow-arena)]"
+            >
+              Crear mi predicción
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Scorers timeline */}
       <Card>
@@ -426,8 +533,9 @@ export default async function MatchDetailPage({
         </CardContent>
       </Card>
 
-      {/* Predictions reveal */}
-      {predsPublic ? (
+      {/* Predictions reveal — visible solo para usuarios con sesión, ya que
+          las predicciones son por liga y un visitante no tiene una. */}
+      {me && predsPublic ? (
         <Card>
           <CardHeader>
             <CardTitle>Predicciones de la peña</CardTitle>
@@ -465,7 +573,7 @@ export default async function MatchDetailPage({
                       <li
                         key={c.userId}
                         className={`flex flex-col gap-1.5 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0 sm:grid sm:grid-cols-[1fr_110px_1fr] sm:items-center sm:gap-2 sm:py-2.5 ${
-                          c.userId === me.id
+                          me && c.userId === me.id
                             ? "bg-[color-mix(in_oklch,var(--color-arena)_5%,transparent)]"
                             : ""
                         }`}
@@ -479,7 +587,7 @@ export default async function MatchDetailPage({
                           </Avatar>
                           <span className="truncate text-sm font-medium">
                             {display}
-                            {c.userId === me.id ? (
+                            {me && c.userId === me.id ? (
                               <span className="ml-1.5 font-mono text-[0.55rem] uppercase tracking-[0.3em] text-[var(--color-arena)]">
                                 Tú
                               </span>
@@ -538,35 +646,37 @@ export default async function MatchDetailPage({
         </Card>
       ) : null}
 
-      {/* Match thread */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Hilo del partido</CardTitle>
-          <CardDescription>
-            Comentario en directo. El admin puede borrar mensajes que se pasen de raya.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ChatThread
-            scope="match"
-            matchId={matchId}
-            currentUserId={me.id}
-            isAdmin={me.role === "admin"}
-            messages={chatRows.reverse().map((m) => ({
-              id: m.id,
-              body: m.body,
-              createdAt: m.createdAt.toISOString(),
-              userId: m.userId,
-              deletedAt: m.deletedAt ? m.deletedAt.toISOString() : null,
-              author: {
-                email: m.authorEmail ?? "",
-                nickname: m.authorNickname,
-                avatarUrl: m.authorAvatar,
-              },
-            }))}
-          />
-        </CardContent>
-      </Card>
+      {/* Match thread — solo logueados; visitantes ven invitación a unirse. */}
+      {me ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Hilo del partido</CardTitle>
+            <CardDescription>
+              Comentario en directo. El admin puede borrar mensajes que se pasen de raya.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChatThread
+              scope="match"
+              matchId={matchId}
+              currentUserId={me.id}
+              isAdmin={me.role === "admin"}
+              messages={chatRows.reverse().map((m) => ({
+                id: m.id,
+                body: m.body,
+                createdAt: m.createdAt.toISOString(),
+                userId: m.userId,
+                deletedAt: m.deletedAt ? m.deletedAt.toISOString() : null,
+                author: {
+                  email: m.authorEmail ?? "",
+                  nickname: m.authorNickname,
+                  avatarUrl: m.authorAvatar,
+                },
+              }))}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

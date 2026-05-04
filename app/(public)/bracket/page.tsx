@@ -8,15 +8,27 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { Lock, Swords, Trophy } from "lucide-react";
-import { requireUser } from "@/lib/auth/guards";
+import { getCurrentUser } from "@/lib/auth/guards";
 import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { getBracketStatus } from "@/lib/bracket-state";
 import { BracketTree, type BracketMatch } from "@/components/bracket/bracket-tree";
 import { BracketSlotHighlighter } from "@/components/bracket/bracket-slot-highlighter";
 import { KO_FEEDS, R32_SLOTS, formatSlotSource } from "@/lib/bracket-format";
+import { BreadcrumbLD } from "@/components/seo/jsonld";
 
-export const metadata = { title: "Bracket" };
+export const metadata = {
+  title: "Bracket",
+  description:
+    "El bracket FIFA del Mundial 2026: dieciseisavos, octavos, cuartos, semifinales y final. Cuadro de eliminación directa con 32 selecciones.",
+  alternates: { canonical: "/bracket" },
+  openGraph: {
+    title: "Bracket · Mundial 2026",
+    description:
+      "Cuadro de la fase eliminatoria del Mundial 2026 con las 32 selecciones que avanzan desde grupos.",
+    url: "/bracket",
+  },
+};
 
 const STAGE_LABEL = {
   r32: "Dieciseisavos",
@@ -31,8 +43,8 @@ const KO_STAGES = ["r32", "r16", "qf", "sf", "final", "third"] as const;
 type KoStage = (typeof KO_STAGES)[number];
 
 export default async function BracketPage() {
-  const me = await requireUser();
-  const leagueId = (await currentLeagueId(me))!;
+  const me = await getCurrentUser();
+  const leagueId = me ? await currentLeagueId(me) : null;
   const [koMatches, bracketStatus] = await Promise.all([
     db
       .select()
@@ -51,12 +63,15 @@ export default async function BracketPage() {
       : [];
   const teamById = new Map(allTeams.map((t) => [t.id, t]));
 
-  const myPreds = await db
-    .select()
-    .from(predBracketSlot)
-    .where(
-      and(eq(predBracketSlot.userId, me.id), eq(predBracketSlot.leagueId, leagueId)),
-    );
+  const myPreds =
+    me && leagueId != null
+      ? await db
+          .select()
+          .from(predBracketSlot)
+          .where(
+            and(eq(predBracketSlot.userId, me.id), eq(predBracketSlot.leagueId, leagueId)),
+          )
+      : [];
 
   const myByStage = new Map<string, Set<number>>();
   for (const p of myPreds) {
@@ -127,6 +142,12 @@ export default async function BracketPage() {
     // simulador, podio del campeón) para que el árbol no parezca
     // sobresalir respecto al resto del contenido.
     <div className="space-y-8 lg:-mx-4 xl:-mx-16 2xl:-mx-40">
+      <BreadcrumbLD
+        items={[
+          { name: "Inicio", href: "/" },
+          { name: "Bracket", href: "/bracket" },
+        ]}
+      />
       <PageHeader
         eyebrow="Eliminación directa"
         title="Bracket del torneo"
@@ -136,12 +157,21 @@ export default async function BracketPage() {
             : "El árbol oficial de FIFA. Picks (●) y aciertos en verde."
         }
         actions={
-          <Link
-            href="/predicciones/bracket"
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-2)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-foreground)] transition hover:border-[var(--color-arena)]/50"
-          >
-            Editar mi bracket
-          </Link>
+          me ? (
+            <Link
+              href="/predicciones/bracket"
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-2)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-foreground)] transition hover:border-[var(--color-arena)]/50"
+            >
+              Editar mi bracket
+            </Link>
+          ) : (
+            <Link
+              href="/login?next=%2Fpredicciones%2Fbracket"
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--color-arena)] bg-[var(--color-arena)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white shadow-[var(--shadow-arena)]"
+            >
+              Crear mi bracket
+            </Link>
+          )
         }
       />
 
@@ -236,34 +266,53 @@ export default async function BracketPage() {
         })}
       </div>
 
-      {/* Champion strip */}
-      <section className="rounded-xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))] p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <span className="grid size-12 place-items-center rounded-md bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]">
-              <Trophy className="size-5" />
-            </span>
-            <div>
-              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                Tu campeón
-              </p>
-              <p className="font-display text-3xl tracking-tight">
-                {myChampion ? teamById.get(myChampion)?.name ?? "—" : "Sin elegir"}
-              </p>
+      {/* Champion strip — solo cuando hay sesión, en visitante mostramos
+          un CTA distinto invitando a crear su propio bracket. */}
+      {me ? (
+        <section className="rounded-xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))] p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <span className="grid size-12 place-items-center rounded-md bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]">
+                <Trophy className="size-5" />
+              </span>
+              <div>
+                <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                  Tu campeón
+                </p>
+                <p className="font-display text-3xl tracking-tight">
+                  {myChampion ? teamById.get(myChampion)?.name ?? "—" : "Sin elegir"}
+                </p>
+              </div>
             </div>
+            {myChampion && teamById.get(myChampion) ? (
+              <TeamFlag code={teamById.get(myChampion)!.code} size={48} />
+            ) : (
+              <Link
+                href="/predicciones/bracket"
+                className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-arena)]"
+              >
+                Elegir campeón →
+              </Link>
+            )}
           </div>
-          {myChampion && teamById.get(myChampion) ? (
-            <TeamFlag code={teamById.get(myChampion)!.code} size={48} />
-          ) : (
-            <Link
-              href="/predicciones/bracket"
-              className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-arena)]"
-            >
-              Elegir campeón →
-            </Link>
-          )}
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="rounded-xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface))] p-8 text-center">
+          <p className="font-display text-3xl tracking-tight">
+            ¿Quién levantará la copa?
+          </p>
+          <p className="pt-1 font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+            Crea tu quiniela, predice el bracket completo y compite con tus
+            amigos en cada ronda.
+          </p>
+          <Link
+            href="/login?next=%2Fpredicciones%2Fbracket"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-arena)] bg-[var(--color-arena)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[var(--shadow-arena)]"
+          >
+            Crear mi bracket
+          </Link>
+        </section>
+      )}
     </div>
   );
 }

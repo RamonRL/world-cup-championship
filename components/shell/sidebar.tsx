@@ -15,6 +15,12 @@ type Props = {
   defaultCollapsed?: boolean;
   /** Liga activa privada → mostrar el item "Mi Quiniela". */
   showMyLeague?: boolean;
+  /**
+   * Si false (visitante sin sesión, layout público), filtramos los items
+   * que requieren auth (Inicio, Predicciones, Mis resultados, Ranking,
+   * Comparar, Chat, Mi Quiniela). Quedan solo los públicos del torneo.
+   */
+  isAuthenticated?: boolean;
 };
 
 // Cookie name compartido con el server-side reader del layout para que el
@@ -27,10 +33,11 @@ export function Sidebar({
   pendingCount = 0,
   defaultCollapsed = false,
   showMyLeague = false,
+  isAuthenticated = true,
 }: Props) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  const items = buildNavItems(myId, { showMyLeague });
+  const items = buildNavItems(myId, { showMyLeague, isAuthenticated });
   const main = items.filter((i) => i.group === "main");
   const preds = items.filter((i) => i.group === "predicciones");
   const social = items.filter((i) => i.group === "social");

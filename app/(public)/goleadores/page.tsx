@@ -5,8 +5,19 @@ import { matchScorers, players, teams } from "@/lib/db/schema";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
+import { BreadcrumbLD } from "@/components/seo/jsonld";
 
-export const metadata = { title: "Goleadores" };
+export const metadata = {
+  title: "Goleadores",
+  description:
+    "Tabla de goleadores del Mundial 2026. La Bota de Oro: jugadores con más goles del torneo, ordenados por fase y selección.",
+  alternates: { canonical: "/goleadores" },
+  openGraph: {
+    title: "Goleadores · Mundial 2026",
+    description: "Bota de Oro y tabla de máximos goleadores del Mundial 2026.",
+    url: "/goleadores",
+  },
+};
 
 export default async function ScorersPage() {
   const rows = await db
@@ -38,6 +49,12 @@ export default async function ScorersPage() {
 
   return (
     <div className="space-y-8">
+      <BreadcrumbLD
+        items={[
+          { name: "Inicio", href: "/" },
+          { name: "Goleadores", href: "/goleadores" },
+        ]}
+      />
       <PageHeader
         eyebrow="Bota de Oro"
         title="Goleadores del torneo"

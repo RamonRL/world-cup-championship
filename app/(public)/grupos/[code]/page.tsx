@@ -16,11 +16,41 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
-import { requireUser } from "@/lib/auth/guards";
+import { getCurrentUser } from "@/lib/auth/guards";
 import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
+import { BreadcrumbLD } from "@/components/seo/jsonld";
 
-export const metadata = { title: "Grupo" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}) {
+  const { code } = await params;
+  const upper = code.toUpperCase();
+  const [group] = await db
+    .select()
+    .from(groups)
+    .where(eq(groups.code, upper))
+    .limit(1);
+  if (!group) return { title: "Grupo" };
+  const groupTeams = await db
+    .select({ name: teams.name })
+    .from(teams)
+    .where(eq(teams.groupId, group.id));
+  const names = groupTeams.map((t) => t.name).join(", ");
+  return {
+    title: `Grupo ${upper}`,
+    description: `${names} se enfrentan en el Grupo ${upper} del Mundial 2026. Calendario, clasificación y resultados en directo.`,
+    alternates: { canonical: `/grupos/${upper}` },
+    openGraph: {
+      title: `Grupo ${upper} · Mundial 2026`,
+      description: `${names} · Grupo ${upper} del Mundial 2026.`,
+      url: `/grupos/${upper}`,
+    },
+  };
+}
+
 void PageHeader;
 
 export default async function GroupDetailPage({
@@ -28,8 +58,8 @@ export default async function GroupDetailPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const me = await requireUser();
-  const leagueId = (await currentLeagueId(me))!;
+  const me = await getCurrentUser();
+  const leagueId = me ? await currentLeagueId(me) : null;
   const { code } = await params;
   const upper = code.toUpperCase();
 
@@ -60,20 +90,24 @@ export default async function GroupDetailPage({
   const firstMatchAt = groupMatches[0]?.scheduledAt ?? null;
   const ranksPublic = firstMatchAt ? new Date(firstMatchAt).getTime() <= Date.now() : false;
 
-  const memberFilter = inLeagueFilter(leagueId);
+  // Predicciones solo cuando hay sesión + liga activa. En modo visitante
+  // estas queries se saltan; la página renderiza solo datos oficiales.
+  const memberFilter = leagueId != null ? inLeagueFilter(leagueId) : undefined;
   const [myPred, otherPreds] = await Promise.all([
-    db
-      .select()
-      .from(predGroupRanking)
-      .where(
-        and(
-          eq(predGroupRanking.userId, me.id),
-          eq(predGroupRanking.leagueId, leagueId),
-          eq(predGroupRanking.groupId, group.id),
-        ),
-      )
-      .limit(1),
-    ranksPublic
+    me && leagueId != null
+      ? db
+          .select()
+          .from(predGroupRanking)
+          .where(
+            and(
+              eq(predGroupRanking.userId, me.id),
+              eq(predGroupRanking.leagueId, leagueId),
+              eq(predGroupRanking.groupId, group.id),
+            ),
+          )
+          .limit(1)
+      : Promise.resolve([] as Array<typeof predGroupRanking.$inferSelect>),
+    me && leagueId != null && ranksPublic
       ? db
           .select({
             userId: predGroupRanking.userId,
@@ -117,6 +151,13 @@ export default async function GroupDetailPage({
 
   return (
     <div className="space-y-8">
+      <BreadcrumbLD
+        items={[
+          { name: "Inicio", href: "/" },
+          { name: "Grupos", href: "/grupos" },
+          { name: `Grupo ${group.code}`, href: `/grupos/${group.code}` },
+        ]}
+      />
       <Button asChild variant="ghost" size="sm" className="px-0 text-[var(--color-muted-foreground)]">
         <Link href="/grupos">
           <ArrowLeft />
@@ -249,8 +290,9 @@ export default async function GroupDetailPage({
         </div>
       </section>
 
-      {/* ─── Tu predicción ─── */}
-      <section className="space-y-3">
+      {/* ─── Tu predicción / CTA visitante ─── */}
+      {me ? (
+        <section className="space-y-3">
         <div className="flex items-center gap-3">
           <span className="h-px w-6 bg-[var(--color-arena)]" />
           <h2 className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
@@ -312,8 +354,25 @@ export default async function GroupDetailPage({
         </article>
       </section>
 
+      ) : (
+        <section className="rounded-2xl border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_5%,var(--color-surface))] p-6 text-center">
+          <p className="font-display text-2xl tracking-tight">
+            ¿Quién pasa de este grupo?
+          </p>
+          <p className="pt-1 font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+            Crea tu quiniela y compite con tus amigos prediciendo cada posición.
+          </p>
+          <Link
+            href="/login?next=%2Fpredicciones%2Fgrupos"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-arena)] bg-[var(--color-arena)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[var(--shadow-arena)]"
+          >
+            Crear mi quiniela
+          </Link>
+        </section>
+      )}
+
       {/* ─── Predicciones de la peña ─── */}
-      {ranksPublic ? (
+      {me && ranksPublic ? (
         <section className="space-y-3">
           <div className="flex items-center gap-3">
             <span className="h-px w-6 bg-[var(--color-arena)]" />

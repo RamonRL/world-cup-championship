@@ -6,8 +6,19 @@ import { groups, groupStandings, teams } from "@/lib/db/schema";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { ArrowUpRight, Users } from "lucide-react";
+import { BreadcrumbLD } from "@/components/seo/jsonld";
 
-export const metadata = { title: "Grupos" };
+export const metadata = {
+  title: "Grupos",
+  description:
+    "Los 12 grupos del Mundial 2026 con las 48 selecciones clasificadas. Top 2 + 8 mejores terceros pasan a R32.",
+  alternates: { canonical: "/grupos" },
+  openGraph: {
+    title: "Grupos · Mundial 2026",
+    description: "Las 48 selecciones del Mundial 2026 distribuidas en 12 grupos.",
+    url: "/grupos",
+  },
+};
 
 export default async function GroupsPage() {
   const [allGroups, allTeams, standings] = await Promise.all([
@@ -30,6 +41,12 @@ export default async function GroupsPage() {
 
   return (
     <div className="space-y-8">
+      <BreadcrumbLD
+        items={[
+          { name: "Inicio", href: "/" },
+          { name: "Grupos", href: "/grupos" },
+        ]}
+      />
       <PageHeader
         eyebrow="Fase de grupos"
         title="12 grupos"

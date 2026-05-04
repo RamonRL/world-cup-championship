@@ -8,6 +8,7 @@ import {
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { NavigationProgress } from "@/components/shell/navigation-progress";
+import { OrganizationLD, WebApplicationLD } from "@/components/seo/jsonld";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -43,44 +44,90 @@ const jetbrains = JetBrains_Mono({
 });
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Quiniela Mundial";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://quinielamundial.es";
 
-// Forzamos el mismo título en todas las pestañas: aunque cada página
-// declare su propio metadata.title, el template sin %s lo ignora y
-// renderiza siempre "Quiniela Mundial". Cambia con NEXT_PUBLIC_APP_NAME
-// si en algún momento queremos otro nombre global.
+// Title template usa "%s · Quiniela Mundial 2026" → cada página declara su
+// propio metadata.title corto ("Calendario") y se concatena. La default
+// (cuando una page no declara title) está cargada de keywords objetivo.
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://quinielamundial.es",
-  ),
+  metadataBase: new URL(siteUrl),
   title: {
-    default: appName,
-    template: appName,
+    default: "Quiniela Mundial 2026 · Predicciones, calendario y resultados",
+    template: "%s · Quiniela Mundial 2026",
   },
-  description: "Quiniela y seguimiento del Mundial 2026 entre amigos.",
+  description:
+    "Quiniela del Mundial 2026 entre amigos. Calendario completo, grupos, bracket FIFA, goleadores y predicciones colaborativas. España · gratis.",
   applicationName: appName,
+  keywords: [
+    "Mundial 2026",
+    "Copa Mundial 2026",
+    "FIFA World Cup 2026",
+    "quiniela",
+    "quiniela mundial",
+    "quiniela mundial 2026",
+    "quiniela amigos",
+    "predicciones mundial",
+    "calendario mundial 2026",
+    "grupos mundial 2026",
+    "bracket mundial",
+  ],
+  authors: [{ name: "Quiniela Mundial" }],
+  creator: "Quiniela Mundial",
+  publisher: "Quiniela Mundial",
   formatDetection: { telephone: false, email: false, address: false },
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    url: siteUrl,
+    siteName: "Quiniela Mundial 2026",
+    title: "Quiniela Mundial 2026 · Predicciones, calendario y resultados",
+    description:
+      "Quiniela del Mundial 2026 entre amigos. Calendario, grupos, bracket FIFA, goleadores y predicciones colaborativas.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Quiniela Mundial 2026",
+    description:
+      "Predicciones del Mundial 2026 entre amigos. Calendario, grupos, bracket y goleadores.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  // Verification placeholders. Rellenar tras añadir property en cada
+  // herramienta y elegir verificación por meta tag (alternativa: TXT DNS).
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION,
+    other: {
+      "msvalidate.01": process.env.NEXT_PUBLIC_BING_VERIFICATION ?? "",
+    },
+  },
   // ─── PWA (iOS + Android) ──────────────────────────────────────────
   // appleWebApp = meta tags apple-mobile-web-app-* que hacen que Safari
   // abra la app en modo standalone (sin barra de navegación) al
-  // lanzarla desde el icono del Home Screen. Sin esto, las páginas
-  // distintas de la del start_url se abren con la chrome de Safari.
-  // statusBarStyle "default" hace que iOS reserve la zona del status bar
-  // como overlay del sistema (con texto adaptado al theme) y el WebView
-  // empieza justo debajo. Si en su día se vuelve a "black-translucent"
-  // hay que añadir pt-[env(safe-area-inset-top)] a la sticky header,
-  // top: env(safe-area-inset-top) y mirror para la deadline-banner —
-  // sin eso, el header se queda detrás del notch / Dynamic Island.
+  // lanzarla desde el icono del Home Screen.
   appleWebApp: {
     capable: true,
     title: appName,
     statusBarStyle: "default",
   },
-  // El manifest.webmanifest se genera en app/manifest.ts. Chrome/Android
-  // lo usa para abrir la app en modo standalone tras "Añadir a la
-  // pantalla de inicio".
   manifest: "/manifest.webmanifest",
 };
 
+// Sin `maximumScale: 1` ni `userScalable: false`: Lighthouse / mobile-first
+// indexing penaliza cualquier setting que bloquee zoom (a11y). El coste UX
+// es asumible — el usuario puede pinch-zoomar accidentalmente, pero gana SEO
+// score y es mejor para personas con baja visión.
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f5efe6" },
@@ -88,12 +135,6 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
-  // Bloquea pinch-zoom en móvil para que la app se sienta nativa: la
-  // navegación bottom-bar y los controles tap-friendly ya están
-  // dimensionados para el tamaño real, y el zoom accidental rompe la
-  // composición (especialmente el live HUD y el bracket en mobile).
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 
@@ -110,6 +151,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster richColors position="top-center" />
         </ThemeProvider>
+        <OrganizationLD />
+        <WebApplicationLD />
       </body>
     </html>
   );

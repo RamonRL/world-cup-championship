@@ -22,6 +22,8 @@ export type NavItem = {
   icon: LucideIcon;
   group: "main" | "predicciones" | "social";
   primaryMobile?: boolean;
+  /** Si true, el item solo se muestra a usuarios con sesión activa. */
+  requiresAuth?: boolean;
 };
 
 type BuildOptions = {
@@ -31,16 +33,34 @@ type BuildOptions = {
    * pública no tiene sentido — no hay nada que gestionar.
    */
   showMyLeague?: boolean;
+  /**
+   * Sesión activa. Si false (visitante público), filtramos los items con
+   * requiresAuth para que solo se vean los públicos del torneo.
+   */
+  isAuthenticated?: boolean;
 };
 
 export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] {
-  const items: NavItem[] = [
-    { href: "/dashboard", label: "Inicio", icon: Home, group: "main", primaryMobile: true },
+  const all: NavItem[] = [
+    {
+      href: "/dashboard",
+      label: "Inicio",
+      icon: Home,
+      group: "main",
+      primaryMobile: true,
+      requiresAuth: true,
+    },
     { href: "/calendario", label: "Calendario", icon: CalendarDays, group: "main" },
     { href: "/grupos", label: "Grupos", icon: Users, group: "main" },
     { href: "/bracket", label: "Bracket", icon: Swords, group: "main" },
     { href: "/goleadores", label: "Goleadores", icon: Target, group: "main" },
-    { href: "/estadisticas", label: "Estadísticas", icon: BarChart3, group: "main" },
+    {
+      href: "/estadisticas",
+      label: "Estadísticas",
+      icon: BarChart3,
+      group: "main",
+      requiresAuth: true,
+    },
     {
       href: "/predicciones",
       label: "Mis predicciones",
@@ -48,34 +68,53 @@ export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] 
       icon: ClipboardList,
       group: "predicciones",
       primaryMobile: true,
+      requiresAuth: true,
     },
     {
       href: `/ranking/${myId}`,
       label: "Mis resultados",
       icon: CircleUser,
       group: "predicciones",
+      requiresAuth: true,
     },
   ];
   if (opts.showMyLeague) {
-    items.push({
+    all.push({
       href: "/mi-quiniela",
       label: "Mi Quiniela",
       icon: UsersRound,
       group: "predicciones",
+      requiresAuth: true,
     });
   }
-  items.push(
+  all.push(
     {
       href: "/ranking",
       label: "Ranking",
       icon: ListOrdered,
       group: "social",
       primaryMobile: true,
+      requiresAuth: true,
     },
-    { href: "/comparar", label: "Comparar", icon: Trophy, group: "social" },
-    { href: "/chat", label: "Chat", icon: MessagesSquare, group: "social" },
+    {
+      href: "/comparar",
+      label: "Comparar",
+      icon: Trophy,
+      group: "social",
+      requiresAuth: true,
+    },
+    {
+      href: "/chat",
+      label: "Chat",
+      icon: MessagesSquare,
+      group: "social",
+      requiresAuth: true,
+    },
   );
-  return items;
+  if (opts.isAuthenticated === false) {
+    return all.filter((it) => !it.requiresAuth);
+  }
+  return all;
 }
 
 export const ADMIN_NAV: NavItem[] = [

@@ -4,22 +4,43 @@ import { NextResponse, type NextRequest } from "next/server";
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 // Rutas que NO requieren sesión. Crítico que aquí estén los recursos
-// PWA (manifest) y la landing del invite link, porque si el middleware
-// las redirige se rompe la instalación de la PWA y los invites
-// inválidos generan loops de 307→/login en cada navegación.
+// PWA (manifest), la landing del invite link y todo el contenido público
+// indexable (landing, calendario, grupos, goleadores, bracket, equipos,
+// sedes, partidos individuales, sitemap, robots, og-image). Si una de
+// estas pasara por el getUser() del middleware, Googlebot recibiría 307
+// → /login y nunca indexaría.
 const PUBLIC_PATHS = [
   "/login",
   "/auth/callback",
   "/auth/error",
   "/invite",
   "/manifest.webmanifest",
+  "/calendario",
+  "/grupos",
+  "/goleadores",
+  "/bracket",
+  "/equipos",
+  "/sedes",
+  "/partido",
+  "/sitemap.xml",
+  "/robots.txt",
+  "/opengraph-image",
+  "/twitter-image",
+  "/icon.png",
+  "/apple-icon.png",
+  "/icon",
+  "/apple-icon",
 ];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const pathname = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  // Tratamos "/" como público: la landing decide si redirigir a /dashboard
+  // (sesión activa) o renderizar la landing SEO (sin sesión).
+  const isPublic =
+    pathname === "/" ||
+    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   // Skip getUser() para rutas públicas: ahorra un round-trip a Supabase
   // en cada navegación (Chrome refetcha manifest.webmanifest a menudo;

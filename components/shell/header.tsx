@@ -5,7 +5,7 @@ import { LeagueSwitcher } from "./league-switcher";
 import type { Membership } from "@/lib/leagues";
 
 type Props = {
-  email: string;
+  email: string | null;
   nickname: string | null;
   avatarUrl: string | null;
   isAdmin: boolean;
@@ -21,6 +21,7 @@ export function AppHeader({
   memberships,
   activeLeagueId,
 }: Props) {
+  const isAuthenticated = !!email;
   return (
     // Mobile: flex con LeagueSwitcher en flex-1 → se centra en el espacio
     //   entre logo y UserMenu (no en el centro geométrico de la pantalla).
@@ -45,10 +46,37 @@ export function AppHeader({
         </Link>
       </div>
       <div className="flex flex-1 justify-center lg:flex-initial">
-        <LeagueSwitcher memberships={memberships} activeLeagueId={activeLeagueId} />
+        {isAuthenticated && memberships.length > 0 ? (
+          <LeagueSwitcher
+            memberships={memberships}
+            activeLeagueId={activeLeagueId}
+          />
+        ) : null}
       </div>
       <div className="flex items-center justify-end gap-3">
-        <UserMenu email={email} nickname={nickname} avatarUrl={avatarUrl} isAdmin={isAdmin} />
+        {isAuthenticated && email ? (
+          <UserMenu
+            email={email}
+            nickname={nickname}
+            avatarUrl={avatarUrl}
+            isAdmin={isAdmin}
+          />
+        ) : (
+          <>
+            <Link
+              href="/login"
+              className="hidden text-xs font-mono uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-foreground)] sm:block"
+            >
+              Entrar
+            </Link>
+            <Link
+              href="/login?next=%2Fonboarding"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-arena)] bg-[var(--color-arena)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-[var(--shadow-arena)] transition hover:opacity-90"
+            >
+              Crear quiniela
+            </Link>
+          </>
+        )}
       </div>
     </header>
   );

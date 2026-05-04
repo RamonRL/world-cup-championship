@@ -9,8 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shell/empty-state";
 import { formatDateTime } from "@/lib/utils";
 import { CalendarFilters, type ActiveFilter } from "./calendar-filters";
+import { BreadcrumbLD, SportsEventLD } from "@/components/seo/jsonld";
 
-export const metadata = { title: "Calendario" };
+export const metadata = {
+  title: "Calendario",
+  description:
+    "Los 104 partidos del Mundial 2026 en Estados Unidos, Canadá y México. Filtros por grupo y por ronda. Horarios, estadios y resultados oficiales.",
+  alternates: { canonical: "/calendario" },
+  openGraph: {
+    title: "Calendario · Mundial 2026",
+    description: "Los 104 partidos del Mundial 2026: fase de grupos, octavos, cuartos, semifinales y final.",
+    url: "/calendario",
+  },
+};
 export const dynamic = "force-dynamic";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -110,6 +121,13 @@ export default async function CalendarPage({
 
   return (
     <div className="space-y-10">
+      <SportsEventLD />
+      <BreadcrumbLD
+        items={[
+          { name: "Inicio", href: "/" },
+          { name: "Calendario", href: "/calendario" },
+        ]}
+      />
       <header className="relative border-b border-[var(--color-border)] pb-8">
         {/* Mobile: stack FWC mark + title block.
             Desktop: 3-col grid → title izq, FWC centrado, hueco derecho. */}
