@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import {
   Big_Shoulders,
   DM_Sans,
-  Instrument_Serif,
   JetBrains_Mono,
+  Newsreader,
 } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -25,13 +25,14 @@ const bigShoulders = Big_Shoulders({
   display: "swap",
 });
 
-// Instrument Serif: italic editorial moderno, más sobrio que Fraunces.
-// Se renderiza para descripciones y prose ("Lo último de la cancha.",
-// fechas, dichos). Solo viene en weight 400 + italic 400 — suficiente
-// porque todas las usages son italic.
-const instrumentSerif = Instrument_Serif({
+// Newsreader: serif italic editorial diseñada por Production Type para
+// pantalla. Optical-size variable + x-height generosa + letterspacing más
+// holgado en itálica que Instrument Serif → más cómoda de leer en
+// descripciones, citas y subtítulos editoriales. Mantiene la voz
+// "literaria, no Victoriana" que define la sección editorial de la app.
+const newsreader = Newsreader({
   subsets: ["latin", "latin-ext"],
-  weight: "400",
+  weight: ["400", "500"],
   style: ["normal", "italic"],
   variable: "--font-editorial-loaded",
   display: "swap",
@@ -143,7 +144,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${dmSans.variable} ${bigShoulders.variable} ${instrumentSerif.variable} ${jetbrains.variable}`}
+      className={`${dmSans.variable} ${bigShoulders.variable} ${newsreader.variable} ${jetbrains.variable}`}
     >
       <body>
         <ThemeProvider>

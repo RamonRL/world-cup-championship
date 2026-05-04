@@ -200,13 +200,12 @@
     font-family: var(--font-editorial);
     font-weight: 500;
     font-style: italic;
-    letter-spacing: -0.005em;
-    /* Instrument Serif tiene x-height bajo y se ve un pelín pequeña
-       junto a la sans del cuerpo. Con un 1.08em relativo gana volumen
-       sin romper alineaciones. line-height un poco más holgado para
-       compensar la inclinación itálica. */
-    font-size: 1.08em;
-    line-height: 1.45;
+    /* Newsreader tiene x-height generosa y letterspacing nativo bien
+       resuelto en itálica — no necesita escala (1em) y un letter-spacing
+       ligeramente positivo da el respiro que pedía el cuerpo. line-height
+       holgado compensa la inclinación itálica para lectura larga. */
+    letter-spacing: 0.005em;
+    line-height: 1.5;
   }
   .font-mono {
     font-family: var(--font-mono);
