@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { BreadcrumbLD } from "@/components/seo/jsonld";
+import { findVenueByMatchVenue, VENUES } from "@/lib/seo/venues";
 
 export const metadata = {
   title: "Sedes",
@@ -49,42 +50,57 @@ export default async function VenuesPage() {
         description="Once estadios en Estados Unidos, tres en México y dos en Canadá. La final, en Nueva York-NJ. La inauguración, en Ciudad de México."
       />
 
-      {rows.length === 0 ? (
+      {/* Recorremos VENUES (catálogo curado de las 16 sedes oficiales) en
+          lugar de hacer GROUP BY sobre matches.venue: así cada sede sale
+          aunque todavía no tenga partidos asignados, y enlazamos a la
+          página detalle con copy editorial. Le sumamos el conteo desde DB
+          por nombre normalizado. */}
+      {VENUES.length === 0 ? (
         <EmptyState
           icon={<MapPin className="size-5" />}
           title="Sedes pendientes de asignar"
-          description="El fixture oficial todavía no marca estadios para todos los partidos."
+          description="El fixture oficial todavía no marca estadios."
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((r) => (
-            <article
-              key={r.venue ?? ""}
-              className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]"
-            >
-              <header className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/50 px-4 py-2">
-                <span className="flex items-center gap-2 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-                  <MapPin className="size-3" />
-                  Sede
-                </span>
-                <Badge variant="outline" className="text-[0.55rem]">
-                  {r.count} {r.count === 1 ? "partido" : "partidos"}
-                </Badge>
-              </header>
-              <div className="p-5">
-                <h2 className="font-display text-xl tracking-tight">{r.venue}</h2>
-                <p className="pt-1 font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-                  Sede oficial del Mundial 2026.
-                </p>
-                <Link
-                  href={`/calendario?venue=${encodeURIComponent(r.venue ?? "")}`}
-                  className="mt-3 inline-flex items-center gap-1.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-arena)]"
-                >
-                  Ver partidos →
-                </Link>
-              </div>
-            </article>
-          ))}
+          {VENUES.map((venue) => {
+            const matchCount = rows
+              .filter((r) => r.venue && findVenueByMatchVenue(r.venue)?.slug === venue.slug)
+              .reduce((acc, r) => acc + (r.count ?? 0), 0);
+            return (
+              <Link
+                key={venue.slug}
+                href={`/sedes/${venue.slug}`}
+                className="group overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)]"
+              >
+                <header className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/50 px-4 py-2">
+                  <span className="flex items-center gap-2 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+                    <MapPin className="size-3" />
+                    {venue.country}
+                  </span>
+                  <Badge variant="outline" className="text-[0.55rem]">
+                    {matchCount} {matchCount === 1 ? "partido" : "partidos"}
+                  </Badge>
+                </header>
+                <div className="p-5">
+                  <h2 className="font-display text-xl tracking-tight">{venue.name}</h2>
+                  <p className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                    {venue.city}
+                    {venue.region ? ` · ${venue.region}` : ""}
+                  </p>
+                  <p className="mt-2 font-display tabular text-2xl tracking-tight">
+                    {venue.capacity.toLocaleString("es-ES")}
+                  </p>
+                  <p className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                    Capacidad
+                  </p>
+                  <p className="mt-3 inline-flex items-center gap-1.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-arena)] transition group-hover:translate-x-0.5">
+                    Ver detalle →
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

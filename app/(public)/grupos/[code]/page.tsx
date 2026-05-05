@@ -20,6 +20,7 @@ import { getCurrentUser } from "@/lib/auth/guards";
 import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
 import { BreadcrumbLD } from "@/components/seo/jsonld";
+import { GROUP_ANALYSES } from "@/lib/seo/group-analysis";
 
 export async function generateMetadata({
   params,
@@ -254,6 +255,53 @@ export default async function GroupDetailPage({
         </article>
       </section>
 
+      {/* ─── Análisis del grupo (SEO content) ─── */}
+      {(() => {
+        const analysis = GROUP_ANALYSES[upper];
+        if (!analysis) return null;
+        return (
+          <section className="space-y-4">
+            <header className="flex items-center gap-3">
+              <span className="h-px w-6 bg-[var(--color-arena)]" />
+              <h2 className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Análisis del grupo
+              </h2>
+              <span className="h-px flex-1 bg-[var(--color-border)]" />
+            </header>
+            <article className="space-y-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 sm:p-8">
+              <p className="font-editorial text-base italic leading-relaxed text-[var(--color-foreground)] sm:text-lg">
+                {analysis.intro}
+              </p>
+              <div className="grid gap-5 sm:grid-cols-3">
+                <AnalysisColumn
+                  label="El favorito"
+                  team={analysis.favorite.team}
+                  text={analysis.favorite.text}
+                />
+                <AnalysisColumn
+                  label="El otro cupo"
+                  team={analysis.contender.team}
+                  text={analysis.contender.text}
+                />
+                <AnalysisColumn
+                  label="Dark horse"
+                  team={analysis.darkHorse.team}
+                  text={analysis.darkHorse.text}
+                />
+              </div>
+              <div className="rounded-md border-l-2 border-[var(--color-arena)] bg-[color-mix(in_oklch,var(--color-arena)_5%,var(--color-surface-2))] px-4 py-3">
+                <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+                  Predicción
+                </p>
+                <p className="pt-1 text-sm leading-relaxed">
+                  {analysis.prediction}
+                </p>
+              </div>
+            </article>
+          </section>
+        );
+      })()}
+
       {/* ─── Partidos del grupo ─── */}
       <section className="space-y-3">
         <div className="flex items-center gap-3">
@@ -429,6 +477,28 @@ export default async function GroupDetailPage({
 }
 
 // ──────────────── Helpers ────────────────
+
+function AnalysisColumn({
+  label,
+  team,
+  text,
+}: {
+  label: string;
+  team: string;
+  text: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
+        {label}
+      </p>
+      <p className="font-display text-lg tracking-tight">{team}</p>
+      <p className="text-sm leading-relaxed text-[var(--color-muted-foreground)]">
+        {text}
+      </p>
+    </div>
+  );
+}
 
 function Stat({
   label,

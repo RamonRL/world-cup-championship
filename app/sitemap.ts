@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, matches, teams } from "@/lib/db/schema";
+import { VENUES } from "@/lib/seo/venues";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://quinielamundial.es";
@@ -54,6 +55,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  const venueUrls: MetadataRoute.Sitemap = VENUES.map((v) => ({
+    url: `${siteUrl}/sedes/${v.slug}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
   const matchUrls: MetadataRoute.Sitemap = matchRows.map((m) => ({
     url: `${siteUrl}/partido/${m.id}`,
     // Si el partido ya pasó usamos su scheduledAt; si está por jugarse
@@ -63,5 +71,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticUrls, ...groupUrls, ...teamUrls, ...matchUrls];
+  return [...staticUrls, ...groupUrls, ...teamUrls, ...venueUrls, ...matchUrls];
 }
