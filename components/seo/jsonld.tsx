@@ -12,6 +12,17 @@
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://quinielamundial.es";
 
+// Tickets oficiales del Mundial 2026 (FIFA). Lo usamos como `offers.url` en
+// los SportsEvent para responder al warning de Search Console "missing field
+// offers". Precios en USD: $60 (group stage más barato) → $6730 (final más
+// caro), publicados por FIFA en su Phase 1.
+const FIFA_TICKETS_URL =
+  "https://www.fifa.com/tournaments/mens/worldcup/canadamexicousa2026/ticketing";
+
+// Imagen estandar para JSON-LD: el OG generado con next/og en /opengraph-image.
+// Sirve para "image" en Organization, SportsEvent y SportsEvent (match).
+const DEFAULT_LD_IMAGE = `${SITE_URL}/opengraph-image`;
+
 function sanitize(json: unknown): string {
   return JSON.stringify(json)
     .replace(/</g, "\\u003c")
@@ -64,6 +75,26 @@ export function WebApplicationLD() {
   );
 }
 
+// Selecciones representativas (campeonas históricas + anfitrionas) que
+// usamos como `performer` en el SportsEvent macro. No es exhaustivo (las
+// 48 son demasiadas) — Google solo necesita una muestra significativa para
+// reconocer el array. Los partidos individuales sí declaran las dos
+// selecciones que juegan vía MatchLD.
+const TOURNAMENT_PERFORMERS = [
+  "Argentina",
+  "Brasil",
+  "Alemania",
+  "Italia",
+  "Francia",
+  "España",
+  "Inglaterra",
+  "Uruguay",
+  "Portugal",
+  "Estados Unidos",
+  "Canadá",
+  "México",
+].map((name) => ({ "@type": "SportsTeam", name }));
+
 export function SportsEventLD() {
   return (
     <Script
@@ -75,12 +106,23 @@ export function SportsEventLD() {
         startDate: "2026-06-11",
         endDate: "2026-07-19",
         eventStatus: "https://schema.org/EventScheduled",
-        eventAttendanceMode: "https://schema.org/MixedEventAttendanceMode",
+        eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
         sport: "Soccer",
+        image: DEFAULT_LD_IMAGE,
         organizer: {
           "@type": "SportsOrganization",
           name: "FIFA",
           url: "https://www.fifa.com",
+        },
+        performer: TOURNAMENT_PERFORMERS,
+        offers: {
+          "@type": "AggregateOffer",
+          url: FIFA_TICKETS_URL,
+          priceCurrency: "USD",
+          lowPrice: "60",
+          highPrice: "6730",
+          availability: "https://schema.org/InStock",
+          validFrom: "2025-09-10T00:00:00+00:00",
         },
         location: [
           {
@@ -124,6 +166,8 @@ export function MatchLD({ match, stageLabel }: { match: Match; stageLabel: strin
       : match.scheduledAt.toISOString();
   const home = match.homeName ?? "TBD";
   const away = match.awayName ?? "TBD";
+  const homeTeam = { "@type": "SportsTeam", name: home };
+  const awayTeam = { "@type": "SportsTeam", name: away };
   return (
     <Script
       data={{
@@ -134,11 +178,26 @@ export function MatchLD({ match, stageLabel }: { match: Match; stageLabel: strin
         sport: "Soccer",
         startDate: date,
         eventStatus: "https://schema.org/EventScheduled",
+        eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+        image: DEFAULT_LD_IMAGE,
         location: match.venue
           ? { "@type": "Place", name: match.venue }
           : undefined,
-        homeTeam: { "@type": "SportsTeam", name: home },
-        awayTeam: { "@type": "SportsTeam", name: away },
+        homeTeam,
+        awayTeam,
+        // performer alimenta el campo recomendado por Google; usamos las
+        // dos selecciones que juegan. homeTeam/awayTeam siguen ahí para
+        // compatibilidad con el subtipo SportsEvent.
+        performer: [homeTeam, awayTeam],
+        offers: {
+          "@type": "AggregateOffer",
+          url: FIFA_TICKETS_URL,
+          priceCurrency: "USD",
+          lowPrice: "60",
+          highPrice: "6730",
+          availability: "https://schema.org/InStock",
+          validFrom: "2025-09-10T00:00:00+00:00",
+        },
         superEvent: {
           "@type": "SportsEvent",
           name: "Copa Mundial de la FIFA 2026",
