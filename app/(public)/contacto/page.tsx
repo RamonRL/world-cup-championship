@@ -25,6 +25,7 @@ const EMAIL = "admin@quinielamundial.es";
 // pon el array vacío y la sección se oculta sola.
 const SOCIALS: { label: string; href: string; handle: string }[] = [
   { label: "Instagram", href: "https://instagram.com/quiniela.mundial", handle: "@quiniela.mundial" },
+  { label: "TikTok", href: "https://tiktok.com/@quinielamundial", handle: "@quinielamundial" },
   { label: "X (Twitter)", href: "https://x.com/QMundial2026", handle: "@QMundial2026" },
 ];
 
