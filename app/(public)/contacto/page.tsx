@@ -24,8 +24,8 @@ const EMAIL = "admin@quinielamundial.es";
 // item; basta cambiar el href para activarlos. Si no hay redes todavía,
 // pon el array vacío y la sección se oculta sola.
 const SOCIALS: { label: string; href: string; handle: string }[] = [
-  // { label: "Instagram", href: "https://instagram.com/quinielamundial", handle: "@quinielamundial" },
-  // { label: "X (Twitter)", href: "https://x.com/quinielamundial", handle: "@quinielamundial" },
+  { label: "Instagram", href: "https://instagram.com/quiniela.mundial", handle: "@quiniela.mundial" },
+  { label: "X (Twitter)", href: "https://x.com/QMundial2026", handle: "@QMundial2026" },
 ];
 
 export default function ContactoPage() {
