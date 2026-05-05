@@ -1,8 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Bug, Lightbulb, Mail, MessageSquare } from "lucide-react";
+import type { ComponentType, SVGProps } from "react";
 import { PageHeader } from "@/components/shell/page-header";
 import { BreadcrumbLD } from "@/components/seo/jsonld";
+import { InstagramIcon, TikTokIcon, XIcon } from "@/components/icons/social";
 
 export const metadata = {
   title: "Contacto",
@@ -23,10 +25,32 @@ const EMAIL = "admin@quinielamundial.es";
 // creados. Mantén el array para que la sección renderice un link por
 // item; basta cambiar el href para activarlos. Si no hay redes todavía,
 // pon el array vacío y la sección se oculta sola.
-const SOCIALS: { label: string; href: string; handle: string }[] = [
-  { label: "Instagram", href: "https://instagram.com/quiniela.mundial", handle: "@quiniela.mundial" },
-  { label: "TikTok", href: "https://tiktok.com/@quinielamundial", handle: "@quinielamundial" },
-  { label: "X (Twitter)", href: "https://x.com/QMundial2026", handle: "@QMundial2026" },
+type Social = {
+  label: string;
+  href: string;
+  handle: string;
+  Icon: ComponentType<SVGProps<SVGSVGElement>>;
+};
+
+const SOCIALS: Social[] = [
+  {
+    label: "Instagram",
+    href: "https://instagram.com/quiniela.mundial",
+    handle: "@quiniela.mundial",
+    Icon: InstagramIcon,
+  },
+  {
+    label: "TikTok",
+    href: "https://tiktok.com/@quinielamundial",
+    handle: "@quinielamundial",
+    Icon: TikTokIcon,
+  },
+  {
+    label: "X (Twitter)",
+    href: "https://x.com/QMundial2026",
+    handle: "@QMundial2026",
+    Icon: XIcon,
+  },
 ];
 
 export default function ContactoPage() {
@@ -175,9 +199,12 @@ export default function ContactoPage() {
                 href={s.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:border-[var(--color-arena)]/40"
+                className="group flex items-center gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:border-[var(--color-arena)]/40"
               >
-                <div className="min-w-0">
+                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]">
+                  <s.Icon className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
                   <p className="font-display text-base tracking-tight">
                     {s.label}
                   </p>
@@ -187,7 +214,7 @@ export default function ContactoPage() {
                 </div>
                 <span
                   aria-hidden
-                  className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]"
+                  className="shrink-0 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)] transition group-hover:translate-x-0.5"
                 >
                   ↗
                 </span>
