@@ -4,8 +4,13 @@ import { circleFlagUrl } from "@/lib/flags";
 type Props = {
   /** FIFA 3-letter code, e.g. "MEX", "USA", "ENG". */
   code: string | null | undefined;
-  /** Pixel size of the rendered chip. Default 24. */
+  /** Pixel size of the rendered chip. Ignored when `fluid`. Default 24. */
   size?: number;
+  /**
+   * If true, ignores `size` and lets the parent container drive width/height
+   * via CSS. Useful inside responsive grids where the cell width changes.
+   */
+  fluid?: boolean;
   /** Optional extra classes for the wrapper (border, ring, shadow…). */
   className?: string;
   /**
@@ -22,16 +27,17 @@ type Props = {
  * regardless of the source flag's aspect ratio. Falls back to the team's
  * FIFA code as text if the code is unknown.
  */
-export function TeamFlag({ code, size = 24, className, bare = false }: Props) {
+export function TeamFlag({ code, size = 24, fluid = false, className, bare = false }: Props) {
   const url = circleFlagUrl(code);
   return (
     <span
       className={cn(
         "relative inline-grid shrink-0 place-items-center overflow-hidden rounded-full",
         bare ? "" : "bg-[var(--color-surface-2)] ring-1 ring-[var(--color-border)]",
+        fluid ? "size-full" : "",
         className,
       )}
-      style={{ width: size, height: size }}
+      style={fluid ? undefined : { width: size, height: size }}
       aria-hidden={!code}
     >
       {url ? (
@@ -42,8 +48,8 @@ export function TeamFlag({ code, size = 24, className, bare = false }: Props) {
         <img
           src={url}
           alt={code ?? ""}
-          width={size}
-          height={size}
+          width={fluid ? undefined : size}
+          height={fluid ? undefined : size}
           className="size-full object-cover"
           loading="lazy"
         />

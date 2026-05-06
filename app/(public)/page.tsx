@@ -109,8 +109,14 @@ export default async function HomePage() {
       <SportsEventLD />
       <FAQPageLD faqs={FAQS} />
 
-      {/* ───────── HERO ───────── */}
-      <section className="relative -mx-4 overflow-hidden border-b border-[var(--color-border)] px-4 pb-20 pt-8 sm:pt-14 lg:-mx-8 lg:px-8">
+      {/* ───────── HERO ─────────
+          Minimalista, mismo lenguaje que /login: centrado, eyebrow con
+          reglas a ambos lados, h1 conciso y línea editorial corta. Las
+          keywords ricas (calendario, bracket, goleadores, código de 4
+          dígitos, etc.) viven en las secciones de abajo, así que ningún
+          recorte aquí afecta al SEO.
+      */}
+      <section className="relative -mx-4 overflow-hidden border-b border-[var(--color-border)] px-4 pb-16 pt-12 sm:pt-20 lg:-mx-8 lg:px-8">
         <div
           aria-hidden
           className="halftone pointer-events-none absolute inset-0 opacity-[0.05]"
@@ -123,88 +129,92 @@ export default async function HomePage() {
               "radial-gradient(circle, color-mix(in oklch, var(--color-arena) 28%, transparent), transparent 70%)",
           }}
         />
-        <div className="relative mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <span className="h-px w-10 bg-[var(--color-arena)]" />
-              <p className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-arena)]">
-                Mundial 2026 · 11 jun – 19 jul · Canadá · México · USA
-              </p>
-            </div>
-            <h1 className="font-display text-5xl leading-[0.92] tracking-tight sm:text-7xl">
-              Quiniela Mundial 2026 — predice los 104 partidos con tus amigos
-            </h1>
-            <p className="max-w-2xl font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
-              Calendario completo, grupos, bracket FIFA, goleadores y predicciones
-              colaborativas. Crea tu liga privada en 30 segundos o únete a una con
-              un código de 4 dígitos. Gratis.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link
-                href="/login?next=%2Fonboarding"
-                className="inline-flex items-center gap-2 rounded-md border border-[var(--color-arena)] bg-[var(--color-arena)] px-5 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-white shadow-[var(--shadow-arena)] transition hover:opacity-90"
-              >
-                Crear quiniela
-                <ArrowRight className="size-4" />
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-5 py-3 text-sm font-semibold uppercase tracking-[0.18em] transition hover:border-[var(--color-arena)]/40"
-              >
-                Unirme con código
-              </Link>
-            </div>
-          </div>
-          <div className="hidden flex-col items-center gap-3 lg:flex">
+
+        <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-7 text-center">
+          <div className="flex flex-col items-center gap-1.5">
             <Image
               src="/fwc26.png"
               alt="FIFA World Cup 26"
               width={1500}
               height={1500}
               priority
-              className="h-36 w-auto"
+              className="h-20 w-auto sm:h-24"
             />
-            <div className="flex flex-col items-center gap-1 rounded-xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_5%,var(--color-surface))] px-5 py-3">
-              <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                T-menos · kickoff
-              </p>
-              <p className="font-display tabular text-5xl leading-none tracking-tight text-[var(--color-arena)] glow-arena">
-                {daysToKickoff.toString().padStart(2, "0")}
-              </p>
-              <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                días
-              </p>
-            </div>
+            <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              Copa Mundial de la FIFA 2026
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="h-px w-10 bg-[var(--color-arena)]" />
+            <p className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-arena)]">
+              11 jun – 19 jul · USA · México · Canadá
+            </p>
+            <span className="h-px w-10 bg-[var(--color-arena)]" />
+          </div>
+
+          <h1 className="font-display text-5xl leading-[0.95] tracking-tight sm:text-6xl">
+            Quiniela Mundial 2026
+          </h1>
+
+          <p className="max-w-xl font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
+            Predice los 104 partidos del Mundial con tus amigos.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+            <Link
+              href="/login?next=%2Fonboarding"
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--color-arena)] bg-[var(--color-arena)] px-5 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-white shadow-[var(--shadow-arena)] transition hover:opacity-90"
+            >
+              Crear quiniela
+              <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-5 py-3 text-sm font-semibold uppercase tracking-[0.18em] transition hover:border-[var(--color-arena)]/40"
+            >
+              Unirme con código
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <span className="relative flex size-2">
+              <span
+                aria-hidden
+                className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-arena)] opacity-70"
+              />
+              <span className="relative inline-flex size-2 rounded-full bg-[var(--color-arena)]" />
+            </span>
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              T-{daysToKickoff.toString().padStart(2, "0")} días al kickoff
+            </p>
           </div>
         </div>
 
-        {/* ─── Tira de las 48 selecciones ─── */}
+        {/* ─── Tira de las 48 selecciones — 12 cols móvil (4 filas) /
+            24 cols desktop (2 filas) ─── */}
         {allTeams.length > 0 && (
-          <div className="relative mx-auto mt-12 w-full max-w-6xl">
-            <div className="flex items-center gap-3 pb-3">
+          <div className="relative mx-auto mt-14 w-full max-w-5xl">
+            <div className="flex items-center justify-center gap-3 pb-4">
               <span className="h-px w-6 bg-[var(--color-arena)]" />
               <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
                 Las {allTeams.length} selecciones clasificadas
               </p>
+              <span className="h-px w-6 bg-[var(--color-arena)]" />
             </div>
-            <ul className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <ul className="grid grid-cols-12 gap-1.5 sm:gap-2 lg:grid-cols-[repeat(24,minmax(0,1fr))]">
               {allTeams.map((t) => (
                 <li
                   key={t.id}
                   title={t.name}
-                  className="rounded-full transition hover:scale-110"
+                  className="aspect-square transition hover:scale-110"
                 >
-                  <TeamFlag code={t.code} size={28} />
+                  <TeamFlag code={t.code} fluid />
                 </li>
               ))}
             </ul>
           </div>
         )}
-
-        {/* Línea contador móvil — visible cuando la columna derecha desaparece */}
-        <p className="relative mx-auto mt-6 w-full max-w-6xl font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] lg:hidden">
-          T-{daysToKickoff.toString().padStart(2, "0")} días al kickoff · 48 selecciones · 12 grupos · 16 sedes
-        </p>
       </section>
 
       {/* ───────── CÓMO FUNCIONA ───────── */}
