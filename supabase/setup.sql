@@ -112,9 +112,25 @@ create policy "ledger read" on public.points_ledger
   for select to authenticated using (true);
 
 -- 7) Realtime publication for chat_messages and matches (live results).
-alter publication supabase_realtime add table public.chat_messages;
-alter publication supabase_realtime add table public.matches;
-alter publication supabase_realtime add table public.match_scorers;
+--    `alter publication ... add table` no es idempotente; envolvemos en
+--    bloques que comprueben pg_publication_tables antes de añadir.
+do $$
+declare
+  tbl text;
+begin
+  for tbl in select unnest(array['chat_messages', 'matches', 'match_scorers'])
+  loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = tbl
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', tbl);
+    end if;
+  end loop;
+end;
+$$;
 
 -- ─────────────────────────────────────────────────────────────────────
 -- Storage buckets
