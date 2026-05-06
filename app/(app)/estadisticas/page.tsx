@@ -43,7 +43,7 @@ export default async function StatsPage() {
         <EmptyState
           icon={<BarChart3 className="size-5" />}
           title="Sin datos todavía"
-          description={`Aparecerán aquí en cuanto el admin guarde el primer resultado. El torneo arranca en ${formatRemaining(ms)}.`}
+          description={`Aparecerán aquí cuando se juegue el primer partido. El torneo arranca en ${formatRemaining(ms)}.`}
         />
       </div>
     );
