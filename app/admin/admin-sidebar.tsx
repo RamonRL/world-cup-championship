@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
+  Activity,
   CalendarRange,
   ClipboardCheck,
   Gauge,
@@ -31,6 +32,7 @@ const items: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/reglas", label: "Reglas de puntuación", icon: Sliders },
   { href: "/admin/especiales", label: "Predicciones especiales", icon: Sparkles },
   { href: "/admin/operaciones", label: "Operaciones", icon: ShieldCheck },
+  { href: "/admin/progreso", label: "Progreso", icon: Activity },
   { href: "/admin/chat", label: "Moderación", icon: MessagesSquare },
   { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },
 ];
