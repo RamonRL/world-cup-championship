@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, matches, matchdays, teams } from "@/lib/db/schema";
+import { recomputeAllMatchdayDeadlines } from "@/lib/matchday-deadlines";
 
 /**
  * Carga las 48 selecciones del Mundial 2026 y los 104 partidos según el
@@ -440,6 +441,9 @@ async function main() {
     }
   }
   console.log(`✓ ${KO_MATCHES.length} partidos de eliminatorias (sin equipos asignados).`);
+
+  await recomputeAllMatchdayDeadlines();
+  console.log("✓ Cierre de jornadas recomputado (= primer partido de cada jornada).");
 
   console.log("\n✓ Seed del torneo completado.");
   process.exit(0);

@@ -51,8 +51,8 @@ export function MatchdayDialog() {
         <DialogHeader>
           <DialogTitle>Nueva jornada</DialogTitle>
           <DialogDescription>
-            Las predicciones de marcadores se cierran en la fecha que definas aquí (típicamente
-            24 h antes del primer partido de la jornada).
+            El cierre de predicciones se deriva automáticamente del primer
+            partido de la jornada — no hace falta fijar fecha aquí.
           </DialogDescription>
         </DialogHeader>
         <form action={action} className="space-y-4">
@@ -86,15 +86,6 @@ export function MatchdayDialog() {
               <Label htmlFor="orderIndex">Orden</Label>
               <Input id="orderIndex" name="orderIndex" type="number" defaultValue={0} />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="predictionDeadlineAt">Cierre de predicción</Label>
-            <Input
-              id="predictionDeadlineAt"
-              name="predictionDeadlineAt"
-              type="datetime-local"
-              required
-            />
           </div>
           {state.error ? (
             <p className="text-sm text-[var(--color-danger)]">{state.error}</p>

@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { matchdays, matches } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
 import { logAdminAction } from "@/lib/admin/audit";
+import { recomputeMatchdayDeadlines } from "@/lib/matchday-deadlines";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -14,10 +15,16 @@ const matchdaySchema = z.object({
   id: z.coerce.number().optional(),
   name: z.string().min(2).max(60),
   stage: z.enum(["group", "r32", "r16", "qf", "sf", "third", "final"]),
-  predictionDeadlineAt: z.string().min(1),
   orderIndex: z.coerce.number().int().default(0),
 });
 
+/**
+ * Nota: `predictionDeadlineAt` ya NO se acepta como input. El cierre se
+ * deriva siempre del primer partido de la jornada (ver
+ * `recomputeMatchdayDeadlines`). En jornadas recién creadas sin partidos
+ * usamos un placeholder; en cuanto se añada el primer partido, queda
+ * sobreescrito.
+ */
 export async function upsertMatchday(
   _prev: FormState,
   formData: FormData,
@@ -27,27 +34,36 @@ export async function upsertMatchday(
     id: formData.get("id") ?? undefined,
     name: formData.get("name"),
     stage: formData.get("stage"),
-    predictionDeadlineAt: formData.get("predictionDeadlineAt"),
     orderIndex: formData.get("orderIndex") ?? 0,
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
-  const data = {
-    name: parsed.data.name,
-    stage: parsed.data.stage,
-    predictionDeadlineAt: new Date(parsed.data.predictionDeadlineAt),
-    orderIndex: parsed.data.orderIndex,
-  };
   if (parsed.data.id) {
-    await db.update(matchdays).set(data).where(eq(matchdays.id, parsed.data.id));
+    await db
+      .update(matchdays)
+      .set({
+        name: parsed.data.name,
+        stage: parsed.data.stage,
+        orderIndex: parsed.data.orderIndex,
+      })
+      .where(eq(matchdays.id, parsed.data.id));
     await logAdminAction({
       adminId: me.id,
       action: "matchday.update",
       payload: { id: parsed.data.id },
     });
   } else {
-    const [created] = await db.insert(matchdays).values(data).returning();
+    const [created] = await db
+      .insert(matchdays)
+      .values({
+        name: parsed.data.name,
+        stage: parsed.data.stage,
+        orderIndex: parsed.data.orderIndex,
+        // Placeholder: se sobrescribe al añadir el primer partido.
+        predictionDeadlineAt: new Date(),
+      })
+      .returning();
     await logAdminAction({
       adminId: me.id,
       action: "matchday.create",
@@ -115,6 +131,18 @@ export async function upsertMatch(
     scheduledAt: new Date(parsed.data.scheduledAt),
     venue: parsed.data.venue ?? null,
   };
+  // Antes de escribir, capturamos la jornada anterior del partido (si existía)
+  // para recompute si lo movemos a otra jornada distinta.
+  let previousMatchdayId: number | null = null;
+  if (parsed.data.id) {
+    const [prev] = await db
+      .select({ matchdayId: matches.matchdayId })
+      .from(matches)
+      .where(eq(matches.id, parsed.data.id))
+      .limit(1);
+    previousMatchdayId = prev?.matchdayId ?? null;
+  }
+
   if (parsed.data.id) {
     await db.update(matches).set(data).where(eq(matches.id, parsed.data.id));
     await logAdminAction({ adminId: me.id, action: "match.update", payload: { id: parsed.data.id } });
@@ -122,6 +150,11 @@ export async function upsertMatch(
     const [created] = await db.insert(matches).values(data).returning();
     await logAdminAction({ adminId: me.id, action: "match.create", payload: { id: created.id } });
   }
+
+  // El cierre de predicciones de la jornada se deriva del primer partido.
+  // Recompute para la jornada actual y, si hubo cambio, también la anterior.
+  await recomputeMatchdayDeadlines([data.matchdayId, previousMatchdayId]);
+
   revalidatePath("/admin/calendario");
   revalidatePath("/calendario");
   return { ok: true };
@@ -130,7 +163,15 @@ export async function upsertMatch(
 export async function deleteMatch(formData: FormData) {
   const me = await requireAdmin();
   const id = Number(formData.get("id"));
+  const [existing] = await db
+    .select({ matchdayId: matches.matchdayId })
+    .from(matches)
+    .where(eq(matches.id, id))
+    .limit(1);
   await db.delete(matches).where(eq(matches.id, id));
   await logAdminAction({ adminId: me.id, action: "match.delete", payload: { id } });
+  if (existing?.matchdayId != null) {
+    await recomputeMatchdayDeadlines([existing.matchdayId]);
+  }
   revalidatePath("/admin/calendario");
 }
