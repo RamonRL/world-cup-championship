@@ -105,7 +105,7 @@ const POSITION_MAP: Record<string, string> = {
 
 const HEADERS: Record<string, string> = {
   "User-Agent":
-    "WorldCupChampionshipSeed/1.0 (https://github.com/RamonRL/world-cup-championship; contact: ramon.romero@unnax.com) tsx/node",
+    "QuinielaMundialSeed/1.0 (https://github.com/RamonRL/quiniela-mundial; contact: ramon.romero@unnax.com) tsx/node",
   Accept: "application/json",
 };
 
