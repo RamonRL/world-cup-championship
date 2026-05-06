@@ -4,12 +4,9 @@ import { redirect } from "next/navigation";
 import { asc, gte, inArray } from "drizzle-orm";
 import {
   ArrowRight,
-  CalendarDays,
-  Clipboard,
   Crown,
   Goal,
   ListChecks,
-  MapPin,
   ShieldCheck,
   Sparkles,
   Swords,
@@ -94,6 +91,13 @@ export default async function HomePage() {
       : [];
   const teamMap = new Map(teamRows.map((t) => [t.id, t]));
 
+  // Las 48 selecciones, en orden alfabético: alimenta la tira visual del
+  // hero. Es una sola query barata y nos da masa visual sin meter texto.
+  const allTeams = await db
+    .select({ id: teams.id, code: teams.code, name: teams.name })
+    .from(teams)
+    .orderBy(asc(teams.name));
+
   const daysToKickoff = Math.max(
     0,
     Math.ceil((KICKOFF.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
@@ -130,7 +134,7 @@ export default async function HomePage() {
             <h1 className="font-display text-5xl leading-[0.92] tracking-tight sm:text-7xl">
               Quiniela Mundial 2026 — predice los 104 partidos con tus amigos
             </h1>
-            <p className="max-w-2xl font-editorial text-lg italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-xl">
+            <p className="max-w-2xl font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
               Calendario completo, grupos, bracket FIFA, goleadores y predicciones
               colaborativas. Crea tu liga privada en 30 segundos o únete a una con
               un código de 4 dígitos. Gratis.
@@ -150,24 +154,57 @@ export default async function HomePage() {
                 Unirme con código
               </Link>
             </div>
-            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-              T-{daysToKickoff.toString().padStart(2, "0")} días al kickoff · 48 selecciones · 12 grupos · 16 sedes
-            </p>
           </div>
-          <div className="hidden flex-col items-center gap-2 lg:flex">
+          <div className="hidden flex-col items-center gap-3 lg:flex">
             <Image
               src="/fwc26.png"
               alt="FIFA World Cup 26"
               width={1500}
               height={1500}
               priority
-              className="h-44 w-auto"
+              className="h-36 w-auto"
             />
-            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-              Copa Mundial de la FIFA 2026
-            </p>
+            <div className="flex flex-col items-center gap-1 rounded-xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_5%,var(--color-surface))] px-5 py-3">
+              <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                T-menos · kickoff
+              </p>
+              <p className="font-display tabular text-5xl leading-none tracking-tight text-[var(--color-arena)] glow-arena">
+                {daysToKickoff.toString().padStart(2, "0")}
+              </p>
+              <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                días
+              </p>
+            </div>
           </div>
         </div>
+
+        {/* ─── Tira de las 48 selecciones ─── */}
+        {allTeams.length > 0 && (
+          <div className="relative mx-auto mt-12 w-full max-w-6xl">
+            <div className="flex items-center gap-3 pb-3">
+              <span className="h-px w-6 bg-[var(--color-arena)]" />
+              <p className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Las {allTeams.length} selecciones clasificadas
+              </p>
+            </div>
+            <ul className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {allTeams.map((t) => (
+                <li
+                  key={t.id}
+                  title={t.name}
+                  className="rounded-full transition hover:scale-110"
+                >
+                  <TeamFlag code={t.code} size={28} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Línea contador móvil — visible cuando la columna derecha desaparece */}
+        <p className="relative mx-auto mt-6 w-full max-w-6xl font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] lg:hidden">
+          T-{daysToKickoff.toString().padStart(2, "0")} días al kickoff · 48 selecciones · 12 grupos · 16 sedes
+        </p>
       </section>
 
       {/* ───────── CÓMO FUNCIONA ───────── */}
@@ -179,7 +216,7 @@ export default async function HomePage() {
           <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
             Te unes, predices, comparas, ganas
           </h2>
-          <p className="max-w-3xl font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
+          <p className="max-w-3xl font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-base">
             Una quiniela del Mundial entre amigos sin Excel ni grupos de WhatsApp
             con capturas: la app guarda las predicciones, calcula los puntos en
             tiempo real y muestra el ranking en cada momento del torneo.
@@ -222,7 +259,7 @@ export default async function HomePage() {
           <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
             Primera edición a 48 selecciones
           </h2>
-          <p className="font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
+          <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-base">
             El Mundial 2026 estrena formato: <strong className="not-italic font-semibold">12 grupos</strong> de
             cuatro equipos, top 2 + los 8 mejores terceros pasan a una nueva
             ronda de dieciseisavos (R32). Después: octavos, cuartos,
@@ -230,11 +267,11 @@ export default async function HomePage() {
             Un total de <strong className="not-italic font-semibold">104 partidos en 39 días</strong> repartidos
             entre Estados Unidos, Canadá y México.
           </p>
-          <ul className="grid gap-2 text-sm sm:grid-cols-2">
-            <FactRow icon={<CalendarDays className="size-4" />} label="11 jun – 19 jul 2026" />
-            <FactRow icon={<MapPin className="size-4" />} label="3 países, 16 sedes" />
-            <FactRow icon={<Users className="size-4" />} label="48 selecciones, 12 grupos" />
-            <FactRow icon={<Goal className="size-4" />} label="104 partidos en total" />
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatTile big="48" label="Selecciones" />
+            <StatTile big="12" label="Grupos" />
+            <StatTile big="104" label="Partidos" />
+            <StatTile big="16" label="Sedes" />
           </ul>
           <div className="flex flex-wrap gap-3 pt-2">
             <Link
@@ -316,7 +353,7 @@ export default async function HomePage() {
           <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
             Seis formas de sumar puntos
           </h2>
-          <p className="max-w-3xl font-editorial text-base italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-lg">
+          <p className="max-w-3xl font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-base">
             La quiniela no se limita a marcadores. Combinas predicciones a largo
             plazo (grupos, bracket, goleador del torneo) con apuestas más
             inmediatas (marcador exacto y goleador de cada partido).
@@ -370,7 +407,7 @@ export default async function HomePage() {
           {FAQS.map((f, i) => (
             <details key={i} className="group px-5 py-4">
               <summary className="flex cursor-pointer items-center justify-between gap-3 list-none">
-                <span className="font-display text-lg tracking-tight">{f.q}</span>
+                <span className="font-display text-base tracking-tight">{f.q}</span>
                 <span
                   aria-hidden
                   className="font-mono text-xs text-[var(--color-arena)] transition group-open:rotate-45"
@@ -378,7 +415,7 @@ export default async function HomePage() {
                   ＋
                 </span>
               </summary>
-              <p className="pt-3 font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-base">
+              <p className="pt-3 font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)]">
                 {f.a}
               </p>
             </details>
@@ -396,7 +433,7 @@ export default async function HomePage() {
           <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
             Tu quiniela del Mundial está a un click
           </h2>
-          <p className="mx-auto max-w-2xl font-editorial text-base italic text-[var(--color-muted-foreground)] sm:text-lg">
+          <p className="mx-auto max-w-2xl font-editorial text-sm italic text-[var(--color-muted-foreground)] sm:text-base">
             Crea la tuya, comparte el código con los tuyos y que empiece la pelea.
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-2">
@@ -505,13 +542,15 @@ function CategoryCard({
   );
 }
 
-function FactRow({ icon, label }: { icon: React.ReactNode; label: string }) {
+function StatTile({ big, label }: { big: string; label: string }) {
   return (
-    <li className="flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
-      <span className="text-[var(--color-arena)]">{icon}</span>
-      <span className="font-medium">{label}</span>
+    <li className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
+      <p className="font-display tabular text-3xl leading-none tracking-tight text-[var(--color-arena)] sm:text-4xl">
+        {big}
+      </p>
+      <p className="pt-1.5 font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+        {label}
+      </p>
     </li>
   );
 }
-
-void Clipboard;
