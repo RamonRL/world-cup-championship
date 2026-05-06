@@ -22,7 +22,7 @@ import { matches, teams } from "@/lib/db/schema";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { formatDateTime } from "@/lib/utils";
-import { FAQPageLD, SportsEventLD } from "@/components/seo/jsonld";
+import { FAQPageLD, SportsEventLD, WebSiteLD } from "@/components/seo/jsonld";
 
 const KICKOFF = new Date(
   process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T19:00:00Z",
@@ -101,6 +101,7 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-20">
+      <WebSiteLD />
       <SportsEventLD />
       <FAQPageLD faqs={FAQS} />
 

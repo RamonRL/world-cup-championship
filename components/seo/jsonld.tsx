@@ -56,6 +56,25 @@ export function OrganizationLD() {
   );
 }
 
+// WebSite schema → Google lo usa como señal principal para decidir el
+// "site name" que aparece encima del título en los resultados de búsqueda
+// (sin esto, cae al dominio: "quinielamundial.es"). Va sólo en la homepage
+// porque es donde Google lo lee para indexar el site name.
+// https://developers.google.com/search/docs/appearance/site-names
+export function WebSiteLD() {
+  return (
+    <Script
+      data={{
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Quiniela Mundial",
+        alternateName: "Quiniela Mundial 2026",
+        url: SITE_URL,
+      }}
+    />
+  );
+}
+
 export function WebApplicationLD() {
   return (
     <Script

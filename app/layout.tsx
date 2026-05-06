@@ -83,7 +83,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_ES",
     url: siteUrl,
-    siteName: "Quiniela Mundial 2026",
+    siteName: "Quiniela Mundial",
     title: "Quiniela Mundial 2026 · Predicciones, calendario y resultados",
     description:
       "Quiniela del Mundial 2026 entre amigos. Calendario, grupos, bracket FIFA, goleadores y predicciones colaborativas.",
