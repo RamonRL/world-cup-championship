@@ -139,6 +139,10 @@ export function TopScorerForm({
         </div>
       ) : null}
 
+      {/* ─── Hero del jugador seleccionado · solo desktop ─── */}
+      <SelectedPlayerHero player={selectedPlayer} />
+
+
       {/* ─── Filtros: banderas + posiciones ─── */}
       <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
         {/* Mobile: una sola fila con scroll horizontal.
@@ -455,5 +459,113 @@ function PlayerCard({
         </span>
       ) : null}
     </button>
+  );
+}
+
+function SelectedPlayerHero({ player }: { player: PlayerOpt | null }) {
+  const pos = player ? normalizePosition(player.position) : null;
+  const accent = pos ? POSITION_ACCENT[pos] : null;
+
+  return (
+    <section
+      aria-live="polite"
+      className="relative hidden overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] sm:block"
+    >
+      <div
+        className="halftone pointer-events-none absolute inset-0 opacity-[0.06]"
+        aria-hidden
+      />
+      {accent ? (
+        <span
+          aria-hidden
+          className={cn("absolute inset-x-0 top-0 h-0.5", accent.dot)}
+        />
+      ) : null}
+
+      <div className="relative flex min-h-[18rem] flex-col items-center justify-center gap-6 px-10 py-10 text-center lg:min-h-[22rem]">
+        <p
+          className={cn(
+            "font-mono text-[0.6rem] font-semibold uppercase tracking-[0.32em]",
+            accent ? accent.text : "text-[var(--color-muted-foreground)]",
+          )}
+        >
+          Tu Bota de Oro
+        </p>
+
+        {player ? (
+          <>
+            <span
+              className={cn(
+                "grid size-44 shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-[var(--color-surface-2)] shadow-[var(--shadow-elev-2)] lg:size-52",
+                accent
+                  ? `border-transparent ring-4 ring-offset-4 ring-offset-[var(--color-surface)] ${accent.ring}`
+                  : "border-[var(--color-border-strong)]",
+              )}
+            >
+              {player.photoUrl ? (
+                <Image
+                  src={player.photoUrl}
+                  alt={player.name}
+                  width={208}
+                  height={208}
+                  className="size-full object-cover"
+                />
+              ) : (
+                <span className="font-display text-5xl tracking-tight text-[var(--color-muted-foreground)] lg:text-6xl">
+                  {initials(player.name)}
+                </span>
+              )}
+            </span>
+
+            <div className="flex flex-col items-center gap-3">
+              <h2 className="font-display text-5xl leading-[0.95] tracking-tight lg:text-6xl xl:text-7xl">
+                {player.name}
+              </h2>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-1">
+                  <TeamFlag code={player.teamCode} size={20} />
+                  <span className="font-display text-base tracking-tight">
+                    {player.teamName}
+                  </span>
+                </span>
+                {pos ? (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[0.65rem] uppercase tracking-[0.18em]",
+                      POSITION_ACCENT[pos].chip,
+                    )}
+                  >
+                    <span className={cn("size-1.5 rounded-full", POSITION_ACCENT[pos].dot)} />
+                    {POSITION_LABEL_SHORT[pos]}
+                  </span>
+                ) : null}
+                {player.jerseyNumber != null ? (
+                  <span className="inline-flex items-center gap-1 font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                    Dorsal
+                    <span className="font-display tabular text-lg tracking-tight text-[var(--color-foreground)]">
+                      {player.jerseyNumber}
+                    </span>
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="grid size-44 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] lg:size-52">
+              <span className="font-display text-5xl tracking-tight text-[var(--color-muted-foreground)]/40 lg:text-6xl">
+                ?
+              </span>
+            </span>
+            <h2 className="font-display text-4xl leading-[0.95] tracking-tight text-[var(--color-muted-foreground)] lg:text-5xl xl:text-6xl">
+              Aún sin candidato
+            </h2>
+            <p className="font-editorial text-base italic text-[var(--color-muted-foreground)]">
+              Pulsa una bandera y elige el jugador que más te ponga.
+            </p>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
