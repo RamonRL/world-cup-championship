@@ -5,7 +5,8 @@ import { useActionState, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -119,8 +120,14 @@ function GroupCard({
   onChange: (order: number[]) => void;
   disabled: boolean;
 }) {
+  // En PC arranca el drag tras 5px de movimiento (instantáneo). En móvil
+  // requiere un long-press de 250ms — así dejamos que el scroll vertical
+  // de la página siga funcionando con un toque + arrastre normal.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -202,22 +209,20 @@ function SortableRow({
         transition,
         opacity: isDragging ? 0.6 : 1,
       }}
-      className={`flex items-center gap-2 rounded-md border p-2 ${
+      className={`flex select-none items-center gap-2 rounded-md border p-2 ${
+        disabled ? "" : "cursor-grab active:cursor-grabbing"
+      } ${
         advances
           ? "border-[var(--color-primary)]/40 bg-[var(--color-primary)]/5"
           : "border-[var(--color-border)] bg-[var(--color-surface-2)]"
       }`}
+      aria-label={`${team.name}, posición ${positionLabel}. Arrastra para reordenar.`}
+      {...attributes}
+      {...(disabled ? {} : listeners)}
     >
-      <button
-        type="button"
-        className="cursor-grab touch-none rounded-sm p-1 text-[var(--color-muted-foreground)] hover:bg-[var(--color-surface)] active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
-        aria-label="Arrastrar para reordenar"
-        disabled={disabled}
-      >
+      <span aria-hidden className="rounded-sm p-1 text-[var(--color-muted-foreground)]">
         <GripVertical className="size-4" />
-      </button>
+      </span>
       <span className="grid w-9 text-center font-display text-lg">{positionLabel}</span>
       <TeamFlag code={team.code} size={28} />
       <span className="flex-1 truncate text-sm font-medium">{team.name}</span>
