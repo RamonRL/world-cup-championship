@@ -311,8 +311,12 @@ export function findVenueBySlug(slug: string): Venue | undefined {
 }
 
 export function findVenueByMatchVenue(text: string): Venue | undefined {
-  const norm = text.trim().toLowerCase();
+  // matches.venue se guarda como "{Estadio} · {Ciudad}" en el seed actual,
+  // pero los aliases sólo cubren el nombre del estadio. Quedamos con la
+  // primera parte antes del separador (o el texto íntegro si no hay).
+  const stadiumName = (text.split(" · ")[0] ?? text).trim().toLowerCase();
+  if (!stadiumName) return undefined;
   return VENUES.find((v) =>
-    v.aliases.some((a) => a.toLowerCase() === norm),
+    v.aliases.some((a) => a.toLowerCase() === stadiumName),
   );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, Clock, MapPin, Users } from "lucide-react";
-import { asc, inArray, or, eq } from "drizzle-orm";
+import { asc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches, teams } from "@/lib/db/schema";
 import { TeamFlag } from "@/components/brand/team-flag";
@@ -55,11 +55,20 @@ export default async function VenueDetailPage({
   const venue = findVenueBySlug(slug);
   if (!venue) notFound();
 
-  // Partidos de esta sede: matchea por cualquier alias de venue.name.
+  // Partidos de esta sede: matchea por cualquier alias de venue.name. El
+  // seed guarda matches.venue como "{Estadio} · {Ciudad}", así que aceptamos
+  // tanto la coincidencia exacta como el prefijo "{alias} · …".
   const venueMatches = await db
     .select()
     .from(matches)
-    .where(or(...venue.aliases.map((a) => eq(matches.venue, a))))
+    .where(
+      or(
+        ...venue.aliases.flatMap((a) => [
+          eq(matches.venue, a),
+          ilike(matches.venue, `${a} · %`),
+        ]),
+      ),
+    )
     .orderBy(asc(matches.scheduledAt));
 
   const teamIds = Array.from(
