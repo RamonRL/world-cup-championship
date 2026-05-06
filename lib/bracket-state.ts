@@ -4,11 +4,11 @@ import { groupStandings, matches } from "@/lib/db/schema";
 
 /**
  * El bracket pasa por tres estados:
- *   - "waiting"  → la fase de grupos aún no se ha cerrado. No se pueden hacer
- *                  predicciones ni se conocen los 32 clasificados.
- *   - "open"     → fase de grupos cerrada (group_standings poblada) y el
- *                  primer partido de R32 todavía no ha empezado. Los usuarios
- *                  pueden editar libremente.
+ *   - "waiting"  → todavía no están resueltos los 32 emparejamientos de R32:
+ *                  o la fase de grupos no ha cerrado, o el admin aún no ha
+ *                  ubicado a las 8 mejores terceras.
+ *   - "open"     → todos los R32 tienen `homeTeamId` y `awayTeamId` set, y
+ *                  el primer partido de R32 todavía no ha empezado.
  *   - "closed"   → primer partido de R32 ya empezó. Bracket congelado y
  *                  visible públicamente para todos los participantes.
  */
@@ -21,8 +21,19 @@ export type BracketStatus = {
 };
 
 export async function getBracketStatus(): Promise<BracketStatus> {
-  const [anyStanding] = await db.select().from(groupStandings).limit(1);
-  const groupStageClosed = !!anyStanding;
+  // El bracket abre cuando los 16 R32 tienen home Y away set. Los top-2 los
+  // rellena el orquestador al cerrar cada grupo; las mejores terceras las
+  // ubica el admin desde /admin/operaciones/mejores-terceros.
+  const r32Rows = await db
+    .select({
+      homeTeamId: matches.homeTeamId,
+      awayTeamId: matches.awayTeamId,
+    })
+    .from(matches)
+    .where(eq(matches.stage, "r32"));
+  const allMatchupsResolved =
+    r32Rows.length > 0 &&
+    r32Rows.every((m) => m.homeTeamId != null && m.awayTeamId != null);
 
   const [firstR32] = await db
     .select({ scheduledAt: matches.scheduledAt })
@@ -33,7 +44,7 @@ export async function getBracketStatus(): Promise<BracketStatus> {
   const closesAt = firstR32?.scheduledAt ?? null;
   const r32Started = closesAt ? new Date(closesAt).getTime() <= Date.now() : false;
 
-  const state: BracketState = !groupStageClosed
+  const state: BracketState = !allMatchupsResolved
     ? "waiting"
     : r32Started
       ? "closed"

@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Loader2, Play, RotateCcw } from "lucide-react";
+import Link from "next/link";
+import { useTransition } from "react";
+import {
+  ArrowRight,
+  CalculatorIcon,
+  Loader2,
+  Play,
+  RotateCcw,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,30 +19,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  closeGroupStage,
-  closeKnockoutStage,
-  closeTopScorer,
+  recomputeBracket,
   recomputeEverything,
+  recomputeGroups,
+  recomputeMatches,
+  recomputeSpecials,
+  recomputeTopScorer,
   resetAllPoints,
   resetGroupStage,
   type FormState,
 } from "./actions";
 
-export function OperationsActions() {
+export function OperationsActions({ groupsDone }: { groupsDone: boolean }) {
   const [pending, start] = useTransition();
-  const [stageKey, setStageKey] = useState<"r16" | "qf" | "sf" | "final" | "champion">("r16");
 
-  function run(fn: () => Promise<FormState>, label: string, confirmText: string) {
-    if (!window.confirm(confirmText)) return;
+  function run(fn: () => Promise<FormState>, label: string, confirmText?: string) {
+    if (confirmText && !window.confirm(confirmText)) return;
     start(async () => {
       const res = await fn();
       if (res.ok) toast.success(res.message ?? `${label} ejecutada.`);
@@ -42,211 +44,200 @@ export function OperationsActions() {
     });
   }
 
-  function runWithFormData(
-    fn: (fd: FormData) => Promise<FormState>,
-    fd: FormData,
-    label: string,
-    confirmText: string,
-  ) {
-    if (!window.confirm(confirmText)) return;
-    start(async () => {
-      const res = await fn(fd);
-      if (res.ok) toast.success(res.message ?? `${label} ejecutada.`);
-      else toast.error(res.error ?? "Error.");
-    });
-  }
-
-  const KO_LABEL: Record<typeof stageKey, string> = {
-    r16: "octavos",
-    qf: "cuartos",
-    sf: "semifinales",
-    final: "la final",
-    champion: "el campeón",
-  };
-
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card>
+    <div className="space-y-6">
+      {/* ─── Acción manual: ubicar mejores terceros ─── */}
+      <Card
+        className={
+          groupsDone
+            ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))]"
+            : undefined
+        }
+      >
         <CardHeader>
-          <CardTitle>Cerrar fase de grupos</CardTitle>
-          <CardDescription>
-            Calcula la clasificación final de cada grupo a partir de los partidos finalizados y
-            otorga los puntos de la categoría de &ldquo;posiciones&rdquo;.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button
-            onClick={() =>
-              run(
-                closeGroupStage,
-                "Cierre fase grupos",
-                "Vas a cerrar la fase de grupos y otorgar los puntos de \"posiciones\" a todos los participantes. ¿Continuar?",
-              )
-            }
-            disabled={pending}
-          >
-            {pending ? <Loader2 className="animate-spin" /> : <Play />}
-            Cerrar y puntuar
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Cerrar ronda eliminatoria</CardTitle>
-          <CardDescription>
-            Para cada ronda, otorga los puntos del bracket a los participantes que acertaron qué
-            equipos avanzan.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Select value={stageKey} onValueChange={(v) => setStageKey(v as typeof stageKey)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="r16">Octavos (cierra R32)</SelectItem>
-              <SelectItem value="qf">Cuartos (cierra octavos)</SelectItem>
-              <SelectItem value="sf">Semifinales (cierra cuartos)</SelectItem>
-              <SelectItem value="final">Final (cierra semis)</SelectItem>
-              <SelectItem value="champion">Campeón (cierra la final)</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-        <CardFooter>
-          <Button
-            onClick={() => {
-              const fd = new FormData();
-              fd.set("stageKey", stageKey);
-              runWithFormData(
-                closeKnockoutStage,
-                fd,
-                "Cierre ronda",
-                `Vas a otorgar los puntos del bracket de ${KO_LABEL[stageKey]}. ¿Continuar?`,
-              );
-            }}
-            disabled={pending}
-          >
-            {pending ? <Loader2 className="animate-spin" /> : <Play />}
-            Cerrar y puntuar
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Finalizar Bota de Oro</CardTitle>
-          <CardDescription>
-            Calcula el ranking de goleadores a partir de los goles registrados (excluye en
-            propia) y otorga los puntos correspondientes.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button
-            onClick={() =>
-              run(
-                closeTopScorer,
-                "Bota de Oro",
-                "Vas a finalizar la Bota de Oro y otorgar los puntos del top de goleadores. Sólo deberías hacerlo cuando el torneo haya terminado. ¿Continuar?",
-              )
-            }
-            disabled={pending}
-          >
-            {pending ? <Loader2 className="animate-spin" /> : <Play />}
-            Calcular y puntuar
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recalcular todo</CardTitle>
-          <CardDescription>
-            Reaplica todas las funciones de puntuación sobre el estado actual del torneo. Útil
-            tras editar reglas o si algo está desincronizado.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button
-            variant="secondary"
-            onClick={() =>
-              run(
-                recomputeEverything,
-                "Recalcular todo",
-                "Esto borra y reescribe todas las entradas de puntos del torneo aplicando las reglas actuales. La operación es idempotente pero puede tardar unos segundos. ¿Continuar?",
-              )
-            }
-            disabled={pending}
-          >
-            {pending ? <Loader2 className="animate-spin" /> : <Play />}
-            Recalcular
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <Card className="border-[var(--color-danger)]/40 bg-[color-mix(in_oklch,var(--color-danger)_3%,var(--color-surface))]">
-        <CardHeader>
-          <CardTitle className="text-[var(--color-danger)]">
-            Resetear fase de grupos
+          <CardTitle className="flex items-center gap-2">
+            <Users className="size-5 text-[var(--color-arena)]" />
+            Ubicar mejores terceros
           </CardTitle>
           <CardDescription>
-            Vacía la tabla de clasificación calculada (`group_standings`) y
-            borra del ledger los puntos de la categoría &ldquo;Posiciones de
-            grupo&rdquo;. El resto del ledger (bracket, marcadores, goleadores,
-            especiales) queda intacto. La clasificación se regenera al guardar
-            cualquier resultado de grupos o con &ldquo;Recalcular todo&rdquo;.
+            En cuanto cierre la fase de grupos, asigna las 8 mejores terceras a los
+            slots de R32 que las esperan. Es la única operación manual del bracket —
+            con el resto se encarga el sistema. En cuanto guardes, se desbloquea la
+            predicción del bracket completo y la jornada R32.
           </CardDescription>
         </CardHeader>
-        <CardFooter>
-          <Button
-            variant="outline"
-            className="border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:border-[var(--color-danger)] hover:bg-[color-mix(in_oklch,var(--color-danger)_8%,transparent)] hover:text-[var(--color-danger)]"
-            onClick={() =>
-              run(
-                resetGroupStage,
-                "Reset fase grupos",
-                "Vas a borrar la clasificación calculada de los grupos y los puntos de \"Posiciones de grupo\". El resto del ledger no se toca. ¿Continuar?",
-              )
-            }
-            disabled={pending}
-          >
-            {pending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
-            Resetear fase grupos
+        <CardFooter className="flex flex-wrap items-center gap-2">
+          <Button asChild disabled={!groupsDone}>
+            <Link
+              href="/admin/operaciones/mejores-terceros"
+              aria-disabled={!groupsDone}
+              className={!groupsDone ? "pointer-events-none opacity-60" : undefined}
+            >
+              {groupsDone ? "Asignar terceros" : "Disponible al cerrar grupos"}
+              <ArrowRight />
+            </Link>
           </Button>
         </CardFooter>
       </Card>
 
-      <Card className="border-[var(--color-danger)]/40 bg-[color-mix(in_oklch,var(--color-danger)_3%,var(--color-surface))]">
-        <CardHeader>
-          <CardTitle className="text-[var(--color-danger)]">
-            Resetear puntuaciones
-          </CardTitle>
-          <CardDescription>
-            Pone TODAS las puntuaciones a cero borrando el `points_ledger`. Las
-            predicciones se mantienen — sólo se borran los puntos. Útil para
-            arrancar limpio antes de un torneo de prueba o resetear una
-            simulación. Después, &quot;Recalcular todo&quot; reaplica los
-            resultados ya guardados.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button
-            variant="outline"
-            className="border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:border-[var(--color-danger)] hover:bg-[color-mix(in_oklch,var(--color-danger)_8%,transparent)] hover:text-[var(--color-danger)]"
-            onClick={() =>
-              run(
-                resetAllPoints,
-                "Reset puntuaciones",
-                "Vas a poner TODAS las puntuaciones a cero. Se borran las entradas del points_ledger; las predicciones de los participantes se conservan. ¿Seguro?",
-              )
-            }
-            disabled={pending}
-          >
-            {pending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
-            Resetear a cero
-          </Button>
-        </CardFooter>
-      </Card>
+      {/* ─── Recalcular por sección ─── */}
+      <section>
+        <header className="mb-3 flex items-center gap-2">
+          <CalculatorIcon className="size-4 text-[var(--color-muted-foreground)]" />
+          <h2 className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            Recalcular puntos
+          </h2>
+        </header>
+        <p className="mb-3 text-xs text-[var(--color-muted-foreground)]">
+          Por defecto los puntos se reparten solos al guardar resultados. Estos botones
+          son por si algo se ha desincronizado y hay que forzar un recálculo. Todos son
+          idempotentes.
+        </p>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <RecomputeCard
+            title="Recalcular partidos"
+            description="Re-aplica el scoring (cat 4 marcadores + cat 5 goleadores por partido) sobre todos los partidos finalizados."
+            onClick={() => run(recomputeMatches, "Recompute partidos")}
+            pending={pending}
+          />
+          <RecomputeCard
+            title="Recalcular grupos"
+            description="Recompone group_standings desde los partidos y otorga la cat 1 (posiciones por grupo)."
+            onClick={() => run(recomputeGroups, "Recompute grupos")}
+            pending={pending}
+          />
+          <RecomputeCard
+            title="Recalcular bracket"
+            description="Recompute incremental de la cat 2 para cada ronda KO con partidos finalizados."
+            onClick={() => run(recomputeBracket, "Recompute bracket")}
+            pending={pending}
+          />
+          <RecomputeCard
+            title="Recalcular bota de oro"
+            description="Re-deriva el ranking de goleadores (excluye en propia) y reparte cat 3."
+            onClick={() => run(recomputeTopScorer, "Recompute bota de oro")}
+            pending={pending}
+          />
+          <RecomputeCard
+            title="Recalcular especiales"
+            description="Re-evalúa las reglas auto (totales de grupos, África en semis, anfitrión más lejano…) y recompute todos los specials. Los manuales (Guante / Balón) no se tocan."
+            onClick={() => run(recomputeSpecials, "Recompute especiales")}
+            pending={pending}
+          />
+          <RecomputeCard
+            title="Recalcular todo"
+            description="Versión nuclear. Reaplica todas las funciones de puntuación sobre el estado actual del torneo."
+            onClick={() => run(recomputeEverything, "Recompute todo")}
+            pending={pending}
+            variant="primary"
+          />
+        </div>
+      </section>
+
+      {/* ─── Resets destructivos ─── */}
+      <section>
+        <header className="mb-3 flex items-center gap-2">
+          <RotateCcw className="size-4 text-[var(--color-danger)]" />
+          <h2 className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-danger)]">
+            Resets destructivos
+          </h2>
+        </header>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Card className="border-[var(--color-danger)]/40 bg-[color-mix(in_oklch,var(--color-danger)_3%,var(--color-surface))]">
+            <CardHeader>
+              <CardTitle className="text-[var(--color-danger)]">
+                Resetear fase de grupos
+              </CardTitle>
+              <CardDescription>
+                Vacía la tabla de clasificación y borra del ledger los puntos de cat 1.
+                El resto del ledger queda intacto. La clasificación se regenera al
+                guardar cualquier resultado de grupos o con &ldquo;Recalcular grupos&rdquo;.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button
+                variant="outline"
+                className="border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:border-[var(--color-danger)] hover:bg-[color-mix(in_oklch,var(--color-danger)_8%,transparent)] hover:text-[var(--color-danger)]"
+                onClick={() =>
+                  run(
+                    resetGroupStage,
+                    "Reset fase grupos",
+                    "Vas a borrar la clasificación calculada y los puntos de \"Posiciones de grupo\". ¿Continuar?",
+                  )
+                }
+                disabled={pending}
+              >
+                {pending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+                Resetear fase grupos
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="border-[var(--color-danger)]/40 bg-[color-mix(in_oklch,var(--color-danger)_3%,var(--color-surface))]">
+            <CardHeader>
+              <CardTitle className="text-[var(--color-danger)]">
+                Resetear puntuaciones
+              </CardTitle>
+              <CardDescription>
+                Pone TODAS las puntuaciones a cero borrando el `points_ledger`. Las
+                predicciones se mantienen — sólo se borran los puntos. Útil para
+                arrancar limpio antes de un torneo de prueba.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button
+                variant="outline"
+                className="border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:border-[var(--color-danger)] hover:bg-[color-mix(in_oklch,var(--color-danger)_8%,transparent)] hover:text-[var(--color-danger)]"
+                onClick={() =>
+                  run(
+                    resetAllPoints,
+                    "Reset puntuaciones",
+                    "Vas a poner TODAS las puntuaciones a cero. ¿Seguro?",
+                  )
+                }
+                disabled={pending}
+              >
+                {pending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+                Resetear a cero
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </section>
     </div>
+  );
+}
+
+function RecomputeCard({
+  title,
+  description,
+  onClick,
+  pending,
+  variant = "default",
+}: {
+  title: string;
+  description: string;
+  onClick: () => void;
+  pending: boolean;
+  variant?: "default" | "primary";
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent />
+      <CardFooter>
+        <Button
+          variant={variant === "primary" ? "default" : "secondary"}
+          onClick={onClick}
+          disabled={pending}
+        >
+          {pending ? <Loader2 className="animate-spin" /> : <Play />}
+          Recalcular
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }

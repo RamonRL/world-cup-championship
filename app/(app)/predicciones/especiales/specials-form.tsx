@@ -65,7 +65,10 @@ const ROUND_LABEL: Record<string, string> = {
 function maxPointsFor(config: unknown): number | null {
   if (!config || typeof config !== "object") return null;
   const obj = config as Record<string, unknown>;
-  if (typeof obj.correct === "number") return obj.correct;
+  if (typeof obj.correct === "number") {
+    const bonus = typeof obj.exactRoundBonus === "number" ? obj.exactRoundBonus : 0;
+    return obj.correct + bonus;
+  }
   if (typeof obj.maxPoints === "number") return obj.maxPoints;
   if (obj.perRound && typeof obj.perRound === "object") {
     const values = Object.values(obj.perRound as Record<string, unknown>).filter(

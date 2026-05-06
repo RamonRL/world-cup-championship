@@ -9,6 +9,7 @@ import { requireAdmin } from "@/lib/auth/guards";
 import { logAdminAction } from "@/lib/admin/audit";
 import { recomputeMatchScoringForAllUsers } from "@/lib/scoring/persistence";
 import { recomputeAllGroupStandings } from "@/lib/scoring/group-standings";
+import { onMatchFinalized, onMatchReverted } from "@/lib/automation/orchestrator";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -79,6 +80,16 @@ export async function saveMatchResult(
   // field so the public views show dashes again instead of a stale 0-0.
   const reverting = parsed.data.status === "scheduled";
 
+  // Capturamos el estado previo para saber si esta save pasa el partido a
+  // `finished` por primera vez (→ orquestador) o lo revierte (→ undo).
+  const [previousMatch] = await db
+    .select({ status: matches.status })
+    .from(matches)
+    .where(eq(matches.id, parsed.data.matchId))
+    .limit(1);
+  const wasFinished = previousMatch?.status === "finished";
+  const willBeFinished = parsed.data.status === "finished";
+
   await db.transaction(async (tx) => {
     await tx
       .update(matches)
@@ -134,10 +145,24 @@ export async function saveMatchResult(
     revalidatePath("/bracket");
   }
 
+  // Orquestador: dispara cascade del bracket, scoring incremental, bota de
+  // oro al cerrar la final, y auto-resolución de specials. Llamamos a
+  // onMatchFinalized también cuando re-guardamos un partido ya finalizado
+  // (típicamente tras editar un winnerTeamId), porque el cascade puede haber
+  // cambiado.
+  if (willBeFinished) {
+    await onMatchFinalized(parsed.data.matchId);
+  } else if (wasFinished && !willBeFinished) {
+    await onMatchReverted(parsed.data.matchId);
+  }
+
   revalidatePath(`/admin/partidos/${parsed.data.matchId}`);
   revalidatePath(`/partido/${parsed.data.matchId}`);
   revalidatePath("/admin/partidos");
   revalidatePath("/calendario");
+  revalidatePath("/predicciones/bracket");
+  revalidatePath("/predicciones");
+  revalidatePath("/bracket");
   revalidatePath("/ranking");
   return { ok: true };
 }

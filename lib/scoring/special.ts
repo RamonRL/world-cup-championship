@@ -70,32 +70,35 @@ export function scoreSpecialPrediction(args: {
       return [];
     }
     case "team_with_round": {
-      // user picks a team and a maximum round it reaches.
-      // Points scale with how far that team actually reached: perRound[reachedRound],
-      // capped at maxPoints. Award only if user's team matches the resolved team.
-      const cfg = special.pointsConfigJson as {
-        maxPoints: number;
-        perRound: Record<string, number>;
-      };
+      // Dos formatos de pointsConfigJson, en orden de prioridad:
+      //   1. Nuevo (host_furthest_round): { correct: number, exactRoundBonus: number }
+      //      → 3 pts por acertar el equipo, +5 si además aciertas la ronda exacta.
+      //   2. Legacy: { maxPoints: number, perRound: Record<round, number> }
+      //      → puntos según ronda alcanzada por el equipo, capped en maxPoints.
       const resolved = special.resolvedValueJson as { teamCode: string; round: string };
       const user = userValueJson as { teamCode: string; round: string };
       if (user.teamCode !== resolved.teamCode) return [];
 
+      const cfg = special.pointsConfigJson as
+        | { correct: number; exactRoundBonus?: number }
+        | { maxPoints: number; perRound: Record<string, number> };
+
+      if ("correct" in cfg) {
+        let awarded = cfg.correct;
+        if (cfg.exactRoundBonus && user.round === resolved.round) {
+          awarded += cfg.exactRoundBonus;
+        }
+        return awarded > 0 ? [pt(special, sourceKey, awarded)] : [];
+      }
+
       const userRoundRank = ROUNDS_RANK[user.round] ?? -1;
       const resolvedRoundRank = ROUNDS_RANK[resolved.round] ?? -1;
-      // Award the perRound table value for the actual round the team reached,
-      // but only if the user's predicted round was equal or earlier (i.e. not
-      // overshooting). If user predicted 'final' but team only reached qf,
-      // award perRound['qf'] minus a haircut? Simplest fair rule: award perRound
-      // of the actual round if user predicted ≤ that round, else partial credit
-      // perRound of user's predicted round.
       const reachedKey = resolved.round;
       const fullPoints = cfg.perRound[reachedKey] ?? 0;
       let awarded: number;
       if (userRoundRank <= resolvedRoundRank) {
         awarded = fullPoints;
       } else {
-        // Overshot — give credit only for what the team did reach.
         awarded = cfg.perRound[reachedKey] ?? 0;
       }
       const final = Math.min(awarded, cfg.maxPoints);

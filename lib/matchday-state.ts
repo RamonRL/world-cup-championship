@@ -35,7 +35,12 @@ export type MatchdayStatus = {
   reason?: string;
 };
 
-type StageStat = { total: number; unfinished: number };
+type StageStat = {
+  total: number;
+  unfinished: number;
+  /** Partidos del stage cuyo home/away aún no está resuelto. */
+  unmatched: number;
+};
 
 async function loadStageStats(): Promise<Map<Stage, StageStat>> {
   const rows = await db
@@ -43,10 +48,16 @@ async function loadStageStats(): Promise<Map<Stage, StageStat>> {
       stage: matches.stage,
       total: sql<number>`count(*)::int`,
       unfinished: sql<number>`count(*) filter (where status != 'finished')::int`,
+      unmatched: sql<number>`count(*) filter (where home_team_id is null or away_team_id is null)::int`,
     })
     .from(matches)
     .groupBy(matches.stage);
-  return new Map(rows.map((r) => [r.stage as Stage, { total: r.total, unfinished: r.unfinished }]));
+  return new Map(
+    rows.map((r) => [
+      r.stage as Stage,
+      { total: r.total, unfinished: r.unfinished, unmatched: r.unmatched },
+    ]),
+  );
 }
 
 function resolveState(
@@ -58,15 +69,29 @@ function resolveState(
     return { state: "closed" };
   }
   const predecessor = PREDECESSOR[matchday.stage];
-  if (!predecessor) {
-    return { state: "open" };
+  if (predecessor) {
+    const predStat = stats.get(predecessor);
+    if (!predStat || predStat.total === 0 || predStat.unfinished > 0) {
+      return {
+        state: "waiting",
+        reason: `Se activa cuando termine ${STAGE_LABEL[predecessor]}.`,
+      };
+    }
   }
-  const stat = stats.get(predecessor);
-  if (!stat || stat.total === 0 || stat.unfinished > 0) {
-    return {
-      state: "waiting",
-      reason: `Se activa cuando termine ${STAGE_LABEL[predecessor]}.`,
-    };
+  // Para jornadas KO, además exigimos que TODOS los partidos del stage
+  // tengan home y away resueltos. Si no, las predicciones por partido no
+  // tendrían contra quién jugar.
+  if (matchday.stage !== "group") {
+    const ownStat = stats.get(matchday.stage);
+    if (ownStat && ownStat.unmatched > 0) {
+      return {
+        state: "waiting",
+        reason:
+          matchday.stage === "r32"
+            ? "Se activa cuando el admin ubique las mejores terceras en el bracket."
+            : `Se activa cuando se conozcan los emparejamientos de ${STAGE_LABEL[matchday.stage]}.`,
+      };
+    }
   }
   return { state: "open" };
 }

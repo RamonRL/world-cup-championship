@@ -23,6 +23,7 @@
     "db:wipe-player-photos": "tsx --env-file=.env.local --env-file-if-exists=.env scripts/wipe-player-photos.ts",
     "db:recompute-matchday-deadlines": "tsx --env-file=.env.local --env-file-if-exists=.env scripts/recompute-matchday-deadlines.ts",
     "db:normalize-positions": "tsx --env-file=.env.local --env-file-if-exists=.env scripts/normalize-player-positions.ts",
+    "db:migrate-host-special": "tsx --env-file=.env.local --env-file-if-exists=.env scripts/migrate-host-special-config.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

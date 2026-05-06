@@ -87,6 +87,44 @@ describe("scoreSpecialPrediction", () => {
     ).toBe(8);
   });
 
+  it("team_with_round (new format): 3 pts por team + 5 bonus por ronda exacta", () => {
+    const def: SpecialDef = {
+      id: 3,
+      key: "host_furthest_round",
+      type: "team_with_round",
+      optionsJson: {
+        teamCodes: ["USA", "CAN", "MEX"],
+        rounds: ["group", "r32", "r16", "qf", "sf", "final", "champion"],
+      },
+      pointsConfigJson: { correct: 3, exactRoundBonus: 5 },
+      resolvedValueJson: { teamCode: "USA", round: "qf" },
+    };
+
+    // Acierta team Y ronda → 3 + 5 = 8.
+    expect(
+      scoreSpecialPrediction({
+        special: def,
+        userValueJson: { teamCode: "USA", round: "qf" },
+      })[0].points,
+    ).toBe(8);
+
+    // Acierta team pero no ronda → 3.
+    expect(
+      scoreSpecialPrediction({
+        special: def,
+        userValueJson: { teamCode: "USA", round: "sf" },
+      })[0].points,
+    ).toBe(3);
+
+    // Falla team → 0.
+    expect(
+      scoreSpecialPrediction({
+        special: def,
+        userValueJson: { teamCode: "MEX", round: "qf" },
+      }),
+    ).toHaveLength(0);
+  });
+
   it("returns empty when not yet resolved", () => {
     const def: SpecialDef = {
       id: 4,

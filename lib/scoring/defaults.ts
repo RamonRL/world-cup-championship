@@ -80,7 +80,9 @@ export const DEFAULT_SPECIAL_PREDICTIONS = [
       teamCodes: ["USA", "CAN", "MEX"],
       rounds: ["group", "r32", "r16", "qf", "sf", "final", "champion"],
     },
-    pointsConfigJson: { maxPoints: 8, perRound: { r32: 1, r16: 2, qf: 4, sf: 6, final: 7, champion: 8 } },
+    // 3 pts si aciertas qué anfitrión llegó más lejos. +5 extra si además
+    // aciertas la ronda hasta la que llegó. Total máx 8.
+    pointsConfigJson: { correct: 3, exactRoundBonus: 5 },
     orderIndex: 4,
   },
   {
