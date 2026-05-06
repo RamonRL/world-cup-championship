@@ -21,6 +21,7 @@
     "db:backfill-join-codes": "tsx --env-file=.env.local --env-file-if-exists=.env scripts/backfill-join-codes.ts",
     "db:fetch-player-photos": "tsx --env-file=.env.local --env-file-if-exists=.env scripts/fetch-player-photos.ts",
     "db:wipe-player-photos": "tsx --env-file=.env.local --env-file-if-exists=.env scripts/wipe-player-photos.ts",
+    "db:recompute-matchday-deadlines": "tsx --env-file=.env.local --env-file-if-exists=.env scripts/recompute-matchday-deadlines.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
