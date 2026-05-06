@@ -23,6 +23,7 @@ const schema = z.object({
     sf: z.array(z.coerce.number().int()),
     finalists: z.array(z.coerce.number().int()),
     championTeamId: z.coerce.number().int().nullable(),
+    thirdTeamId: z.coerce.number().int().nullable().optional(),
   }),
 });
 
@@ -52,7 +53,7 @@ export async function saveBracketPicks(
     return { ok: false, error: "El torneo ya empezó. Bracket cerrado." };
   }
 
-  const { r16, qf, sf, finalists, championTeamId } = parsed.data.picks;
+  const { r16, qf, sf, finalists, championTeamId, thirdTeamId } = parsed.data.picks;
   for (const [name, len, max] of [
     ["r16", r16.length, STAGE_LIMIT.r16],
     ["qf", qf.length, STAGE_LIMIT.qf],
@@ -106,6 +107,17 @@ export async function saveBracketPicks(
         stage: "final",
         slotPosition: 0,
         predictedTeamId: championTeamId,
+      });
+    }
+    if (thirdTeamId) {
+      // El 3.º puesto se persiste para que el bracket visual lo refleje, pero
+      // el motor de scoring NO le da puntos (decisión del producto).
+      rows.push({
+        userId: me.id,
+        leagueId,
+        stage: "third",
+        slotPosition: 0,
+        predictedTeamId: thirdTeamId,
       });
     }
     if (rows.length > 0) await tx.insert(predBracketSlot).values(rows);

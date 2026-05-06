@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { predBracketSlot, teams } from "@/lib/db/schema";
+import { matches, predBracketSlot, teams } from "@/lib/db/schema";
 import { Eye, Swords } from "lucide-react";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
@@ -13,6 +13,7 @@ import { formatDateTime } from "@/lib/utils";
 import { getBracketStatus, getQualifiedTeamIds } from "@/lib/bracket-state";
 import { BRACKET_FOOTNOTE, BRACKET_SCORING } from "@/lib/scoring/copy";
 import { BracketBuilder } from "./bracket-builder";
+import type { TeamLite } from "./bracket-builder";
 
 export const metadata = { title: "Bracket · Predicciones" };
 
@@ -65,6 +66,53 @@ export default async function PredictBracketPage({
         ? await db.select().from(teams).where(inArray(teams.id, qualifiedIds))
         : [];
 
+  // Cargamos los partidos eliminatorios para conocer el emparejamiento real
+  // de R32 (homeTeamId/awayTeamId) cuando los grupos hayan cerrado. Antes de
+  // ese cierre los slots vienen vacíos.
+  const koMatches = await db
+    .select({
+      code: matches.code,
+      stage: matches.stage,
+      homeTeamId: matches.homeTeamId,
+      awayTeamId: matches.awayTeamId,
+    })
+    .from(matches)
+    .where(inArray(matches.stage, ["r32", "r16", "qf", "sf", "third", "final"]));
+
+  // En previa admin: si los slots aún no están resueltos, generamos
+  // un emparejamiento sintético posicional con las primeras 32 selecciones
+  // por código alfabético. Solo afecta al render — no toca la BD.
+  const previewSyntheticR32 = new Map<string, { homeId: number; awayId: number }>();
+  if (previewRequested) {
+    const realR32Codes = new Set(
+      koMatches
+        .filter((m) => m.stage === "r32" && m.homeTeamId != null)
+        .map((m) => m.code),
+    );
+    const sorted = [...qualifiedTeams].sort((a, b) => a.code.localeCompare(b.code));
+    const first32 = sorted.slice(0, 32);
+    const r32Codes = [
+      "M73", "M74", "M75", "M76", "M77", "M78", "M79", "M80",
+      "M81", "M82", "M83", "M84", "M85", "M86", "M87", "M88",
+    ];
+    r32Codes.forEach((code, i) => {
+      if (realR32Codes.has(code)) return;
+      const home = first32[i * 2];
+      const away = first32[i * 2 + 1];
+      if (home && away) previewSyntheticR32.set(code, { homeId: home.id, awayId: away.id });
+    });
+  }
+
+  const r32Pairings: Record<string, { homeId: number | null; awayId: number | null }> = {};
+  for (const m of koMatches) {
+    if (m.stage !== "r32") continue;
+    const synthetic = previewSyntheticR32.get(m.code);
+    r32Pairings[m.code] = {
+      homeId: m.homeTeamId ?? synthetic?.homeId ?? null,
+      awayId: m.awayTeamId ?? synthetic?.awayId ?? null,
+    };
+  }
+
   const leagueId = (await currentLeagueId(me))!;
   const mine = await db
     .select()
@@ -102,6 +150,10 @@ export default async function PredictBracketPage({
     (m) => m.stage === "final" && m.slotPosition === 0,
   )?.predictedTeamId;
   const championTeamId = inPool(champion ?? null) ? champion! : null;
+  const third = mine.find(
+    (m) => m.stage === "third" && m.slotPosition === 0,
+  )?.predictedTeamId;
+  const thirdTeamId = inPool(third ?? null) ? third! : null;
 
   const sortedTeams = [...qualifiedTeams].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -124,13 +176,14 @@ export default async function PredictBracketPage({
       <BracketBuilder
         open={status.state === "open"}
         preview={previewRequested}
-        teams={sortedTeams.map((t) => ({
+        teams={sortedTeams.map<TeamLite>((t) => ({
           id: t.id,
           code: t.code,
           name: t.name,
           flagUrl: t.flagUrl,
         }))}
-        initial={{ r16, qf, sf, finalists, championTeamId }}
+        r32Pairings={r32Pairings}
+        initial={{ r16, qf, sf, finalists, championTeamId, thirdTeamId }}
       />
     </div>
   );
