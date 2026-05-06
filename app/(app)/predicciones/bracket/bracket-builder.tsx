@@ -674,18 +674,14 @@ function TeamRowButton({
         <TeamFlag code={team?.code} size={18} />
         <span
           className={cn(
-            "truncate text-[0.75rem] font-medium",
-            isPlaceholder &&
-              "font-mono text-[0.6rem] uppercase tracking-[0.16em] text-[var(--color-muted-foreground)]",
+            "truncate font-medium",
+            isPlaceholder
+              ? "font-mono text-[0.6rem] uppercase tracking-[0.16em] text-[var(--color-muted-foreground)]"
+              : "font-mono text-[0.75rem] uppercase tracking-[0.18em]",
           )}
         >
           {team ? team.code : label}
         </span>
-        {team ? (
-          <span className="hidden truncate text-[0.65rem] text-[var(--color-muted-foreground)] md:inline">
-            {team.name}
-          </span>
-        ) : null}
       </div>
       {isWinner ? (
         <Trophy className="size-3.5 shrink-0 text-[var(--color-arena)]" />
