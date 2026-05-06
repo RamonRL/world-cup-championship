@@ -7,9 +7,15 @@ import { OnboardingFlow } from "./onboarding-flow";
 
 export const metadata = { title: "Bienvenido" } satisfies Metadata;
 
-type Step = "root" | "privada-elegir" | "privada-crear" | "privada-unirse";
+type Step = "perfil" | "root" | "privada-elegir" | "privada-crear" | "privada-unirse";
 
-const VALID_STEPS: Step[] = ["root", "privada-elegir", "privada-crear", "privada-unirse"];
+const VALID_STEPS: Step[] = [
+  "perfil",
+  "root",
+  "privada-elegir",
+  "privada-crear",
+  "privada-unirse",
+];
 
 const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T19:00:00Z";
 
@@ -20,13 +26,22 @@ export default async function OnboardingPage({
 }) {
   const me = await requireUser();
   const fresh = me.leagueId == null;
+  const needsProfile = me.nickname == null;
 
   const params = await searchParams;
-  const step: Step = (VALID_STEPS as string[]).includes(params.step ?? "")
+  const requested: Step = (VALID_STEPS as string[]).includes(params.step ?? "")
     ? (params.step as Step)
     : "root";
 
-  if (!fresh && step === "root") {
+  // Primer login (sin nickname): forzamos el paso "perfil" antes de
+  // cualquier otro. Si ya tiene nickname y aterriza en "perfil", lo
+  // sacamos al chooser de liga.
+  let step: Step = requested;
+  if (needsProfile) {
+    step = "perfil";
+  } else if (step === "perfil") {
+    step = fresh ? "root" : "privada-elegir";
+  } else if (!fresh && step === "root") {
     redirect("/onboarding?step=privada-elegir");
   }
 
@@ -130,7 +145,13 @@ export default async function OnboardingPage({
         </header>
 
         <div className="flex flex-1 flex-col justify-center">
-          <OnboardingFlow step={step} fresh={fresh} userNickname={me.nickname} />
+          <OnboardingFlow
+            step={step}
+            fresh={fresh}
+            userNickname={me.nickname}
+            userEmail={me.email}
+            userAvatarUrl={me.avatarUrl}
+          />
         </div>
       </div>
     </div>

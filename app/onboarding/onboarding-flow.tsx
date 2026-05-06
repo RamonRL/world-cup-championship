@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
+  Camera,
   Check,
   Copy,
   Globe,
@@ -14,31 +15,47 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { initials } from "@/lib/utils";
 import {
   createLeague,
   joinLeagueByCode,
   type CreateLeagueResult,
   type LeagueFormState,
 } from "@/lib/league-actions";
-import { chooseActivePublic } from "./actions";
+import {
+  chooseActivePublic,
+  saveInitialProfile,
+  type SaveInitialProfileState,
+} from "./actions";
 
-type Step = "root" | "privada-elegir" | "privada-crear" | "privada-unirse";
+type Step = "perfil" | "root" | "privada-elegir" | "privada-crear" | "privada-unirse";
 
 const initialCreate: CreateLeagueResult = { ok: false };
 const initialJoin: LeagueFormState = { ok: false };
+const initialProfile: SaveInitialProfileState = { ok: false };
 
 export function OnboardingFlow({
   step,
   fresh,
   userNickname,
+  userEmail,
+  userAvatarUrl,
 }: {
   step: Step;
   fresh: boolean;
   userNickname: string | null;
+  userEmail: string;
+  userAvatarUrl: string | null;
 }) {
   const router = useRouter();
+  void userNickname;
+
+  if (step === "perfil") {
+    return <ProfileStep email={userEmail} avatarUrl={userAvatarUrl} />;
+  }
 
   if (step === "root") {
     return (
@@ -545,6 +562,165 @@ function JoinLeagueForm() {
               ¿Tienes el invite link? Pulsa y entras directo.
             </p>
           </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ──────────────────────── Perfil (primer login) ────────────────────────
+
+const MAX_AVATAR_BYTES = 1024 * 1024; // 1 MB
+
+function ProfileStep({
+  email,
+  avatarUrl,
+}: {
+  email: string;
+  avatarUrl: string | null;
+}) {
+  const [state, action, pending] = useActionState(saveInitialProfile, initialProfile);
+  const defaultNickname = email.split("@")[0];
+  const [nicknameValue, setNicknameValue] = useState(defaultNickname);
+  const [preview, setPreview] = useState<string | null>(avatarUrl);
+  const [sizeError, setSizeError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const display = nicknameValue.trim() || defaultNickname;
+
+  function pickFile(file: File) {
+    if (file.size > MAX_AVATAR_BYTES) {
+      setSizeError("La imagen pesa más de 1 MB. Súbela algo más ligera.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    setSizeError(null);
+    setPreview(URL.createObjectURL(file));
+  }
+
+  return (
+    <div className="space-y-10">
+      <Eyebrow>Tu perfil</Eyebrow>
+      <header className="space-y-4">
+        <h1 className="font-display text-5xl tracking-tight sm:text-6xl xl:text-7xl">
+          ¿Cómo te llamamos?
+        </h1>
+        <p className="font-editorial text-lg italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-xl">
+          Esto es lo que verán los demás en el ranking y el chat. Lo puedes
+          cambiar luego.
+        </p>
+      </header>
+
+      <form action={action} className="space-y-10">
+        <div className="grid items-start gap-8 sm:grid-cols-[auto_1fr] sm:gap-10">
+          {/* Avatar dropzone */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const file = e.dataTransfer.files?.[0];
+              if (file) pickFile(file);
+            }}
+            aria-label="Subir avatar"
+            className="group relative mx-auto size-32 shrink-0 sm:mx-0 sm:size-36"
+          >
+            <Avatar className="size-32 border-2 border-[var(--color-border-strong)] shadow-[var(--shadow-elev-1)] transition-all group-hover:border-[var(--color-arena)] group-hover:shadow-[var(--shadow-arena)] sm:size-36">
+              {preview ? <AvatarImage src={preview} alt={display} /> : null}
+              <AvatarFallback className="font-display text-4xl tracking-tight">
+                {initials(display)}
+              </AvatarFallback>
+            </Avatar>
+            <span
+              aria-hidden
+              className="absolute inset-0 grid place-items-center rounded-full bg-black/55 opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <span className="flex flex-col items-center gap-1 text-white">
+                <Camera className="size-6" />
+                <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em]">
+                  Subir
+                </span>
+              </span>
+            </span>
+            <span className="absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)] ring-4 ring-[var(--color-bg)]">
+              <Camera className="size-4" />
+            </span>
+          </button>
+
+          {/* Apodo + email */}
+          <div className="space-y-6">
+            <label className="group block space-y-2">
+              <span className="block font-mono text-[0.6rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] transition-colors group-focus-within:text-[var(--color-arena)]">
+                Apodo · máx 40 caracteres
+              </span>
+              <input
+                type="text"
+                name="nickname"
+                value={nicknameValue}
+                onChange={(e) => setNicknameValue(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                maxLength={40}
+                autoComplete="off"
+                autoFocus
+                className="w-full border-0 border-b-2 border-[var(--color-border)] bg-transparent px-0 pb-3 pt-1 font-display text-3xl tracking-tight text-[var(--color-foreground)] outline-none transition-colors placeholder:text-[var(--color-muted-foreground)]/50 focus:border-[var(--color-arena)] sm:text-4xl"
+              />
+              <span className="block font-editorial text-xs italic text-[var(--color-muted-foreground)]">
+                Por defecto, la primera parte de tu email.
+              </span>
+            </label>
+
+            <div className="space-y-1">
+              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Email
+              </p>
+              <p className="font-mono text-sm text-[var(--color-foreground)]">{email}</p>
+            </div>
+
+            <p className="font-editorial text-xs italic text-[var(--color-muted-foreground)]">
+              Pulsa o arrastra una imagen sobre el avatar.{" "}
+              <span className="font-mono not-italic uppercase tracking-[0.18em]">
+                PNG/JPG · 1 MB máx · opcional
+              </span>
+            </p>
+            {sizeError ? (
+              <p className="text-xs text-[var(--color-danger)]">{sizeError}</p>
+            ) : null}
+          </div>
+
+          <input
+            ref={fileInputRef}
+            id="avatar"
+            name="avatar"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="sr-only"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) pickFile(f);
+            }}
+          />
+        </div>
+
+        {state.error ? (
+          <p className="text-sm text-[var(--color-danger)]">{state.error}</p>
+        ) : null}
+
+        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+          <Button
+            type="submit"
+            size="lg"
+            className="h-14 px-8 text-base sm:flex-1"
+            disabled={pending}
+          >
+            {pending ? "Guardando…" : "Continuar"}
+            <ArrowRight />
+          </Button>
+          <p className="font-editorial text-xs italic text-[var(--color-muted-foreground)] sm:max-w-[18rem]">
+            Después eliges tu quiniela.
+          </p>
         </div>
       </form>
     </div>

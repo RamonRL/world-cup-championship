@@ -47,13 +47,19 @@ export async function GET(request: NextRequest) {
           ),
         );
       }
-      // El profile ya tiene leagueId actualizado por el helper.
+      // El profile ya tiene leagueId actualizado por el helper. Si aún
+      // no ha pasado por el setup de perfil (primer login con invite),
+      // mándalo al onboarding para que ponga apodo/avatar.
+      if (me.nickname == null) {
+        return NextResponse.redirect(new URL("/onboarding", request.url));
+      }
       return NextResponse.redirect(new URL(next, request.url));
     }
   }
 
   // Cuenta nueva sin invite cookie → leagueId NULL → onboarding.
-  if (me && me.leagueId == null) {
+  // Cuenta existente sin nickname → onboarding (paso perfil).
+  if (me && (me.leagueId == null || me.nickname == null)) {
     return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 

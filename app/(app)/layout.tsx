@@ -11,9 +11,10 @@ import { loadDeadlineSummary } from "@/lib/deadlines";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireUser();
   // Onboarding guard: si el usuario aún no tiene liga activa (cuenta nueva
-  // sin invite cookie consumida), lo mandamos al onboarding antes de
-  // cualquier renderizado del shell. /onboarding vive fuera de este layout.
-  if (me.leagueId == null) {
+  // sin invite cookie consumida) o no ha terminado el paso de perfil
+  // (nickname null), lo mandamos al onboarding antes de cualquier
+  // renderizado del shell. /onboarding vive fuera de este layout.
+  if (me.leagueId == null || me.nickname == null) {
     redirect("/onboarding");
   }
   const isAdmin = me.role === "admin";

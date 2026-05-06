@@ -7,6 +7,44 @@ import { db } from "@/lib/db";
 import { leagueMemberships, profiles } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/guards";
 import { getPublicLeague, isMemberOf } from "@/lib/leagues";
+import { uploadImage } from "@/lib/storage";
+
+export type SaveInitialProfileState = { ok: boolean; error?: string };
+
+const MAX_AVATAR_BYTES = 1024 * 1024; // 1 MB
+
+/**
+ * Onboarding paso "perfil": primer login. Guardamos apodo (por defecto la
+ * primera parte del email) y, opcionalmente, avatar. Tras esto el usuario
+ * pasa al chooser de liga.
+ */
+export async function saveInitialProfile(
+  _prev: SaveInitialProfileState,
+  formData: FormData,
+): Promise<SaveInitialProfileState> {
+  const me = await requireUser();
+
+  const raw = (formData.get("nickname") ?? "").toString().trim();
+  const nickname = raw.length > 0 ? raw.slice(0, 40) : me.email.split("@")[0];
+
+  const update: Record<string, unknown> = { nickname };
+
+  const avatar = formData.get("avatar");
+  if (avatar instanceof File && avatar.size > 0) {
+    if (avatar.size > MAX_AVATAR_BYTES) {
+      return { ok: false, error: "La imagen pesa más de 1 MB." };
+    }
+    update.avatarUrl = await uploadImage({
+      kind: "avatar",
+      path: `${me.id}.png`,
+      file: avatar,
+    });
+  }
+
+  await db.update(profiles).set(update).where(eq(profiles.id, me.id));
+  revalidatePath("/", "layout");
+  redirect("/onboarding");
+}
 
 /**
  * Onboarding: el usuario elige "Quiniela Pública" como liga activa.
