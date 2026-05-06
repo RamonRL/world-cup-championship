@@ -12,7 +12,8 @@
 --     authenticated role for chat_messages.
 -- ─────────────────────────────────────────────────────────────────────
 
--- 1) Enable RLS on every public table.
+-- 1) Enable RLS on every public table (loop, también cubre tablas nuevas
+--    que no aparezcan listadas explícitamente más abajo).
 do $$
 declare
   tbl text;
@@ -27,6 +28,12 @@ begin
   end loop;
 end;
 $$;
+
+-- Defensive: enable RLS también de forma explícita para las tablas que
+-- añadimos en migraciones posteriores. Si el loop falla por permisos, esto
+-- garantiza que las críticas quedan cubiertas.
+alter table public.leagues enable row level security;
+alter table public.league_memberships enable row level security;
 
 -- 2) Profiles: each user can read/update their own row.
 drop policy if exists "profiles read all" on public.profiles;
@@ -83,6 +90,17 @@ create policy "chat read" on public.chat_messages
 drop policy if exists "chat self insert" on public.chat_messages;
 create policy "chat self insert" on public.chat_messages
   for insert to authenticated with check (auth.uid() = user_id);
+
+-- 6a) Leagues + league_memberships: lectura para usuarios autenticados.
+--     Las escrituras siempre van por el server (postgres role bypassa RLS),
+--     así que sólo definimos políticas SELECT para defensa en profundidad.
+drop policy if exists "leagues read auth" on public.leagues;
+create policy "leagues read auth" on public.leagues
+  for select to authenticated using (true);
+
+drop policy if exists "league_memberships read self" on public.league_memberships;
+create policy "league_memberships read self" on public.league_memberships
+  for select to authenticated using (auth.uid() = user_id);
 
 -- 6) Audit log + points ledger: read-only for authenticated (no insert/update from client).
 drop policy if exists "audit read" on public.audit_log;
