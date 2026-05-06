@@ -8,6 +8,7 @@ import { players, teams } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
 import { logAdminAction } from "@/lib/admin/audit";
 import { uploadImage } from "@/lib/storage";
+import { normalizePosition } from "@/lib/position";
 
 export type FormState = { ok: boolean; error?: string };
 
@@ -60,7 +61,7 @@ export async function upsertPlayer(
   const data: Record<string, unknown> = {
     teamId: parsed.data.teamId,
     name: parsed.data.name,
-    position: parsed.data.position ?? null,
+    position: normalizePosition(parsed.data.position),
     jerseyNumber: parsed.data.jerseyNumber ?? null,
   };
   if (photoUrl) data.photoUrl = photoUrl;
@@ -129,7 +130,7 @@ export async function importPlayers(_prev: FormState, formData: FormData): Promi
     if (!name) continue;
     const jerseyRaw = cols[1];
     const jersey = jerseyRaw && /^\d+$/.test(jerseyRaw) ? Number(jerseyRaw) : null;
-    const position = cols[2] || null;
+    const position = normalizePosition(cols[2] || null);
     rows.push({ teamId: parsed.data.teamId, name, jerseyNumber: jersey, position });
   }
   if (rows.length === 0) return { ok: false, error: "No se pudo parsear ninguna línea." };

@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { POSITIONS, POSITION_LABEL, normalizePosition } from "@/lib/position";
 import { deletePlayer, upsertPlayer, type FormState } from "./actions";
 
 const initial: FormState = { ok: false };
@@ -32,8 +33,6 @@ type Player = {
   jerseyNumber: number | null;
   photoUrl: string | null;
 };
-
-const positions = ["GK", "DEF", "MID", "FWD"];
 
 type Props = {
   open: boolean;
@@ -85,14 +84,17 @@ export function PlayerForm({ open, onOpenChange, teamId, player }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="position">Posición</Label>
-              <Select name="position" defaultValue={player?.position ?? ""}>
+              <Select
+                name="position"
+                defaultValue={normalizePosition(player?.position) ?? ""}
+              >
                 <SelectTrigger id="position">
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
-                  {positions.map((p) => (
+                  {POSITIONS.map((p) => (
                     <SelectItem key={p} value={p}>
-                      {p}
+                      {p} · {POSITION_LABEL[p]}
                     </SelectItem>
                   ))}
                 </SelectContent>

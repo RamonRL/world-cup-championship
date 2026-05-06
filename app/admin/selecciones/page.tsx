@@ -17,6 +17,7 @@ export default async function AdminTeamsPage() {
         total: sql<number>`count(*)::int`,
         missingJersey: sql<number>`count(*) filter (where ${players.jerseyNumber} is null)::int`,
         missingPhoto: sql<number>`count(*) filter (where ${players.photoUrl} is null)::int`,
+        missingPosition: sql<number>`count(*) filter (where ${players.position} is null)::int`,
       })
       .from(players)
       .groupBy(players.teamId),
@@ -25,7 +26,12 @@ export default async function AdminTeamsPage() {
   const stats = Object.fromEntries(
     statRows.map((r) => [
       r.teamId,
-      { total: r.total, missingJersey: r.missingJersey, missingPhoto: r.missingPhoto },
+      {
+        total: r.total,
+        missingJersey: r.missingJersey,
+        missingPhoto: r.missingPhoto,
+        missingPosition: r.missingPosition,
+      },
     ]),
   );
 

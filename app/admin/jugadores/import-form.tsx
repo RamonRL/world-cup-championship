@@ -10,10 +10,10 @@ import { importPlayers, type FormState } from "./actions";
 
 const initial: FormState = { ok: false };
 
-const exampleText = `Unai Simón, 23, GK
+const exampleText = `Unai Simón, 23, POR
 Pau Cubarsí, 5, DEF
-Rodri, 16, MID
-Lamine Yamal, 19, FWD`;
+Rodri, 16, MED
+Lamine Yamal, 19, DEL`;
 
 export function ImportForm({ teamId, teamName }: { teamId: number; teamName: string }) {
   const [state, action, pending] = useActionState(importPlayers, initial);

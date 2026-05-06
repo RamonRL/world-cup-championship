@@ -25,7 +25,12 @@ type Team = {
   groupId: number | null;
   flagUrl: string | null;
 };
-type TeamStats = { total: number; missingJersey: number; missingPhoto: number };
+type TeamStats = {
+  total: number;
+  missingJersey: number;
+  missingPhoto: number;
+  missingPosition: number;
+};
 
 export function TeamsTable({
   teams,
@@ -67,15 +72,22 @@ export function TeamsTable({
               <TableHead>Grupo</TableHead>
               <TableHead className="w-20 text-center">Jugadores</TableHead>
               <TableHead className="w-24 text-center">Dorsales</TableHead>
+              <TableHead className="w-24 text-center">Posiciones</TableHead>
               <TableHead className="w-24 text-center">Fotos</TableHead>
               <TableHead className="w-16 text-right">Editar</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {teams.map((t) => {
-              const s = stats[t.id] ?? { total: 0, missingJersey: 0, missingPhoto: 0 };
+              const s = stats[t.id] ?? {
+                total: 0,
+                missingJersey: 0,
+                missingPhoto: 0,
+                missingPosition: 0,
+              };
               const allJerseys = s.total > 0 && s.missingJersey === 0;
               const allPhotos = s.total > 0 && s.missingPhoto === 0;
+              const allPositions = s.total > 0 && s.missingPosition === 0;
               return (
                 <TableRow key={t.id}>
                   <TableCell>
@@ -113,6 +125,14 @@ export function TeamsTable({
                   </TableCell>
                   <TableCell className="text-center">
                     <StatusIcon
+                      ok={allPositions}
+                      empty={s.total === 0}
+                      missing={s.missingPosition}
+                      label="posición"
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <StatusIcon
                       ok={allPhotos}
                       empty={s.total === 0}
                       missing={s.missingPhoto}
@@ -137,7 +157,7 @@ export function TeamsTable({
             {teams.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="py-12 text-center text-sm text-[var(--color-muted-foreground)]"
                 >
                   Aún no hay selecciones. Añade la primera para empezar.
