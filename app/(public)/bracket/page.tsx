@@ -138,10 +138,11 @@ export default async function BracketPage() {
 
   return (
     // El árbol mide ~1080px. En max-w-6xl (1152px) cabe holgado. Para
-    // pantallas grandes le damos un poquito más de aire con márgenes
-    // negativos que SE QUEDAN dentro del padding del main column
-    // (lg:px-8 = 2rem), así no se solapan con el sidebar.
-    <div className="space-y-8 xl:-mx-2 2xl:-mx-8">
+    // pantallas grandes le damos más aire con márgenes negativos que
+    // SE QUEDAN dentro del padding del main column (lg:px-8 = 2rem),
+    // así no se solapan con el sidebar (-mx-8 = -2rem es el máximo
+    // seguro).
+    <div className="space-y-8 xl:-mx-6 2xl:-mx-8">
       <BreadcrumbLD
         items={[
           { name: "Inicio", href: "/" },
