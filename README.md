@@ -1,5 +1,5 @@
 # World Cup Championship
-
+ 
 Quiniela del Mundial 2026 entre amigos. Web app con seguimiento del torneo y motor de competición basado en predicciones.
 
 ## Stack
