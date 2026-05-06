@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useActionState, useMemo, useState } from "react";
-import { Lock, Save } from "lucide-react";
+import { Lock, Save, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { initials, cn } from "@/lib/utils";
@@ -68,6 +68,10 @@ const POSITION_ACCENT: Record<
   },
 };
 
+function fold(s: string): string {
+  return s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+}
+
 function normalizePosition(p: string | null): Position | null {
   if (!p) return null;
   const u = p.toUpperCase();
@@ -92,15 +96,25 @@ export function TopScorerForm({
   const [selected, setSelected] = useState<number | null>(existingPlayerId);
   const [teamFilter, setTeamFilter] = useState<string | null>(null);
   const [posFilter, setPosFilter] = useState<Position | null>(null);
+  const [search, setSearch] = useState("");
   const [state, action, pending] = useActionState(saveTopScorerPrediction, initial);
+
+  const searchTokens = useMemo(
+    () => fold(search).split(/\s+/).filter(Boolean),
+    [search],
+  );
 
   const filtered = useMemo(() => {
     return players.filter((p) => {
       if (teamFilter && p.teamCode !== teamFilter) return false;
       if (posFilter && normalizePosition(p.position) !== posFilter) return false;
+      if (searchTokens.length > 0) {
+        const haystack = `${fold(p.name)} ${fold(p.teamName)} ${p.teamCode.toLowerCase()}`;
+        if (!searchTokens.every((t) => haystack.includes(t))) return false;
+      }
       return true;
     });
-  }, [teamFilter, posFilter, players]);
+  }, [teamFilter, posFilter, searchTokens, players]);
 
   // Agrupar por posición. Orden: DEL → MED → DEF → POR (los goleadores arriba).
   const byPosition = useMemo(() => {
@@ -143,8 +157,34 @@ export function TopScorerForm({
       <SelectedPlayerHero player={selectedPlayer} />
 
 
-      {/* ─── Filtros: banderas + posiciones ─── */}
+      {/* ─── Filtros: buscador + banderas + posiciones ─── */}
       <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
+        {/* Buscador por nombre */}
+        <label className="relative block">
+          <span className="sr-only">Buscar jugador</span>
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-muted-foreground)]"
+            aria-hidden
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre…"
+            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] py-2.5 pl-10 pr-10 text-sm text-[var(--color-foreground)] outline-none transition-colors placeholder:text-[var(--color-muted-foreground)]/70 focus:border-[var(--color-arena)]"
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Borrar búsqueda"
+              className="absolute right-2.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-[var(--color-muted-foreground)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-foreground)]"
+            >
+              <X className="size-3.5" />
+            </button>
+          ) : null}
+        </label>
+
         {/* Mobile: una sola fila con scroll horizontal.
             touch-action: pan-x + overscroll-behavior + overflow-y:hidden
             evitan que el deslizamiento horizontal arrastre la página
@@ -231,12 +271,13 @@ export function TopScorerForm({
               </button>
             );
           })}
-          {teamFilter || posFilter ? (
+          {teamFilter || posFilter || search ? (
             <button
               type="button"
               onClick={() => {
                 setTeamFilter(null);
                 setPosFilter(null);
+                setSearch("");
               }}
               className="ml-auto font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] underline-offset-2 hover:underline"
             >
@@ -482,7 +523,7 @@ function SelectedPlayerHero({ player }: { player: PlayerOpt | null }) {
         />
       ) : null}
 
-      <div className="relative flex min-h-[18rem] flex-col items-center justify-center gap-6 px-10 py-10 text-center lg:min-h-[22rem]">
+      <div className="relative flex min-h-[14rem] flex-col items-center justify-center gap-5 px-10 py-8 text-center lg:min-h-[16rem]">
         <p
           className={cn(
             "font-mono text-[0.6rem] font-semibold uppercase tracking-[0.32em]",
@@ -496,7 +537,7 @@ function SelectedPlayerHero({ player }: { player: PlayerOpt | null }) {
           <>
             <span
               className={cn(
-                "grid size-44 shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-[var(--color-surface-2)] shadow-[var(--shadow-elev-2)] lg:size-52",
+                "grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-[var(--color-surface-2)] shadow-[var(--shadow-elev-2)] lg:size-28",
                 accent
                   ? `border-transparent ring-4 ring-offset-4 ring-offset-[var(--color-surface)] ${accent.ring}`
                   : "border-[var(--color-border-strong)]",
@@ -506,12 +547,12 @@ function SelectedPlayerHero({ player }: { player: PlayerOpt | null }) {
                 <Image
                   src={player.photoUrl}
                   alt={player.name}
-                  width={208}
-                  height={208}
+                  width={112}
+                  height={112}
                   className="size-full object-cover"
                 />
               ) : (
-                <span className="font-display text-5xl tracking-tight text-[var(--color-muted-foreground)] lg:text-6xl">
+                <span className="font-display text-2xl tracking-tight text-[var(--color-muted-foreground)] lg:text-3xl">
                   {initials(player.name)}
                 </span>
               )}
@@ -552,8 +593,8 @@ function SelectedPlayerHero({ player }: { player: PlayerOpt | null }) {
           </>
         ) : (
           <>
-            <span className="grid size-44 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] lg:size-52">
-              <span className="font-display text-5xl tracking-tight text-[var(--color-muted-foreground)]/40 lg:text-6xl">
+            <span className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] lg:size-28">
+              <span className="font-display text-2xl tracking-tight text-[var(--color-muted-foreground)]/40 lg:text-3xl">
                 ?
               </span>
             </span>
