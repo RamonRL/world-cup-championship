@@ -137,6 +137,13 @@ export function SpecialsForm({ specials, existing, players, teams }: Props) {
           const v = values[s.id] ?? {};
           const done = isAnswered(v, s.type);
           const perRound = !!(s.pointsConfigJson as { perRound?: unknown })?.perRound;
+          // Para team_with_round con la nueva fórmula (correct + exactRoundBonus)
+          // los puntos se muestran inline junto a cada selector — no en el footer.
+          const splitPoints =
+            s.type === "team_with_round" &&
+            typeof (s.pointsConfigJson as { correct?: unknown })?.correct === "number" &&
+            typeof (s.pointsConfigJson as { exactRoundBonus?: unknown })?.exactRoundBonus ===
+              "number";
           return (
             <article
               key={s.id}
@@ -200,8 +207,9 @@ export function SpecialsForm({ specials, existing, players, teams }: Props) {
                 />
               </div>
 
-              {/* Footer · puntos */}
-              {maxPts != null ? (
+              {/* Footer · puntos (oculto para team_with_round split: los pts
+                  se muestran inline en el field, junto a banderas y rondas) */}
+              {maxPts != null && !splitPoints ? (
                 <footer className="flex items-center justify-between gap-2 border-t border-dashed border-[var(--color-border)] pt-3">
                   {perRound ? (
                     <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
@@ -437,13 +445,30 @@ function TeamRoundField({
   );
   const rounds = opts?.rounds ?? [];
 
+  // Nuevo formato: {correct, exactRoundBonus}. Si está, mostramos los pts
+  // inline (junto a "Selección" y "Hasta qué ronda") en vez del +X total
+  // del footer.
+  const cfg = special.pointsConfigJson as
+    | { correct?: number; exactRoundBonus?: number }
+    | { maxPoints?: number; perRound?: Record<string, number> }
+    | null;
+  const correctPts =
+    cfg && "correct" in cfg && typeof cfg.correct === "number" ? cfg.correct : null;
+  const bonusPts =
+    cfg && "exactRoundBonus" in cfg && typeof cfg.exactRoundBonus === "number"
+      ? cfg.exactRoundBonus
+      : null;
+
   return (
     <div className="space-y-3">
       {/* Selecciones — fila scrollable de banderas */}
       <div className="space-y-1.5">
-        <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-          Selección
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+            Selección
+          </p>
+          {correctPts != null ? <PointsPill points={correctPts} /> : null}
+        </div>
         <div
           className="-mx-1 flex gap-2 overflow-x-auto px-1 py-2"
           style={{ touchAction: "pan-x", overscrollBehaviorY: "contain" }}
@@ -474,9 +499,12 @@ function TeamRoundField({
 
       {/* Rondas — pills */}
       <div className="space-y-1.5">
-        <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-          Hasta qué ronda
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+            Hasta qué ronda
+          </p>
+          {bonusPts != null ? <PointsPill points={bonusPts} bonus /> : null}
+        </div>
         <div className="flex flex-wrap gap-1.5">
           {rounds.map((r) => {
             const active = round === r;
@@ -500,6 +528,24 @@ function TeamRoundField({
         </div>
       </div>
     </div>
+  );
+}
+
+function PointsPill({ points, bonus = false }: { points: number; bonus?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 font-display tabular text-[0.7rem] tracking-tight",
+        bonus
+          ? "bg-[color-mix(in_oklch,var(--color-arena)_15%,transparent)] text-[var(--color-arena)]"
+          : "bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]",
+      )}
+    >
+      +{points}
+      <span className="ml-0.5 text-[0.55rem] uppercase tracking-[0.18em] opacity-70">
+        {points === 1 ? "pt" : "pts"}
+      </span>
+    </span>
   );
 }
 

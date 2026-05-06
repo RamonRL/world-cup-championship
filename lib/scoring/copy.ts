@@ -76,7 +76,13 @@ export const SPECIALS_SCORING: ScoringSection[] = [
       { points: 5, label: "Total de goles en fase de grupos (±5 del real)" },
       { points: 4, label: "¿África llega a semifinales?" },
       { points: 3, label: "¿Resultado con +6 goles en grupos?" },
-      { points: 8, label: "Anfitrión que llega más lejos (escala por ronda)" },
+      { points: 3, label: "Anfitrión que llega más lejos (acertando la selección)" },
+      {
+        points: 5,
+        prefix: "+",
+        label: "Anfitrión: bonus si además aciertas la ronda exacta",
+        bonus: true,
+      },
     ],
   },
 ];
