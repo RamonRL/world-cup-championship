@@ -137,11 +137,12 @@ export default async function BracketPage() {
   };
 
   return (
-    // El bracket usa más anchura que max-w-6xl en xl/2xl. Aplicamos los
-    // mismos márgenes negativos a TODA la página (header, banner,
-    // simulador, podio del campeón) para que el árbol no parezca
-    // sobresalir respecto al resto del contenido.
-    <div className="space-y-8 lg:-mx-4 xl:-mx-16 2xl:-mx-40">
+    // El árbol del bracket es ancho (~1100px). En lugar de escapar del
+    // contenedor con márgenes negativos —que se solapaban con el sidebar
+    // a anchuras intermedias— dejamos el contenido dentro de max-w-6xl y
+    // confiamos en el `overflow-x-auto` de `BracketTree` para scroll
+    // horizontal cuando hace falta.
+    <div className="space-y-8">
       <BreadcrumbLD
         items={[
           { name: "Inicio", href: "/" },
