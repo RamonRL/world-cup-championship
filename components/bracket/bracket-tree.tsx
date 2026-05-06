@@ -83,7 +83,7 @@ export function BracketTree({ matches, myPicks }: Props) {
       className="relative w-full overflow-x-auto pb-2"
       style={{ ["--bracket-gap" as string]: "18px" }}
     >
-      <div className="grid min-h-[900px] min-w-[1180px] grid-cols-[1fr_1fr_1fr_1fr_minmax(190px,1.1fr)_1fr_1fr_1fr_1fr] gap-x-5">
+      <div className="grid min-h-[900px] min-w-[1080px] grid-cols-[0.85fr_1fr_1fr_1fr_minmax(180px,1.05fr)_1fr_1fr_1fr_0.85fr] gap-x-5">
         {/* LEFT HALF */}
         <Column stage="r32" side="left" matches={matches} myPicks={myPicks} order={STRUCTURE.r32.left} />
         <Column stage="r16" side="left" matches={matches} myPicks={myPicks} order={STRUCTURE.r16.left} />
