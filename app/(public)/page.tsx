@@ -305,6 +305,13 @@ export default async function HomePage() {
               48 selecciones
               <ArrowRight className="size-3.5" />
             </Link>
+            <Link
+              href="/sedes"
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition hover:border-[var(--color-arena)]/40"
+            >
+              16 sedes
+              <ArrowRight className="size-3.5" />
+            </Link>
           </div>
         </div>
         <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
