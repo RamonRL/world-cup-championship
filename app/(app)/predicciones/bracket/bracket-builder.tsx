@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { useActionState, useMemo, useState } from "react";
-import { Lock, Save, Trophy } from "lucide-react";
+import { Eye, Lock, Save, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,18 +35,23 @@ export function BracketBuilder({
   teams,
   initial: initialPicks,
   open,
+  preview = false,
 }: {
   teams: TeamLite[];
   initial: Picks;
   open: boolean;
+  /** Modo "previa admin": el bracket está cerrado pero permitimos
+   *  interactuar para ver cómo quedará la UI. No guarda nada. */
+  preview?: boolean;
 }) {
   const [picks, setPicks] = useState<Picks>(initialPicks);
   const [state, action, pending] = useActionState(saveBracketPicks, initial);
 
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
+  const interactive = open || preview;
 
   function toggle(stage: keyof Omit<Picks, "championTeamId">, teamId: number, max: number) {
-    if (!open) return;
+    if (!interactive) return;
     setPicks((prev) => {
       const cur = prev[stage];
       const removing = cur.includes(teamId);
@@ -71,7 +77,7 @@ export function BracketBuilder({
   }
 
   function setChampion(teamId: number | null) {
-    if (!open) return;
+    if (!interactive) return;
     setPicks((prev) => ({ ...prev, championTeamId: teamId }));
   }
 
@@ -82,7 +88,20 @@ export function BracketBuilder({
         name="payload"
         value={JSON.stringify({ picks })}
       />
-      {!open ? (
+      {preview ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,transparent)] p-3 text-sm text-[var(--color-arena)]">
+          <span className="flex items-center gap-2">
+            <Eye className="size-4" />
+            Vista previa admin · puedes interactuar pero nada se guarda.
+          </span>
+          <Link
+            href="/predicciones/bracket"
+            className="font-mono text-[0.6rem] uppercase tracking-[0.18em] underline-offset-2 hover:underline"
+          >
+            Salir
+          </Link>
+        </div>
+      ) : !open ? (
         <div className="flex items-center gap-2 rounded-lg border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 p-3 text-sm text-[var(--color-warning)]">
           <Lock className="size-4" />
           El bracket está cerrado. Sólo lectura.
@@ -224,7 +243,7 @@ export function BracketBuilder({
       {state.error ? <p className="text-sm text-[var(--color-danger)]">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-[var(--color-success)]">Bracket guardado.</p> : null}
 
-      {open ? (
+      {open && !preview ? (
         <div className="flex justify-end">
           <Button type="submit" size="lg" disabled={pending}>
             <Save />
