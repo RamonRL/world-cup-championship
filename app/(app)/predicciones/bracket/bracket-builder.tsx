@@ -374,7 +374,7 @@ function BracketTreeUI(props: TreeUIProps) {
         className="relative hidden w-full overflow-x-auto pb-2 lg:block"
         style={{ ["--bracket-gap" as string]: "18px" }}
       >
-        <div className="grid min-h-[900px] min-w-[1180px] grid-cols-[1fr_1fr_1fr_1fr_minmax(190px,1.1fr)_1fr_1fr_1fr_1fr] gap-x-5">
+        <div className="grid min-h-[900px] min-w-[1100px] grid-cols-[0.75fr_1fr_1fr_1fr_minmax(190px,1.1fr)_1fr_1fr_1fr_0.75fr] gap-x-5">
           <Column stage="r32" side="left" order={STRUCTURE.r32.left} {...props} />
           <Column stage="r16" side="left" order={STRUCTURE.r16.left} {...props} />
           <Column stage="qf" side="left" order={STRUCTURE.qf.left} {...props} />
@@ -429,7 +429,7 @@ function stageCodes(stage: "r32" | "r16" | "qf" | "sf" | "final" | "third"): str
 }
 
 const STAGE_LABEL: Record<"r32" | "r16" | "qf" | "sf" | "final" | "third", string> = {
-  r32: "Dieciseisavos",
+  r32: "R32",
   r16: "Octavos",
   qf: "Cuartos",
   sf: "Semifinales",
