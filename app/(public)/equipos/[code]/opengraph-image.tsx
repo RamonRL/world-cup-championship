@@ -1,8 +1,9 @@
 import { ImageResponse } from "next/og";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { groups, teams } from "@/lib/db/schema";
+import { groups, players, teams } from "@/lib/db/schema";
 import { circleFlagUrl } from "@/lib/flags";
+import { OG_BG, OG_COLORS, ogAssets, ogFonts } from "@/lib/og-assets";
 
 export const runtime = "nodejs";
 export const alt = "Selección · Mundial 2026";
@@ -28,6 +29,16 @@ export default async function TeamOpenGraph({
     : [];
   const groupName = group?.name ?? null;
   const flagUrl = circleFlagUrl(code) ?? "";
+  const squadCount = team
+    ? (
+        await db
+          .select({ id: players.id })
+          .from(players)
+          .where(eq(players.teamId, team.id))
+      ).length
+    : 0;
+
+  const [fonts, assets] = await Promise.all([ogFonts(), ogAssets()]);
 
   return new ImageResponse(
     (
@@ -37,55 +48,93 @@ export default async function TeamOpenGraph({
           width: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
-          background:
-            "linear-gradient(135deg, #1a1d24 0%, #2a1f15 60%, #3d2914 100%)",
-          color: "#f5efe6",
-          padding: "60px 80px",
+          background: OG_BG.background,
+          color: OG_COLORS.foreground,
+          fontFamily: "DMSans",
+          position: "relative",
         }}
       >
-        {/* Eyebrow */}
+        {/* Glow */}
+        <div
+          style={{
+            display: "flex",
+            position: "absolute",
+            top: -180,
+            right: -180,
+            width: 520,
+            height: 520,
+            borderRadius: 9999,
+            background:
+              "radial-gradient(circle, rgba(217,119,66,0.22) 0%, rgba(217,119,66,0) 70%)",
+          }}
+        />
+
+        {/* Top bar */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 20,
-            fontWeight: 700,
-            fontSize: 22,
-            letterSpacing: 6,
-            textTransform: "uppercase",
-            color: "#d97742",
+            justifyContent: "space-between",
+            padding: "50px 70px 0 70px",
           }}
         >
-          <div style={{ display: "flex", height: 3, width: 60, background: "#d97742" }} />
-          <span>Mundial 2026 · Selección</span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 18,
+              fontSize: 22,
+              fontWeight: 700,
+              letterSpacing: 6,
+              textTransform: "uppercase",
+              color: OG_COLORS.arena,
+            }}
+          >
+            <div style={{ display: "flex", height: 3, width: 50, background: OG_COLORS.arena }} />
+            <div style={{ display: "flex" }}>Mundial 2026 · Selección</div>
+          </div>
+          <img
+            src={assets.fwc26DataUrl}
+            alt=""
+            width={70}
+            height={70}
+            style={{ width: 70, height: 70 }}
+          />
         </div>
 
-        {/* Body */}
-        <div style={{ display: "flex", alignItems: "center", gap: 50 }}>
+        {/* Body: flag + team info */}
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            alignItems: "center",
+            gap: 60,
+            padding: "30px 70px 0 70px",
+          }}
+        >
           {flagUrl ? (
             <img
               src={flagUrl}
               alt=""
-              width={280}
-              height={280}
+              width={300}
+              height={300}
               style={{
-                width: 280,
-                height: 280,
+                width: 300,
+                height: 300,
                 borderRadius: 9999,
-                boxShadow: "0 30px 60px rgba(0,0,0,0.45)",
+                boxShadow: "0 30px 60px rgba(0,0,0,0.5)",
               }}
             />
           ) : null}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div
               style={{
                 display: "flex",
-                fontWeight: 700,
                 fontSize: 26,
-                letterSpacing: 6,
+                fontWeight: 700,
+                letterSpacing: 8,
                 textTransform: "uppercase",
-                color: "rgba(245, 239, 230, 0.6)",
+                color: OG_COLORS.muted,
               }}
             >
               {code}
@@ -93,10 +142,12 @@ export default async function TeamOpenGraph({
             <div
               style={{
                 display: "flex",
-                fontWeight: 800,
-                fontSize: 96,
-                lineHeight: 1.1,
-                letterSpacing: -1,
+                fontFamily: "BigShoulders",
+                fontWeight: 900,
+                fontSize: 140,
+                lineHeight: 0.9,
+                letterSpacing: -3,
+                textTransform: "uppercase",
               }}
             >
               {teamName}
@@ -105,42 +156,93 @@ export default async function TeamOpenGraph({
               <div
                 style={{
                   display: "flex",
-                  marginTop: 14,
-                  padding: "10px 18px",
-                  borderRadius: 8,
-                  background: "rgba(217, 119, 66, 0.18)",
-                  color: "#d97742",
-                  fontWeight: 700,
-                  fontSize: 22,
-                  letterSpacing: 4,
-                  textTransform: "uppercase",
+                  alignItems: "center",
+                  gap: 12,
+                  marginTop: 8,
                 }}
               >
-                {groupName}
+                <div
+                  style={{
+                    display: "flex",
+                    padding: "10px 18px",
+                    borderRadius: 8,
+                    background: "rgba(217, 119, 66, 0.18)",
+                    color: OG_COLORS.arena,
+                    fontWeight: 700,
+                    fontSize: 22,
+                    letterSpacing: 4,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {groupName}
+                </div>
+                {squadCount > 0 ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      padding: "10px 18px",
+                      borderRadius: 8,
+                      background: "rgba(245, 239, 230, 0.08)",
+                      color: OG_COLORS.mutedStrong,
+                      fontWeight: 700,
+                      fontSize: 22,
+                      letterSpacing: 4,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {squadCount} jugadores
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
         </div>
 
-        {/* Bottom */}
+        {/* Bottom strip */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 18,
-            fontWeight: 700,
-            fontSize: 22,
-            letterSpacing: 4,
-            textTransform: "uppercase",
-            color: "rgba(245, 239, 230, 0.65)",
+            justifyContent: "space-between",
+            padding: "0 70px 50px 70px",
           }}
         >
-          <span>quinielamundial.es</span>
-          <div style={{ display: "flex", height: 6, width: 6, background: "#d97742", borderRadius: 6 }} />
-          <span>Calendario · Plantilla · Estadísticas</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <img
+              src={assets.qmMarkDataUrl}
+              alt=""
+              width={48}
+              height={48}
+              style={{ width: 48, height: 48 }}
+            />
+            <div
+              style={{
+                display: "flex",
+                fontFamily: "BigShoulders",
+                fontWeight: 900,
+                fontSize: 28,
+                letterSpacing: -1,
+                textTransform: "uppercase",
+              }}
+            >
+              quinielamundial.es
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              fontSize: 18,
+              fontWeight: 700,
+              letterSpacing: 4,
+              textTransform: "uppercase",
+              color: OG_COLORS.muted,
+            }}
+          >
+            Calendario · Plantilla · Estadísticas
+          </div>
         </div>
       </div>
     ),
-    { ...size },
+    { ...size, fonts },
   );
 }

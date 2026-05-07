@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches, teams } from "@/lib/db/schema";
 import { circleFlagUrl } from "@/lib/flags";
+import { OG_BG, OG_COLORS, ogAssets, ogFonts } from "@/lib/og-assets";
 
 export const runtime = "nodejs";
 export const alt = "Partido · Mundial 2026";
@@ -60,6 +61,8 @@ export default async function MatchOpenGraph({
   const homeFlag = homeTeam ? circleFlagUrl(homeTeam.code) : null;
   const awayFlag = awayTeam ? circleFlagUrl(awayTeam.code) : null;
 
+  const [fonts, assets] = await Promise.all([ogFonts(), ogAssets()]);
+
   return new ImageResponse(
     (
       <div
@@ -68,36 +71,67 @@ export default async function MatchOpenGraph({
           width: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
-          background:
-            "linear-gradient(135deg, #1a1d24 0%, #2a1f15 60%, #3d2914 100%)",
-          color: "#f5efe6",
-          padding: "55px 70px",
+          background: OG_BG.background,
+          color: OG_COLORS.foreground,
+          fontFamily: "DMSans",
+          position: "relative",
         }}
       >
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: 20,
-            fontWeight: 700,
-            fontSize: 22,
-            letterSpacing: 6,
-            textTransform: "uppercase",
-            color: "#d97742",
+            position: "absolute",
+            top: -180,
+            right: -180,
+            width: 520,
+            height: 520,
+            borderRadius: 9999,
+            background:
+              "radial-gradient(circle, rgba(217,119,66,0.22) 0%, rgba(217,119,66,0) 70%)",
           }}
-        >
-          <div style={{ display: "flex", height: 3, width: 60, background: "#d97742" }} />
-          <span>Mundial 2026 · {stageLabel}</span>
-        </div>
+        />
 
-        {/* Match: home vs away */}
+        {/* Top */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 30,
+            padding: "50px 70px 0 70px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 18,
+              fontSize: 22,
+              fontWeight: 700,
+              letterSpacing: 6,
+              textTransform: "uppercase",
+              color: OG_COLORS.arena,
+            }}
+          >
+            <div style={{ display: "flex", height: 3, width: 50, background: OG_COLORS.arena }} />
+            <div style={{ display: "flex" }}>Mundial 2026 · {stageLabel}</div>
+          </div>
+          <img
+            src={assets.fwc26DataUrl}
+            alt=""
+            width={70}
+            height={70}
+            style={{ width: 70, height: 70 }}
+          />
+        </div>
+
+        {/* Match showcase */}
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 70px 0 70px",
           }}
         >
           <Side name={homeName} flag={homeFlag} />
@@ -105,45 +139,91 @@ export default async function MatchOpenGraph({
           <div
             style={{
               display: "flex",
-              fontWeight: 800,
-              fontSize: 50,
-              letterSpacing: 3,
-              color: "#d97742",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
             }}
           >
-            VS
+            <div
+              style={{
+                display: "flex",
+                fontFamily: "BigShoulders",
+                fontWeight: 900,
+                fontSize: 90,
+                letterSpacing: -2,
+                color: OG_COLORS.arena,
+              }}
+            >
+              VS
+            </div>
+            {dateLabel ? (
+              <div
+                style={{
+                  display: "flex",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  letterSpacing: 3,
+                  textTransform: "uppercase",
+                  color: OG_COLORS.muted,
+                  textAlign: "center",
+                }}
+              >
+                {dateLabel}
+              </div>
+            ) : null}
           </div>
 
           <Side name={awayName} flag={awayFlag} />
         </div>
 
+        {/* Bottom */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 18,
-            fontWeight: 700,
-            fontSize: 22,
-            letterSpacing: 4,
-            textTransform: "uppercase",
-            color: "rgba(245, 239, 230, 0.7)",
+            padding: "0 70px 45px 70px",
           }}
         >
-          <span>quinielamundial.es</span>
-          <div style={{ display: "flex", gap: 18 }}>
-            {dateLabel ? <span>{dateLabel}</span> : null}
-            {venue ? (
-              <>
-                <span style={{ color: "#d97742" }}>·</span>
-                <span>{venue}</span>
-              </>
-            ) : null}
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <img
+              src={assets.qmMarkDataUrl}
+              alt=""
+              width={48}
+              height={48}
+              style={{ width: 48, height: 48 }}
+            />
+            <div
+              style={{
+                display: "flex",
+                fontFamily: "BigShoulders",
+                fontWeight: 900,
+                fontSize: 28,
+                letterSpacing: -1,
+                textTransform: "uppercase",
+              }}
+            >
+              quinielamundial.es
+            </div>
           </div>
+          {venue ? (
+            <div
+              style={{
+                display: "flex",
+                fontSize: 18,
+                fontWeight: 700,
+                letterSpacing: 4,
+                textTransform: "uppercase",
+                color: OG_COLORS.muted,
+              }}
+            >
+              {venue}
+            </div>
+          ) : null}
         </div>
       </div>
     ),
-    { ...size },
+    { ...size, fonts },
   );
 }
 
@@ -154,7 +234,7 @@ function Side({ name, flag }: { name: string; flag: string | null }) {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 18,
+        gap: 22,
         flex: 1,
       }}
     >
@@ -162,13 +242,13 @@ function Side({ name, flag }: { name: string; flag: string | null }) {
         <img
           src={flag}
           alt=""
-          width={210}
-          height={210}
+          width={220}
+          height={220}
           style={{
-            width: 210,
-            height: 210,
+            width: 220,
+            height: 220,
             borderRadius: 9999,
-            boxShadow: "0 24px 48px rgba(0,0,0,0.4)",
+            boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
           }}
         />
       ) : (
@@ -177,12 +257,13 @@ function Side({ name, flag }: { name: string; flag: string | null }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 210,
-            height: 210,
+            width: 220,
+            height: 220,
             borderRadius: 9999,
             background: "rgba(245, 239, 230, 0.08)",
-            fontWeight: 700,
-            fontSize: 44,
+            fontFamily: "BigShoulders",
+            fontWeight: 900,
+            fontSize: 60,
             color: "rgba(245, 239, 230, 0.4)",
           }}
         >
@@ -192,10 +273,12 @@ function Side({ name, flag }: { name: string; flag: string | null }) {
       <div
         style={{
           display: "flex",
-          fontWeight: 800,
-          fontSize: 50,
-          lineHeight: 1.1,
+          fontFamily: "BigShoulders",
+          fontWeight: 900,
+          fontSize: 60,
+          lineHeight: 1,
           letterSpacing: -1,
+          textTransform: "uppercase",
           textAlign: "center",
         }}
       >
