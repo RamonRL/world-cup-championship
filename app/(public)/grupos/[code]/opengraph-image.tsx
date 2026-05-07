@@ -58,7 +58,7 @@ export default async function GroupOpenGraph({
             height: 520,
             borderRadius: 9999,
             background:
-              "radial-gradient(circle, rgba(217,119,66,0.22) 0%, rgba(217,119,66,0) 70%)",
+              `radial-gradient(circle, rgba(${OG_COLORS.accentRgb},0.22) 0%, rgba(${OG_COLORS.accentRgb},0) 70%)`,
           }}
         />
 
@@ -95,30 +95,31 @@ export default async function GroupOpenGraph({
           />
         </div>
 
-        {/* Group name HUGE */}
+        {/* Group name */}
         <div
           style={{
             display: "flex",
-            padding: "20px 70px 0 70px",
+            padding: "16px 70px 0 70px",
             fontFamily: "BigShoulders",
             fontWeight: 900,
-            fontSize: 180,
+            fontSize: 130,
             lineHeight: 0.9,
-            letterSpacing: -4,
+            letterSpacing: -3,
             textTransform: "uppercase",
-            color: OG_COLORS.arena,
+            color: OG_COLORS.accent,
           }}
         >
           {groupName}
         </div>
 
-        {/* Teams stacked */}
+        {/* Teams stacked — más compacto: padding y tamaños reducidos
+            para que entren las 4 selecciones sin desbordar. */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 14,
-            padding: "20px 70px 0 70px",
+            gap: 8,
+            padding: "16px 70px 0 70px",
             flex: 1,
           }}
         >
@@ -130,9 +131,9 @@ export default async function GroupOpenGraph({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 22,
-                  padding: "8px 18px",
-                  borderRadius: 12,
+                  gap: 18,
+                  padding: "6px 14px",
+                  borderRadius: 10,
                   background: "rgba(245, 239, 230, 0.04)",
                   border: "1px solid rgba(245, 239, 230, 0.08)",
                 }}
@@ -141,9 +142,9 @@ export default async function GroupOpenGraph({
                   <img
                     src={flag}
                     alt=""
-                    width={56}
-                    height={56}
-                    style={{ width: 56, height: 56, borderRadius: 9999 }}
+                    width={44}
+                    height={44}
+                    style={{ width: 44, height: 44, borderRadius: 9999 }}
                   />
                 ) : null}
                 <div
@@ -151,7 +152,7 @@ export default async function GroupOpenGraph({
                     display: "flex",
                     fontFamily: "BigShoulders",
                     fontWeight: 700,
-                    fontSize: 44,
+                    fontSize: 34,
                     letterSpacing: -1,
                     textTransform: "uppercase",
                   }}
@@ -163,8 +164,8 @@ export default async function GroupOpenGraph({
                     display: "flex",
                     marginLeft: "auto",
                     fontWeight: 700,
-                    fontSize: 22,
-                    letterSpacing: 6,
+                    fontSize: 18,
+                    letterSpacing: 5,
                     textTransform: "uppercase",
                     color: OG_COLORS.muted,
                   }}

@@ -49,7 +49,7 @@ export default async function OpenGraphImage() {
             height: 480,
             borderRadius: 9999,
             background:
-              "radial-gradient(circle, rgba(217,119,66,0.18) 0%, rgba(217,119,66,0) 70%)",
+              `radial-gradient(circle, rgba(${OG_COLORS.accentRgb},0.18) 0%, rgba(${OG_COLORS.accentRgb},0) 70%)`,
           }}
         />
 
@@ -176,7 +176,7 @@ export default async function OpenGraphImage() {
               gap: 10,
               padding: "10px 18px",
               borderRadius: 999,
-              background: "rgba(217, 119, 66, 0.16)",
+              background: `rgba(${OG_COLORS.accentRgb}, 0.16)`,
               border: `1px solid ${OG_COLORS.arena}`,
               color: OG_COLORS.arena,
               fontWeight: 700,

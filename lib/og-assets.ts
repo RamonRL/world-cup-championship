@@ -70,23 +70,25 @@ export async function ogAssets(): Promise<Assets> {
 }
 
 /**
- * Paleta de marca, mismos hex que las CSS vars del site:
- *   --color-arena       → #d97742
- *   --color-bg          → #0e1014
- *   --color-surface     → #1a1d24
- *   --color-surface-2   → #22252e
- *   --color-foreground  → #f5efe6
- *   --color-muted-fg    → rgba(245,239,230,0.65)
+ * Paleta de marca para las OGs.
+ *   accent     → rojo cálido (más legible en miniatura que el arena
+ *                naranja de la web). `accentRgb` lo exportamos para
+ *                interpolar en rgba() sin volver a hardcodear el hex.
+ *   bg         → casi negro, mismo `--color-bg` del site.
+ *   foreground → cream off-white igual que el site.
  */
 export const OG_COLORS = {
-  arena: "#d97742",
-  arenaDeep: "#a85423",
+  accent: "#d92d20",
+  accentRgb: "217, 45, 32",
+  accentDeep: "#a52419",
   bg: "#0e1014",
   surface: "#1a1d24",
   surface2: "#22252e",
   foreground: "#f5efe6",
   muted: "rgba(245, 239, 230, 0.6)",
   mutedStrong: "rgba(245, 239, 230, 0.85)",
+  /** Alias legacy para no romper callers; eventualmente borrar. */
+  arena: "#d92d20",
 } as const;
 
 /**

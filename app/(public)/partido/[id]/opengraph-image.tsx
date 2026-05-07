@@ -87,7 +87,7 @@ export default async function MatchOpenGraph({
             height: 520,
             borderRadius: 9999,
             background:
-              "radial-gradient(circle, rgba(217,119,66,0.22) 0%, rgba(217,119,66,0) 70%)",
+              `radial-gradient(circle, rgba(${OG_COLORS.accentRgb},0.22) 0%, rgba(${OG_COLORS.accentRgb},0) 70%)`,
           }}
         />
 
