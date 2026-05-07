@@ -10,6 +10,17 @@ const nextConfig: NextConfig = {
       ? [{ protocol: "https", hostname: supabaseHostname, pathname: "/storage/v1/object/public/**" }]
       : [],
   },
+  // Forzamos a Next a empaquetar las fuentes y logos PNG con las funciones
+  // de OG image. Por defecto los archivos de `public/` NO se bundlean con
+  // serverless functions (se sirven desde la edge estática), así que un
+  // `readFile` desde dentro del handler revienta con ENOENT en Vercel.
+  outputFileTracingIncludes: {
+    "/**": [
+      "./public/fonts/**",
+      "./public/fwc26.png",
+      "./public/qm-mark.png",
+    ],
+  },
 };
 
 export default nextConfig;

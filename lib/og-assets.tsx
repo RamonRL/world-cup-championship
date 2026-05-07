@@ -13,8 +13,33 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { circleFlagUrl } from "@/lib/flags";
 
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
+/**
+ * Lee un archivo de `public/` con dos rutas:
+ *   1. fs (vía outputFileTracingIncludes en next.config). Es lo que
+ *      ocurre en dev y debería ocurrir también en serverless.
+ *   2. Si falla con ENOENT (Vercel no bundleó el archivo), fetch
+ *      contra el dominio deployado. Pelín más lento por cold start
+ *      pero bulletproof.
+ */
+
 async function readPublic(path: string): Promise<Buffer> {
-  return readFile(join(process.cwd(), "public", path));
+  try {
+    return await readFile(join(process.cwd(), "public", path));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
+    const url = `${getBaseUrl()}/${path}`;
+    const res = await fetch(url, { next: { revalidate: 60 * 60 * 24 * 7 } });
+    if (!res.ok) {
+      throw new Error(`readPublic fetch failed for /${path}: ${res.status}`);
+    }
+    return Buffer.from(await res.arrayBuffer());
+  }
 }
 
 const flagCache = new Map<string, string | null>();
