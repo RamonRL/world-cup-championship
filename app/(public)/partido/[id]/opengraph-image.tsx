@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches, teams } from "@/lib/db/schema";
 import { circleFlagUrl } from "@/lib/flags";
-import { ogFonts } from "@/lib/og-fonts";
 
 export const runtime = "nodejs";
 export const alt = "Partido · Mundial 2026";
@@ -61,7 +60,6 @@ export default async function MatchOpenGraph({
   const homeFlag = homeTeam ? circleFlagUrl(homeTeam.code) : null;
   const awayFlag = awayTeam ? circleFlagUrl(awayTeam.code) : null;
 
-  const fonts = await ogFonts();
   return new ImageResponse(
     (
       <div
@@ -75,7 +73,6 @@ export default async function MatchOpenGraph({
             "linear-gradient(135deg, #1a1d24 0%, #2a1f15 60%, #3d2914 100%)",
           color: "#f5efe6",
           padding: "55px 70px",
-          fontFamily: "Inter",
         }}
       >
         <div
@@ -108,9 +105,9 @@ export default async function MatchOpenGraph({
           <div
             style={{
               display: "flex",
-              fontWeight: 900,
-              fontSize: 56,
-              letterSpacing: 4,
+              fontWeight: 800,
+              fontSize: 50,
+              letterSpacing: 3,
               color: "#d97742",
             }}
           >
@@ -146,7 +143,7 @@ export default async function MatchOpenGraph({
         </div>
       </div>
     ),
-    { ...size, fonts },
+    { ...size },
   );
 }
 
@@ -195,9 +192,9 @@ function Side({ name, flag }: { name: string; flag: string | null }) {
       <div
         style={{
           display: "flex",
-          fontWeight: 900,
-          fontSize: 56,
-          lineHeight: 1,
+          fontWeight: 800,
+          fontSize: 50,
+          lineHeight: 1.1,
           letterSpacing: -1,
           textAlign: "center",
         }}

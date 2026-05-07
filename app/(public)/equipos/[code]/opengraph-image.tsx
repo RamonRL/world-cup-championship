@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, teams } from "@/lib/db/schema";
 import { circleFlagUrl } from "@/lib/flags";
-import { ogFonts } from "@/lib/og-fonts";
 
 export const runtime = "nodejs";
 export const alt = "Selección · Mundial 2026";
@@ -30,7 +29,6 @@ export default async function TeamOpenGraph({
   const groupName = group?.name ?? null;
   const flagUrl = circleFlagUrl(code) ?? "";
 
-  const fonts = await ogFonts();
   return new ImageResponse(
     (
       <div
@@ -44,7 +42,6 @@ export default async function TeamOpenGraph({
             "linear-gradient(135deg, #1a1d24 0%, #2a1f15 60%, #3d2914 100%)",
           color: "#f5efe6",
           padding: "60px 80px",
-          fontFamily: "Inter",
         }}
       >
         {/* Eyebrow */}
@@ -96,10 +93,10 @@ export default async function TeamOpenGraph({
             <div
               style={{
                 display: "flex",
-                fontWeight: 900,
-                fontSize: 110,
-                lineHeight: 1,
-                letterSpacing: -2,
+                fontWeight: 800,
+                fontSize: 96,
+                lineHeight: 1.1,
+                letterSpacing: -1,
               }}
             >
               {teamName}
@@ -144,6 +141,6 @@ export default async function TeamOpenGraph({
         </div>
       </div>
     ),
-    { ...size, fonts },
+    { ...size },
   );
 }

@@ -3,7 +3,6 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, teams } from "@/lib/db/schema";
 import { circleFlagUrl } from "@/lib/flags";
-import { ogFonts } from "@/lib/og-fonts";
 
 export const runtime = "nodejs";
 export const alt = "Grupo · Mundial 2026";
@@ -32,7 +31,6 @@ export default async function GroupOpenGraph({
         .orderBy(asc(teams.name))
     : [];
 
-  const fonts = await ogFonts();
   return new ImageResponse(
     (
       <div
@@ -46,7 +44,6 @@ export default async function GroupOpenGraph({
             "linear-gradient(135deg, #1a1d24 0%, #2a1f15 60%, #3d2914 100%)",
           color: "#f5efe6",
           padding: "60px 80px",
-          fontFamily: "Inter",
         }}
       >
         <div
@@ -68,10 +65,10 @@ export default async function GroupOpenGraph({
         <div
           style={{
             display: "flex",
-            fontWeight: 900,
-            fontSize: 130,
-            lineHeight: 1,
-            letterSpacing: -2,
+            fontWeight: 800,
+            fontSize: 110,
+            lineHeight: 1.1,
+            letterSpacing: -1,
           }}
         >
           {groupName}
@@ -137,6 +134,6 @@ export default async function GroupOpenGraph({
         </div>
       </div>
     ),
-    { ...size, fonts },
+    { ...size },
   );
 }
