@@ -1,18 +1,19 @@
 import { ImageResponse } from "next/og";
+import { ogFonts } from "@/lib/og-fonts";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const alt = "Quiniela Mundial 2026 — predicciones del Mundial entre amigos";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 /**
- * OG image principal del sitio. Se renderiza en el edge runtime con
- * next/og (basado en Satori). Composición: marca arena en grande, tagline
- * editorial debajo y banda inferior con la URL del sitio. No usamos
- * <Image src="/fwc26.png" /> porque ImageResponse no resuelve assets
- * locales directamente — el resultado vectorial sale igual de bonito.
+ * OG image principal del sitio. Renderizada con next/og + Satori. Las
+ * fuentes Inter se cargan explícitamente para evitar fallbacks que
+ * generan solapamiento de texto. Layout 100% flex (sin position:
+ * absolute) para que Satori lo componga sin sorpresas.
  */
 export default async function OpenGraphImage() {
+  const fonts = await ogFonts();
   return new ImageResponse(
     (
       <div
@@ -21,11 +22,12 @@ export default async function OpenGraphImage() {
           width: "100%",
           display: "flex",
           flexDirection: "column",
+          justifyContent: "space-between",
           background:
             "linear-gradient(135deg, #1a1d24 0%, #2a1f15 60%, #3d2914 100%)",
           color: "#f5efe6",
-          padding: "80px 100px",
-          position: "relative",
+          padding: "70px 90px",
+          fontFamily: "Inter",
         }}
       >
         {/* Eyebrow */}
@@ -33,102 +35,108 @@ export default async function OpenGraphImage() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 18,
-            fontFamily: "monospace",
+            gap: 20,
+            fontWeight: 700,
             fontSize: 22,
-            letterSpacing: "0.32em",
+            letterSpacing: 6,
             textTransform: "uppercase",
             color: "#d97742",
           }}
         >
-          <span
-            style={{
-              display: "block",
-              height: 3,
-              width: 60,
-              background: "#d97742",
-            }}
-          />
-          Quiniela Mundial · 2026
+          <div style={{ display: "flex", height: 3, width: 60, background: "#d97742" }} />
+          <span>Quiniela Mundial · 2026</span>
         </div>
 
-        {/* Title */}
+        {/* Title — un solo div con line-height generoso para que las dos
+            líneas no se peleen verticalmente. */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
-            marginTop: 60,
-            fontWeight: 800,
-            fontSize: 132,
-            lineHeight: 0.95,
-            letterSpacing: "-0.02em",
+            fontWeight: 900,
+            fontSize: 110,
+            lineHeight: 1.05,
+            letterSpacing: -2,
           }}
         >
-          <span>predice</span>
-          <span style={{ color: "#d97742" }}>los 104 partidos.</span>
+          <div style={{ display: "flex" }}>Predice</div>
+          <div style={{ display: "flex", color: "#d97742" }}>los 104 partidos.</div>
         </div>
 
         {/* Subtitle */}
         <div
           style={{
             display: "flex",
-            marginTop: 50,
-            fontSize: 36,
-            fontStyle: "italic",
-            color: "rgba(245, 239, 230, 0.8)",
-            maxWidth: 880,
-            lineHeight: 1.2,
+            fontSize: 32,
+            color: "rgba(245, 239, 230, 0.78)",
+            lineHeight: 1.3,
+            maxWidth: 900,
           }}
         >
           Calendario, grupos, bracket FIFA y goleadores. Compite con tus amigos.
         </div>
 
-        {/* Bottom strip */}
+        {/* Bottom strip — flex row, sin absolute */}
         <div
           style={{
-            position: "absolute",
-            left: 100,
-            bottom: 60,
             display: "flex",
             alignItems: "center",
-            gap: 18,
-            fontFamily: "monospace",
-            fontSize: 26,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            color: "rgba(245, 239, 230, 0.7)",
+            justifyContent: "space-between",
           }}
         >
-          <span>quinielamundial.es</span>
-          <span style={{ display: "block", height: 6, width: 6, background: "#d97742", borderRadius: 6 }} />
-          <span>11 jun – 19 jul</span>
-          <span style={{ display: "block", height: 6, width: 6, background: "#d97742", borderRadius: 6 }} />
-          <span>Canadá · México · USA</span>
-        </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 20,
+              fontWeight: 700,
+              fontSize: 22,
+              letterSpacing: 4,
+              textTransform: "uppercase",
+              color: "rgba(245, 239, 230, 0.7)",
+            }}
+          >
+            <span>quinielamundial.es</span>
+            <Dot />
+            <span>11 jun – 19 jul</span>
+            <Dot />
+            <span>USA · CAN · MEX</span>
+          </div>
 
-        {/* Decorative corner mark */}
-        <div
-          style={{
-            position: "absolute",
-            right: 100,
-            bottom: 60,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: 110,
-            width: 110,
-            borderRadius: 24,
-            background: "#d97742",
-            color: "#0e1014",
-            fontWeight: 900,
-            fontSize: 56,
-            letterSpacing: "-0.04em",
-          }}
-        >
-          QM
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: 100,
+              width: 100,
+              borderRadius: 22,
+              background: "#d97742",
+              color: "#0e1014",
+              fontWeight: 900,
+              fontSize: 50,
+              letterSpacing: -2,
+            }}
+          >
+            QM
+          </div>
         </div>
       </div>
     ),
-    { ...size },
+    { ...size, fonts },
+  );
+}
+
+function Dot() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        height: 6,
+        width: 6,
+        background: "#d97742",
+        borderRadius: 6,
+      }}
+    />
   );
 }

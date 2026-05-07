@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches, teams } from "@/lib/db/schema";
 import { circleFlagUrl } from "@/lib/flags";
+import { ogFonts } from "@/lib/og-fonts";
 
 export const runtime = "nodejs";
 export const alt = "Partido · Mundial 2026";
@@ -60,6 +61,7 @@ export default async function MatchOpenGraph({
   const homeFlag = homeTeam ? circleFlagUrl(homeTeam.code) : null;
   const awayFlag = awayTeam ? circleFlagUrl(awayTeam.code) : null;
 
+  const fonts = await ogFonts();
   return new ImageResponse(
     (
       <div
@@ -68,180 +70,71 @@ export default async function MatchOpenGraph({
           width: "100%",
           display: "flex",
           flexDirection: "column",
+          justifyContent: "space-between",
           background:
             "linear-gradient(135deg, #1a1d24 0%, #2a1f15 60%, #3d2914 100%)",
           color: "#f5efe6",
-          padding: "60px 80px",
-          position: "relative",
+          padding: "55px 70px",
+          fontFamily: "Inter",
         }}
       >
-        {/* Eyebrow */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 18,
-            fontFamily: "monospace",
+            gap: 20,
+            fontWeight: 700,
             fontSize: 22,
-            letterSpacing: "0.32em",
+            letterSpacing: 6,
             textTransform: "uppercase",
             color: "#d97742",
           }}
         >
-          <span style={{ display: "block", height: 3, width: 60, background: "#d97742" }} />
-          Mundial 2026 · {stageLabel}
+          <div style={{ display: "flex", height: 3, width: 60, background: "#d97742" }} />
+          <span>Mundial 2026 · {stageLabel}</span>
         </div>
 
         {/* Match: home vs away */}
         <div
           style={{
             display: "flex",
-            flex: 1,
             alignItems: "center",
             justifyContent: "space-between",
             gap: 30,
-            marginTop: 20,
           }}
         >
-          {/* Home */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 18,
-              flex: 1,
-            }}
-          >
-            {homeFlag ? (
-              <img
-                src={homeFlag}
-                alt=""
-                width={220}
-                height={220}
-                style={{
-                  width: 220,
-                  height: 220,
-                  borderRadius: 9999,
-                  boxShadow: "0 24px 48px rgba(0,0,0,0.4)",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 220,
-                  height: 220,
-                  borderRadius: 9999,
-                  background: "rgba(245, 239, 230, 0.08)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "monospace",
-                  fontSize: 48,
-                  color: "rgba(245, 239, 230, 0.4)",
-                }}
-              >
-                TBD
-              </div>
-            )}
-            <div
-              style={{
-                fontWeight: 800,
-                fontSize: 60,
-                lineHeight: 0.95,
-                letterSpacing: "-0.02em",
-                textAlign: "center",
-              }}
-            >
-              {homeName}
-            </div>
-          </div>
+          <Side name={homeName} flag={homeFlag} />
 
-          {/* VS */}
           <div
             style={{
               display: "flex",
-              fontFamily: "monospace",
+              fontWeight: 900,
               fontSize: 56,
-              letterSpacing: "0.18em",
+              letterSpacing: 4,
               color: "#d97742",
-              fontWeight: 700,
             }}
           >
             VS
           </div>
 
-          {/* Away */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 18,
-              flex: 1,
-            }}
-          >
-            {awayFlag ? (
-              <img
-                src={awayFlag}
-                alt=""
-                width={220}
-                height={220}
-                style={{
-                  width: 220,
-                  height: 220,
-                  borderRadius: 9999,
-                  boxShadow: "0 24px 48px rgba(0,0,0,0.4)",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 220,
-                  height: 220,
-                  borderRadius: 9999,
-                  background: "rgba(245, 239, 230, 0.08)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "monospace",
-                  fontSize: 48,
-                  color: "rgba(245, 239, 230, 0.4)",
-                }}
-              >
-                TBD
-              </div>
-            )}
-            <div
-              style={{
-                fontWeight: 800,
-                fontSize: 60,
-                lineHeight: 0.95,
-                letterSpacing: "-0.02em",
-                textAlign: "center",
-              }}
-            >
-              {awayName}
-            </div>
-          </div>
+          <Side name={awayName} flag={awayFlag} />
         </div>
 
-        {/* Bottom info */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
+            justifyContent: "space-between",
             gap: 18,
-            fontFamily: "monospace",
+            fontWeight: 700,
             fontSize: 22,
-            letterSpacing: "0.18em",
+            letterSpacing: 4,
             textTransform: "uppercase",
-            color: "rgba(245, 239, 230, 0.65)",
+            color: "rgba(245, 239, 230, 0.7)",
           }}
         >
           <span>quinielamundial.es</span>
-          <span style={{ display: "flex", gap: 18 }}>
+          <div style={{ display: "flex", gap: 18 }}>
             {dateLabel ? <span>{dateLabel}</span> : null}
             {venue ? (
               <>
@@ -249,10 +142,68 @@ export default async function MatchOpenGraph({
                 <span>{venue}</span>
               </>
             ) : null}
-          </span>
+          </div>
         </div>
       </div>
     ),
-    { ...size },
+    { ...size, fonts },
+  );
+}
+
+function Side({ name, flag }: { name: string; flag: string | null }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 18,
+        flex: 1,
+      }}
+    >
+      {flag ? (
+        <img
+          src={flag}
+          alt=""
+          width={210}
+          height={210}
+          style={{
+            width: 210,
+            height: 210,
+            borderRadius: 9999,
+            boxShadow: "0 24px 48px rgba(0,0,0,0.4)",
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 210,
+            height: 210,
+            borderRadius: 9999,
+            background: "rgba(245, 239, 230, 0.08)",
+            fontWeight: 700,
+            fontSize: 44,
+            color: "rgba(245, 239, 230, 0.4)",
+          }}
+        >
+          TBD
+        </div>
+      )}
+      <div
+        style={{
+          display: "flex",
+          fontWeight: 900,
+          fontSize: 56,
+          lineHeight: 1,
+          letterSpacing: -1,
+          textAlign: "center",
+        }}
+      >
+        {name}
+      </div>
+    </div>
   );
 }

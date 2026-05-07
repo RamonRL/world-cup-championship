@@ -3,6 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, teams } from "@/lib/db/schema";
 import { circleFlagUrl } from "@/lib/flags";
+import { ogFonts } from "@/lib/og-fonts";
 
 export const runtime = "nodejs";
 export const alt = "Grupo · Mundial 2026";
@@ -31,6 +32,7 @@ export default async function GroupOpenGraph({
         .orderBy(asc(teams.name))
     : [];
 
+  const fonts = await ogFonts();
   return new ImageResponse(
     (
       <div
@@ -39,54 +41,43 @@ export default async function GroupOpenGraph({
           width: "100%",
           display: "flex",
           flexDirection: "column",
+          justifyContent: "space-between",
           background:
             "linear-gradient(135deg, #1a1d24 0%, #2a1f15 60%, #3d2914 100%)",
           color: "#f5efe6",
-          padding: "70px 90px",
-          position: "relative",
+          padding: "60px 80px",
+          fontFamily: "Inter",
         }}
       >
-        {/* Eyebrow */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 18,
-            fontFamily: "monospace",
+            gap: 20,
+            fontWeight: 700,
             fontSize: 22,
-            letterSpacing: "0.32em",
+            letterSpacing: 6,
             textTransform: "uppercase",
             color: "#d97742",
           }}
         >
-          <span style={{ display: "block", height: 3, width: 60, background: "#d97742" }} />
-          Mundial 2026 · Fase de grupos
+          <div style={{ display: "flex", height: 3, width: 60, background: "#d97742" }} />
+          <span>Mundial 2026 · Fase de grupos</span>
         </div>
 
-        {/* Title */}
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            marginTop: 30,
-            fontWeight: 800,
-            fontSize: 144,
-            lineHeight: 0.95,
-            letterSpacing: "-0.02em",
+            fontWeight: 900,
+            fontSize: 130,
+            lineHeight: 1,
+            letterSpacing: -2,
           }}
         >
           {groupName}
         </div>
 
-        {/* Teams list */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 14,
-            marginTop: 36,
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {groupTeams.map((t) => {
             const flag = circleFlagUrl(t.code);
             return (
@@ -100,54 +91,52 @@ export default async function GroupOpenGraph({
                     style={{ width: 56, height: 56, borderRadius: 9999 }}
                   />
                 ) : null}
-                <span
+                <div
                   style={{
+                    display: "flex",
                     fontWeight: 700,
-                    fontSize: 44,
-                    letterSpacing: "-0.01em",
+                    fontSize: 42,
+                    letterSpacing: -1,
                   }}
                 >
                   {t.name}
-                </span>
-                <span
+                </div>
+                <div
                   style={{
+                    display: "flex",
                     marginLeft: "auto",
-                    fontFamily: "monospace",
+                    fontWeight: 700,
                     fontSize: 22,
-                    letterSpacing: "0.32em",
+                    letterSpacing: 6,
                     textTransform: "uppercase",
                     color: "rgba(245, 239, 230, 0.5)",
                   }}
                 >
                   {t.code}
-                </span>
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* Bottom */}
         <div
           style={{
-            position: "absolute",
-            left: 90,
-            bottom: 50,
             display: "flex",
             alignItems: "center",
             gap: 18,
-            fontFamily: "monospace",
+            fontWeight: 700,
             fontSize: 22,
-            letterSpacing: "0.18em",
+            letterSpacing: 4,
             textTransform: "uppercase",
-            color: "rgba(245, 239, 230, 0.6)",
+            color: "rgba(245, 239, 230, 0.65)",
           }}
         >
           <span>quinielamundial.es</span>
-          <span style={{ display: "block", height: 6, width: 6, background: "#d97742", borderRadius: 6 }} />
+          <div style={{ display: "flex", height: 6, width: 6, background: "#d97742", borderRadius: 6 }} />
           <span>{groupTeams.length} selecciones</span>
         </div>
       </div>
     ),
-    { ...size },
+    { ...size, fonts },
   );
 }
