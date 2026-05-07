@@ -30,22 +30,27 @@ type Assets = {
   qmMarkDataUrl: string;
 };
 
-/** Fuentes de marca para `ImageResponse({ fonts })`. */
+/**
+ * Fuentes de marca para `ImageResponse({ fonts })`. Usamos TTFs ESTÁTICAS
+ * (no variables): Satori revienta con
+ *   `Cannot read properties of undefined (reading '256')`
+ * al intentar leer la tabla OS/2 de un TTF variable. Las descargamos del
+ * CDN de Google (ver `scripts/og-fonts-fetch` o el README) y las
+ * bundlemos en `public/fonts/`.
+ */
 export async function ogFonts(): Promise<SatoriFont[]> {
   if (fontCache) return fontCache;
-  const [bigShoulders, dmSans] = await Promise.all([
-    readPublic("fonts/BigShouldersDisplay.ttf"),
-    readPublic("fonts/DMSans.ttf"),
+  const [bsBold, bsBlack, dmRegular, dmBold] = await Promise.all([
+    readPublic("fonts/BigShouldersDisplay-Bold.ttf"),
+    readPublic("fonts/BigShouldersDisplay-Black.ttf"),
+    readPublic("fonts/DMSans-Regular.ttf"),
+    readPublic("fonts/DMSans-Bold.ttf"),
   ]);
   fontCache = [
-    // BigShouldersDisplay — la usa el `font-display` de la web. Variable
-    // axis "wght" cubre 100-900; registramos los 3 weights que usamos.
-    { name: "BigShoulders", data: bigShoulders, weight: 700, style: "normal" },
-    { name: "BigShoulders", data: bigShoulders, weight: 900, style: "normal" },
-    // DMSans — la usa el `font-sans`. La utilizamos para texto de apoyo
-    // (eyebrows, strip inferior).
-    { name: "DMSans", data: dmSans, weight: 400, style: "normal" },
-    { name: "DMSans", data: dmSans, weight: 700, style: "normal" },
+    { name: "BigShoulders", data: bsBold, weight: 700, style: "normal" },
+    { name: "BigShoulders", data: bsBlack, weight: 900, style: "normal" },
+    { name: "DMSans", data: dmRegular, weight: 400, style: "normal" },
+    { name: "DMSans", data: dmBold, weight: 700, style: "normal" },
   ];
   return fontCache;
 }
