@@ -169,6 +169,215 @@ export const OG_BG = {
 } as const;
 
 /**
+ * Render genérico de un OG hub: chrome de marca (eyebrow + FWC26 mark
+ * arriba, banda inferior con QM mark + URL + chip optional) y un
+ * cuerpo central en Big Shoulders con título y subtítulo. Pensado para
+ * las páginas tipo /bracket, /calendario, /goleadores… donde no hay
+ * datos dinámicos que mostrar.
+ */
+type BrandedOGProps = {
+  /** Texto pequeño en mayúsculas + tracking, color accent. */
+  eyebrow: string;
+  /** Una o más líneas de title. La 2ª línea va en accent (rojo). */
+  title: [string] | [string, string];
+  /** Línea de apoyo bajo el title. Opcional. */
+  subtitle?: string;
+  /** Chip a la derecha de la banda inferior. Opcional. */
+  bottomChip?: string;
+};
+
+export async function brandedOg(props: BrandedOGProps): Promise<ImageResponse> {
+  const [fonts, assets] = await Promise.all([ogFonts(), ogAssets()]);
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          background: OG_BG.background,
+          color: OG_COLORS.foreground,
+          fontFamily: "DMSans",
+          position: "relative",
+        }}
+      >
+        {/* Glow esquina superior */}
+        <div
+          style={{
+            display: "flex",
+            position: "absolute",
+            top: -160,
+            right: -160,
+            width: 480,
+            height: 480,
+            borderRadius: 9999,
+            background: `radial-gradient(circle, rgba(${OG_COLORS.accentRgb},0.18) 0%, rgba(${OG_COLORS.accentRgb},0) 70%)`,
+          }}
+        />
+
+        {/* Top */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "44px 80px 0 80px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              fontSize: 22,
+              fontWeight: 700,
+              letterSpacing: 6,
+              textTransform: "uppercase",
+              color: OG_COLORS.accent,
+            }}
+          >
+            <div style={{ display: "flex", height: 3, width: 50, background: OG_COLORS.accent }} />
+            <div style={{ display: "flex" }}>{props.eyebrow}</div>
+          </div>
+          <img
+            src={assets.fwc26DataUrl}
+            alt=""
+            width={86}
+            height={86}
+            style={{ width: 86, height: 86 }}
+          />
+        </div>
+
+        {/* Headline */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            padding: "32px 80px 0 80px",
+            fontFamily: "BigShoulders",
+            fontWeight: 900,
+            fontSize: 110,
+            lineHeight: 0.95,
+            letterSpacing: -2,
+            textTransform: "uppercase",
+          }}
+        >
+          {props.title.map((line, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                color: i === 1 ? OG_COLORS.accent : OG_COLORS.foreground,
+              }}
+            >
+              {line}
+            </div>
+          ))}
+        </div>
+
+        {/* Subtitle */}
+        {props.subtitle ? (
+          <div
+            style={{
+              display: "flex",
+              padding: "24px 80px 0 80px",
+              fontSize: 28,
+              color: OG_COLORS.mutedStrong,
+              lineHeight: 1.35,
+              maxWidth: 980,
+            }}
+          >
+            {props.subtitle}
+          </div>
+        ) : null}
+
+        {/* Spacer */}
+        <div style={{ display: "flex", flex: 1 }} />
+
+        {/* Banda inferior */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 80px 50px 80px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <img
+              src={assets.qmMarkDataUrl}
+              alt=""
+              width={56}
+              height={56}
+              style={{ width: 56, height: 56 }}
+            />
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div
+                style={{
+                  display: "flex",
+                  fontFamily: "BigShoulders",
+                  fontWeight: 900,
+                  fontSize: 26,
+                  letterSpacing: -1,
+                  textTransform: "uppercase",
+                  lineHeight: 1,
+                }}
+              >
+                quinielamundial.es
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  letterSpacing: 4,
+                  textTransform: "uppercase",
+                  color: OG_COLORS.muted,
+                }}
+              >
+                11 jun – 19 jul · USA · CAN · MEX
+              </div>
+            </div>
+          </div>
+
+          {props.bottomChip ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 18px",
+                borderRadius: 999,
+                background: `rgba(${OG_COLORS.accentRgb}, 0.16)`,
+                border: `1px solid ${OG_COLORS.accent}`,
+                color: OG_COLORS.accent,
+                fontWeight: 700,
+                fontSize: 16,
+                letterSpacing: 3,
+                textTransform: "uppercase",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: OG_COLORS.accent,
+                }}
+              />
+              {props.bottomChip}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    ),
+    { width: 1200, height: 630, fonts },
+  );
+}
+
+/**
  * Fallback OG si algo peta en el render dinámico (DB caída, fetch a la
  * bandera fallido, lo que sea). Mejor que devolver 500 al crawler.
  */
