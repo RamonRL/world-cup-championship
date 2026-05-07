@@ -7,10 +7,18 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 /**
- * OG image principal del sitio. Lookea como la propia web: paleta arena
- * + Big Shoulders Display para el headline + FWC26 mark + halftone-ish
- * sutil. Layout 100% flex, fuentes locales (sin red), assets como data
- * URL.
+ * OG image principal del sitio. Layout:
+ *   ┌────────────────────────────────────────────┐
+ *   │ [— QUINIELA MUNDIAL · 2026]      [FWC26]   │
+ *   │                                            │
+ *   │ PREDICE                                    │
+ *   │ EL MUNDIAL                                 │
+ *   │                                            │
+ *   │ Calendario, los 12 grupos, bracket FIFA…   │
+ *   │                                            │
+ *   │ [QM] quinielamundial.es     [FIFA WC 26]   │
+ *   │      11 jun – 19 jul · USA · CAN · MEX     │
+ *   └────────────────────────────────────────────┘
  */
 export default async function OpenGraphImage() {
   const [fonts, assets] = await Promise.all([ogFonts(), ogAssets()]);
@@ -29,36 +37,36 @@ export default async function OpenGraphImage() {
           position: "relative",
         }}
       >
-        {/* Glow esquina superior derecha — replica la nebulosa arena
-            de la landing. */}
+        {/* Glow esquina superior derecha — sutil, replica la nebulosa
+            arena de la landing. */}
         <div
           style={{
             display: "flex",
             position: "absolute",
             top: -160,
             right: -160,
-            width: 520,
-            height: 520,
+            width: 480,
+            height: 480,
             borderRadius: 9999,
             background:
-              "radial-gradient(circle, rgba(217,119,66,0.22) 0%, rgba(217,119,66,0) 70%)",
+              "radial-gradient(circle, rgba(217,119,66,0.18) 0%, rgba(217,119,66,0) 70%)",
           }}
         />
 
-        {/* Top: eyebrow + FWC26 mark a la derecha */}
+        {/* Top: eyebrow + FWC26 mark */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "60px 80px 0 80px",
+            padding: "44px 80px 0 80px",
           }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 18,
+              gap: 16,
               fontSize: 22,
               fontWeight: 700,
               letterSpacing: 6,
@@ -69,7 +77,6 @@ export default async function OpenGraphImage() {
             <div style={{ display: "flex", height: 3, width: 50, background: OG_COLORS.arena }} />
             <div style={{ display: "flex" }}>Quiniela Mundial · 2026</div>
           </div>
-          {/* FWC26 mark */}
           <img
             src={assets.fwc26DataUrl}
             alt=""
@@ -79,17 +86,17 @@ export default async function OpenGraphImage() {
           />
         </div>
 
-        {/* Headline — Big Shoulders, condensed display, mega impacto */}
+        {/* Headline — Big Shoulders, ahora a la mitad (100px) */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
-            padding: "40px 80px 0 80px",
+            padding: "32px 80px 0 80px",
             fontFamily: "BigShoulders",
             fontWeight: 900,
-            fontSize: 200,
-            lineHeight: 0.9,
-            letterSpacing: -3,
+            fontSize: 100,
+            lineHeight: 0.95,
+            letterSpacing: -2,
             textTransform: "uppercase",
           }}
         >
@@ -101,8 +108,8 @@ export default async function OpenGraphImage() {
         <div
           style={{
             display: "flex",
-            padding: "30px 80px 0 80px",
-            fontSize: 30,
+            padding: "24px 80px 0 80px",
+            fontSize: 28,
             color: OG_COLORS.mutedStrong,
             lineHeight: 1.35,
             maxWidth: 980,
@@ -114,22 +121,24 @@ export default async function OpenGraphImage() {
         {/* Spacer */}
         <div style={{ display: "flex", flex: 1 }} />
 
-        {/* Banda inferior: marca QM + URL + dates + flag emoji-ish */}
+        {/* Banda inferior: QM mark + URL/dates a la izda · chip FIFA a la dcha.
+            Todo alineado vertical (centerY) para que ningún elemento
+            "flote" debajo del bloque. */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "0 80px 60px 80px",
+            padding: "0 80px 50px 80px",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             <img
               src={assets.qmMarkDataUrl}
               alt=""
-              width={64}
-              height={64}
-              style={{ width: 64, height: 64 }}
+              width={56}
+              height={56}
+              style={{ width: 56, height: 56 }}
             />
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <div
@@ -137,9 +146,10 @@ export default async function OpenGraphImage() {
                   display: "flex",
                   fontFamily: "BigShoulders",
                   fontWeight: 900,
-                  fontSize: 30,
+                  fontSize: 26,
                   letterSpacing: -1,
                   textTransform: "uppercase",
+                  lineHeight: 1,
                 }}
               >
                 quinielamundial.es
@@ -147,7 +157,7 @@ export default async function OpenGraphImage() {
               <div
                 style={{
                   display: "flex",
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: 700,
                   letterSpacing: 4,
                   textTransform: "uppercase",
@@ -159,7 +169,6 @@ export default async function OpenGraphImage() {
             </div>
           </div>
 
-          {/* "T-XX días al kickoff"-ish chip */}
           <div
             style={{
               display: "flex",
@@ -171,7 +180,7 @@ export default async function OpenGraphImage() {
               border: `1px solid ${OG_COLORS.arena}`,
               color: OG_COLORS.arena,
               fontWeight: 700,
-              fontSize: 18,
+              fontSize: 16,
               letterSpacing: 3,
               textTransform: "uppercase",
             }}

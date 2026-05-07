@@ -90,11 +90,11 @@ export const OG_COLORS = {
 } as const;
 
 /**
- * Fondo "brand" reutilizable: gradient base + textura halftone (SVG
- * inline base64) muy sutil — replica la sensación editorial de la web.
- * Devuelve los `style.background` y un `<div aria-hidden>` opcional con
- * la textura encima si se renderiza dentro del componente.
+ * Fondo "brand" reutilizable. Casi negro (mismo `--color-bg` de la web,
+ * #0e1014) con un toque sutil de profundidad. Antes era un gradient
+ * marrón que se veía gris/naranja en miniatura — ahora es solid dark
+ * casi negro, igual que el site.
  */
 export const OG_BG = {
-  background: `linear-gradient(135deg, ${OG_COLORS.bg} 0%, #2a1f15 60%, #3d2914 100%)`,
+  background: OG_COLORS.bg,
 } as const;
