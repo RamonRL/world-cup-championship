@@ -46,13 +46,13 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   const matchId = Number(id);
-  if (!Number.isFinite(matchId)) return { title: "Partido" };
+  if (!Number.isFinite(matchId)) notFound();
   const [match] = await db
     .select()
     .from(matches)
     .where(eq(matches.id, matchId))
     .limit(1);
-  if (!match) return { title: "Partido" };
+  if (!match) notFound();
   const teamIds = [match.homeTeamId, match.awayTeamId].filter(
     (x): x is number => x != null,
   );

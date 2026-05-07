@@ -33,7 +33,7 @@ export async function generateMetadata({
     .from(teams)
     .where(eq(teams.code, upper))
     .limit(1);
-  if (!team) return { title: "Selección" };
+  if (!team) notFound();
   return {
     title: team.name,
     description: `${team.name} en el Mundial 2026: grupo, calendario de partidos, plantilla y goleadores.`,

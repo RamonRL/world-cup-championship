@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, players, teams } from "@/lib/db/schema";
@@ -17,6 +18,7 @@ export default async function TeamOpenGraph({
   try {
     return await render(params);
   } catch (err) {
+    if ((err as { digest?: string })?.digest === "NEXT_NOT_FOUND") throw err;
     console.error("[og:equipos] render failed", err);
     return await fallbackOg();
   }
@@ -30,21 +32,20 @@ async function render(params: Promise<{ code: string }>) {
     .from(teams)
     .where(eq(teams.code, code))
     .limit(1);
+  if (!team) notFound();
 
-  const teamName = team?.name ?? code;
-  const [group] = team?.groupId
+  const teamName = team.name;
+  const [group] = team.groupId
     ? await db.select().from(groups).where(eq(groups.id, team.groupId)).limit(1)
     : [];
   const groupName = group?.name ?? null;
   const flagUrl = (await flagDataUrl(code)) ?? "";
-  const squadCount = team
-    ? (
-        await db
-          .select({ id: players.id })
-          .from(players)
-          .where(eq(players.teamId, team.id))
-      ).length
-    : 0;
+  const squadCount = (
+    await db
+      .select({ id: players.id })
+      .from(players)
+      .where(eq(players.teamId, team.id))
+  ).length;
 
   const [fonts, assets] = await Promise.all([ogFonts(), ogAssets()]);
 

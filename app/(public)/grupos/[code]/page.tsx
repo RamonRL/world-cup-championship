@@ -34,7 +34,7 @@ export async function generateMetadata({
     .from(groups)
     .where(eq(groups.code, upper))
     .limit(1);
-  if (!group) return { title: "Grupo" };
+  if (!group) notFound();
   const groupTeams = await db
     .select({ name: teams.name })
     .from(teams)

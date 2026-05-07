@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches, teams } from "@/lib/db/schema";
@@ -37,6 +38,9 @@ export default async function MatchOpenGraph({
   try {
     return await render(params);
   } catch (err) {
+    // notFound() lanza un error con digest "NEXT_NOT_FOUND" que Next debe
+    // manejar arriba para devolver 404. No lo tragamos.
+    if ((err as { digest?: string })?.digest === "NEXT_NOT_FOUND") throw err;
     console.error("[og:partido] render failed", err);
     return await fallbackOg();
   }
@@ -45,24 +49,28 @@ export default async function MatchOpenGraph({
 async function render(params: Promise<{ id: string }>) {
   const { id } = await params;
   const matchId = Number(id);
-  const [match] = Number.isFinite(matchId)
-    ? await db.select().from(matches).where(eq(matches.id, matchId)).limit(1)
-    : [];
+  if (!Number.isFinite(matchId)) notFound();
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, matchId))
+    .limit(1);
+  if (!match) notFound();
 
   const [home, away] = await Promise.all([
-    match?.homeTeamId
+    match.homeTeamId
       ? db.select().from(teams).where(eq(teams.id, match.homeTeamId)).limit(1)
       : Promise.resolve([]),
-    match?.awayTeamId
+    match.awayTeamId
       ? db.select().from(teams).where(eq(teams.id, match.awayTeamId)).limit(1)
       : Promise.resolve([]),
   ]);
   const homeTeam = home[0] ?? null;
   const awayTeam = away[0] ?? null;
 
-  const stageLabel = match ? STAGE_LABEL[match.stage] ?? match.stage : "Partido";
-  const dateLabel = match ? formatDate(match.scheduledAt) : "";
-  const venue = match?.venue ?? null;
+  const stageLabel = STAGE_LABEL[match.stage] ?? match.stage;
+  const dateLabel = formatDate(match.scheduledAt);
+  const venue = match.venue ?? null;
 
   const homeName = homeTeam?.name ?? "TBD";
   const awayName = awayTeam?.name ?? "TBD";

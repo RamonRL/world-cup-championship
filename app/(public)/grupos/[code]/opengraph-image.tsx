@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, teams } from "@/lib/db/schema";
@@ -17,6 +18,7 @@ export default async function GroupOpenGraph({
   try {
     return await render(params);
   } catch (err) {
+    if ((err as { digest?: string })?.digest === "NEXT_NOT_FOUND") throw err;
     console.error("[og:grupos] render failed", err);
     return await fallbackOg();
   }
@@ -30,15 +32,14 @@ async function render(params: Promise<{ code: string }>) {
     .from(groups)
     .where(eq(groups.code, code))
     .limit(1);
+  if (!group) notFound();
 
-  const groupName = group?.name ?? `Grupo ${code}`;
-  const groupTeams = group
-    ? await db
-        .select()
-        .from(teams)
-        .where(eq(teams.groupId, group.id))
-        .orderBy(asc(teams.name))
-    : [];
+  const groupName = group.name;
+  const groupTeams = await db
+    .select()
+    .from(teams)
+    .where(eq(teams.groupId, group.id))
+    .orderBy(asc(teams.name));
 
   // Pre-fetch banderas como data URL para no depender del fetch interno
   // de Satori (peta a veces en serverless).
