@@ -228,6 +228,58 @@ export function MatchLD({ match, stageLabel }: { match: Match; stageLabel: strin
   );
 }
 
+type SportsTeamArgs = {
+  /** Nombre oficial de la selección, ej. "España". */
+  name: string;
+  /** Código FIFA 3-letras, ej. "ESP". */
+  code: string;
+  /** Nombre del grupo en el que juega ("Grupo A"), si está asignado. */
+  groupName: string | null;
+  /** Nº de jugadores convocados (opcional). */
+  squadSize: number;
+  /** URL relativa al sitio, ej. "/equipos/ESP". */
+  href: string;
+};
+
+/**
+ * SportsTeam para una selección concreta. Le decimos a Google que es una
+ * selección nacional de fútbol, qué grupo juega en el Mundial y cuántos
+ * jugadores tiene su plantilla.
+ */
+export function SportsTeamLD({
+  name,
+  code,
+  groupName,
+  squadSize,
+  href,
+}: SportsTeamArgs) {
+  const data: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "SportsTeam",
+    name,
+    alternateName: code,
+    sport: "Soccer",
+    nationality: name,
+    url: `${SITE_URL}${href}`,
+    image: `${SITE_URL}${href}/opengraph-image`,
+    memberOf: {
+      "@type": "SportsOrganization",
+      name: "FIFA",
+      url: "https://www.fifa.com",
+    },
+  };
+  if (groupName) {
+    data.subOrganization = {
+      "@type": "SportsOrganization",
+      name: `${groupName} · Mundial 2026`,
+    };
+  }
+  if (squadSize > 0) {
+    data.numberOfEmployees = squadSize;
+  }
+  return <Script data={data} />;
+}
+
 type BreadcrumbItem = { name: string; href: string };
 
 export function BreadcrumbLD({ items }: { items: BreadcrumbItem[] }) {

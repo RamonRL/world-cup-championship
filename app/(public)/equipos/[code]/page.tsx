@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shell/empty-state";
 import { formatDateTime } from "@/lib/utils";
-import { BreadcrumbLD } from "@/components/seo/jsonld";
+import { BreadcrumbLD, SportsTeamLD } from "@/components/seo/jsonld";
 
 const STAGE_LABEL: Record<string, string> = {
   group: "Fase de grupos",
@@ -92,6 +92,13 @@ export default async function TeamDetailPage({
 
   return (
     <div className="space-y-10">
+      <SportsTeamLD
+        name={team.name}
+        code={team.code}
+        groupName={group?.name ?? null}
+        squadSize={squad.length}
+        href={`/equipos/${team.code}`}
+      />
       <BreadcrumbLD
         items={[
           { name: "Inicio", href: "/" },

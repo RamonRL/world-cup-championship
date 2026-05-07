@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { asc, gte, inArray } from "drizzle-orm";
 import {
   ArrowRight,
+  CalendarDays,
   Crown,
   Goal,
   ListChecks,
+  MapPin,
   ShieldCheck,
   Sparkles,
   Swords,
@@ -361,6 +363,62 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ───────── EXPLORA EL TORNEO (hub interno + SEO) ───────── */}
+      <section className="space-y-6">
+        <header className="space-y-2">
+          <p className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            Explora el torneo
+          </p>
+          <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
+            Todo el Mundial 2026, organizado
+          </h2>
+          <p className="max-w-3xl font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-base">
+            Calendario completo, los 12 grupos, el bracket FIFA con su cruz hasta
+            la final, la tabla de máximos goleadores, las 48 selecciones y las 16
+            sedes. Toda la información en abierto, sin registro.
+          </p>
+        </header>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ExploreCard
+            href="/calendario"
+            icon={<CalendarDays className="size-5" />}
+            title="Calendario completo"
+            text="Los 104 partidos del Mundial 2026 ordenados por fecha y jornada."
+          />
+          <ExploreCard
+            href="/grupos"
+            icon={<Users className="size-5" />}
+            title="Los 12 grupos"
+            text="Las cuatro selecciones de cada grupo y sus enfrentamientos directos."
+          />
+          <ExploreCard
+            href="/bracket"
+            icon={<Swords className="size-5" />}
+            title="Bracket eliminatorio"
+            text="El cuadro FIFA: dieciseisavos, octavos, cuartos, semifinales y final."
+            primary
+          />
+          <ExploreCard
+            href="/goleadores"
+            icon={<Target className="size-5" />}
+            title="Máximos goleadores"
+            text="La carrera por la Bota de Oro 2026 actualizada partido a partido."
+          />
+          <ExploreCard
+            href="/equipos"
+            icon={<Trophy className="size-5" />}
+            title="48 selecciones"
+            text="Plantilla completa de cada selección clasificada al Mundial 2026."
+          />
+          <ExploreCard
+            href="/sedes"
+            icon={<MapPin className="size-5" />}
+            title="16 sedes"
+            text="Estadios y ciudades de Estados Unidos, Canadá y México que acogen el torneo."
+          />
+        </div>
+      </section>
+
       {/* ───────── 6 CATEGORÍAS DE PREDICCIÓN ───────── */}
       <section className="space-y-6">
         <header className="space-y-2">
@@ -532,6 +590,48 @@ function StepCard({
         </p>
       </div>
     </article>
+  );
+}
+
+function ExploreCard({
+  href,
+  icon,
+  title,
+  text,
+  primary,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group relative flex flex-col gap-2.5 overflow-hidden rounded-xl border p-5 transition-all hover:-translate-y-0.5 ${
+        primary
+          ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_5%,var(--color-surface))] hover:border-[var(--color-arena)] hover:shadow-[var(--shadow-arena)]"
+          : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-1)]"
+      }`}
+    >
+      <span
+        className={`grid size-9 place-items-center rounded-md ${
+          primary
+            ? "bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]"
+            : "bg-[var(--color-surface-2)] text-[var(--color-arena)]"
+        }`}
+      >
+        {icon}
+      </span>
+      <h3 className="font-display text-xl tracking-tight">{title}</h3>
+      <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)]">
+        {text}
+      </p>
+      <span className="mt-1 inline-flex items-center gap-1.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-arena)] transition-transform group-hover:translate-x-1">
+        Ir <ArrowRight className="size-3" />
+      </span>
+    </Link>
   );
 }
 
