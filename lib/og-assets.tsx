@@ -8,11 +8,53 @@
  * weights distintos para que Satori pueda elegir el adecuado al estilo
  * del texto.
  */
+import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { circleFlagUrl } from "@/lib/flags";
 
 async function readPublic(path: string): Promise<Buffer> {
   return readFile(join(process.cwd(), "public", path));
+}
+
+const flagCache = new Map<string, string | null>();
+
+/**
+ * Trae una bandera SVG de HatScripts y la devuelve como `data:` URL.
+ * Si Satori intenta resolver una URL remota se cae a veces en serverless
+ * (timeouts del fetch interno, parser SVG quisquilloso). Hacer el fetch
+ * nosotros y pasarle un data URL es bullet-proof.
+ *
+ * Cachea por code para evitar refetch en la misma cold-start.
+ */
+export async function flagDataUrl(
+  code: string | null | undefined,
+): Promise<string | null> {
+  if (!code) return null;
+  const key = code.toUpperCase();
+  if (flagCache.has(key)) return flagCache.get(key)!;
+  const url = circleFlagUrl(code);
+  if (!url) {
+    flagCache.set(key, null);
+    return null;
+  }
+  try {
+    const res = await fetch(url, {
+      // Cache estable: la bandera no cambia.
+      next: { revalidate: 60 * 60 * 24 * 7 },
+    });
+    if (!res.ok) {
+      flagCache.set(key, null);
+      return null;
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    const dataUrl = `data:image/svg+xml;base64,${buf.toString("base64")}`;
+    flagCache.set(key, dataUrl);
+    return dataUrl;
+  } catch {
+    flagCache.set(key, null);
+    return null;
+  }
 }
 
 let fontCache: SatoriFont[] | null = null;
@@ -100,3 +142,68 @@ export const OG_COLORS = {
 export const OG_BG = {
   background: OG_COLORS.bg,
 } as const;
+
+/**
+ * Fallback OG si algo peta en el render dinámico (DB caída, fetch a la
+ * bandera fallido, lo que sea). Mejor que devolver 500 al crawler.
+ */
+export async function fallbackOg(): Promise<ImageResponse> {
+  const fonts = await ogFonts();
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 28,
+          background: OG_COLORS.bg,
+          color: OG_COLORS.foreground,
+          fontFamily: "DMSans",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            fontSize: 22,
+            fontWeight: 700,
+            letterSpacing: 6,
+            textTransform: "uppercase",
+            color: OG_COLORS.accent,
+          }}
+        >
+          Quiniela Mundial · 2026
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontFamily: "BigShoulders",
+            fontWeight: 900,
+            fontSize: 140,
+            letterSpacing: -3,
+            textTransform: "uppercase",
+            lineHeight: 1,
+          }}
+        >
+          quinielamundial.es
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 24,
+            color: OG_COLORS.muted,
+            letterSpacing: 4,
+            textTransform: "uppercase",
+            fontWeight: 700,
+          }}
+        >
+          Predicciones del Mundial 2026
+        </div>
+      </div>
+    ),
+    { width: 1200, height: 630, fonts },
+  );
+}

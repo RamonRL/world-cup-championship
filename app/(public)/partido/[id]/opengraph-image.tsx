@@ -2,8 +2,7 @@ import { ImageResponse } from "next/og";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches, teams } from "@/lib/db/schema";
-import { circleFlagUrl } from "@/lib/flags";
-import { OG_BG, OG_COLORS, ogAssets, ogFonts } from "@/lib/og-assets";
+import { OG_BG, OG_COLORS, fallbackOg, flagDataUrl, ogAssets, ogFonts } from "@/lib/og-assets";
 
 export const runtime = "nodejs";
 export const alt = "Partido · Mundial 2026";
@@ -35,6 +34,15 @@ export default async function MatchOpenGraph({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  try {
+    return await render(params);
+  } catch (err) {
+    console.error("[og:partido] render failed", err);
+    return await fallbackOg();
+  }
+}
+
+async function render(params: Promise<{ id: string }>) {
   const { id } = await params;
   const matchId = Number(id);
   const [match] = Number.isFinite(matchId)
@@ -58,8 +66,10 @@ export default async function MatchOpenGraph({
 
   const homeName = homeTeam?.name ?? "TBD";
   const awayName = awayTeam?.name ?? "TBD";
-  const homeFlag = homeTeam ? circleFlagUrl(homeTeam.code) : null;
-  const awayFlag = awayTeam ? circleFlagUrl(awayTeam.code) : null;
+  const [homeFlag, awayFlag] = await Promise.all([
+    homeTeam ? flagDataUrl(homeTeam.code) : Promise.resolve(null),
+    awayTeam ? flagDataUrl(awayTeam.code) : Promise.resolve(null),
+  ]);
 
   const [fonts, assets] = await Promise.all([ogFonts(), ogAssets()]);
 

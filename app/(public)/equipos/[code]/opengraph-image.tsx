@@ -2,8 +2,7 @@ import { ImageResponse } from "next/og";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, players, teams } from "@/lib/db/schema";
-import { circleFlagUrl } from "@/lib/flags";
-import { OG_BG, OG_COLORS, ogAssets, ogFonts } from "@/lib/og-assets";
+import { OG_BG, OG_COLORS, fallbackOg, flagDataUrl, ogAssets, ogFonts } from "@/lib/og-assets";
 
 export const runtime = "nodejs";
 export const alt = "Selección · Mundial 2026";
@@ -15,6 +14,15 @@ export default async function TeamOpenGraph({
 }: {
   params: Promise<{ code: string }>;
 }) {
+  try {
+    return await render(params);
+  } catch (err) {
+    console.error("[og:equipos] render failed", err);
+    return await fallbackOg();
+  }
+}
+
+async function render(params: Promise<{ code: string }>) {
   const { code: rawCode } = await params;
   const code = rawCode.toUpperCase();
   const [team] = await db
@@ -28,7 +36,7 @@ export default async function TeamOpenGraph({
     ? await db.select().from(groups).where(eq(groups.id, team.groupId)).limit(1)
     : [];
   const groupName = group?.name ?? null;
-  const flagUrl = circleFlagUrl(code) ?? "";
+  const flagUrl = (await flagDataUrl(code)) ?? "";
   const squadCount = team
     ? (
         await db

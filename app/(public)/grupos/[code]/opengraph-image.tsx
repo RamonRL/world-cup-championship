@@ -2,8 +2,7 @@ import { ImageResponse } from "next/og";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { groups, teams } from "@/lib/db/schema";
-import { circleFlagUrl } from "@/lib/flags";
-import { OG_BG, OG_COLORS, ogAssets, ogFonts } from "@/lib/og-assets";
+import { OG_BG, OG_COLORS, fallbackOg, flagDataUrl, ogAssets, ogFonts } from "@/lib/og-assets";
 
 export const runtime = "nodejs";
 export const alt = "Grupo · Mundial 2026";
@@ -15,6 +14,15 @@ export default async function GroupOpenGraph({
 }: {
   params: Promise<{ code: string }>;
 }) {
+  try {
+    return await render(params);
+  } catch (err) {
+    console.error("[og:grupos] render failed", err);
+    return await fallbackOg();
+  }
+}
+
+async function render(params: Promise<{ code: string }>) {
   const { code: rawCode } = await params;
   const code = rawCode.toUpperCase();
   const [group] = await db
@@ -31,6 +39,15 @@ export default async function GroupOpenGraph({
         .where(eq(teams.groupId, group.id))
         .orderBy(asc(teams.name))
     : [];
+
+  // Pre-fetch banderas como data URL para no depender del fetch interno
+  // de Satori (peta a veces en serverless).
+  const flagsByCode = new Map<string, string | null>();
+  await Promise.all(
+    groupTeams.map(async (t) => {
+      flagsByCode.set(t.code, await flagDataUrl(t.code));
+    }),
+  );
 
   const [fonts, assets] = await Promise.all([ogFonts(), ogAssets()]);
 
@@ -124,7 +141,7 @@ export default async function GroupOpenGraph({
           }}
         >
           {groupTeams.map((t) => {
-            const flag = circleFlagUrl(t.code);
+            const flag = flagsByCode.get(t.code);
             return (
               <div
                 key={t.id}
