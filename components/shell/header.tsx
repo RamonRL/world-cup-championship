@@ -68,7 +68,7 @@ export function AppHeader({
           <>
             <Link
               href="/login"
-              className="hidden text-xs font-mono uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-foreground)] sm:block"
+              className="text-xs font-mono uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-foreground)]"
             >
               Entrar
             </Link>
