@@ -25,6 +25,8 @@ export type PendingDeadline = {
  *   - `pendingCount`: how many distinct pending items there are open right
  *     now across matchdays + per-match scorers (used as the nav badge)
  */
+const DEADLINE_TIMEOUT_MS = 4000;
+
 export async function loadDeadlineSummary(
   userId: string,
   leagueId: number,
@@ -32,19 +34,35 @@ export async function loadDeadlineSummary(
   imminent: PendingDeadline | null;
   pendingCount: number;
 }> {
-  try {
-    return await loadDeadlineSummaryUnsafe(userId, leagueId);
-  } catch (err) {
-    // Defensive: si por cualquier razón (statement timeout en Supabase,
-    // índice faltante que degrada el JOIN, etc.) esta query falla, NO
-    // queremos que el layout entero se caiga y todas las páginas de
-    // (app)/ muestren error. Devolvemos defaults seguros — el deadline
-    // banner y el badge de pendientes desaparecen temporalmente, pero el
-    // dashboard renderiza.
-    // eslint-disable-next-line no-console
-    console.error("loadDeadlineSummary failed:", err);
-    return { imminent: null, pendingCount: 0 };
-  }
+  const fallback = { imminent: null, pendingCount: 0 };
+  return new Promise<{ imminent: PendingDeadline | null; pendingCount: number }>(
+    (resolve) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        console.error(
+          `loadDeadlineSummary timeout (>${DEADLINE_TIMEOUT_MS}ms) — devolviendo defaults`,
+        );
+        resolve(fallback);
+      }, DEADLINE_TIMEOUT_MS);
+      loadDeadlineSummaryUnsafe(userId, leagueId).then(
+        (v) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve(v);
+        },
+        (err) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          console.error("loadDeadlineSummary failed:", err);
+          resolve(fallback);
+        },
+      );
+    },
+  );
 }
 
 async function loadDeadlineSummaryUnsafe(

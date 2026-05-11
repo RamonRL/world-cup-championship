@@ -59,6 +59,45 @@ const STAGE_BADGE: Record<string, string> = {
   final: "FINAL",
 };
 
+const QUERY_TIMEOUT_MS = 5000;
+
+/**
+ * Resuelve la promesa con `fallback` si tarda más de `timeoutMs` o si rechaza.
+ * Mantiene el dashboard renderable aunque Supabase tenga statement timeouts,
+ * QUIC drops o pool exhaustion en alguna query individual.
+ */
+function safe<T>(
+  promise: Promise<T>,
+  fallback: T,
+  label: string,
+  timeoutMs = QUERY_TIMEOUT_MS,
+): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      console.error(`dashboard query timeout: ${label} (>${timeoutMs}ms)`);
+      resolve(fallback);
+    }, timeoutMs);
+    promise.then(
+      (v) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        console.error(`dashboard query failed: ${label}`, err);
+        resolve(fallback);
+      },
+    );
+  });
+}
+
 export default async function DashboardPage() {
   const me = await requireUser();
   const leagueId = (await currentLeagueId(me))!;
@@ -67,11 +106,15 @@ export default async function DashboardPage() {
   const days = Math.max(0, Math.ceil((kickoff.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
   // Stats: solo cuentan los puntos que el usuario ha hecho en ESTA liga.
-  const [myPointsRow] = await db
-    .select({ total: sql<number>`coalesce(sum(${pointsLedger.points}), 0)::int` })
-    .from(pointsLedger)
-    .where(and(eq(pointsLedger.userId, me.id), eq(pointsLedger.leagueId, leagueId)));
-  const myPoints = myPointsRow?.total ?? 0;
+  const myPointsRows = await safe(
+    db
+      .select({ total: sql<number>`coalesce(sum(${pointsLedger.points}), 0)::int` })
+      .from(pointsLedger)
+      .where(and(eq(pointsLedger.userId, me.id), eq(pointsLedger.leagueId, leagueId))),
+    [{ total: 0 }] as Array<{ total: number }>,
+    "myPointsRow",
+  );
+  const myPoints = myPointsRows[0]?.total ?? 0;
 
   // Pre-torneo nadie tiene puntos y el ranking renderiza empty state, así
   // que evitamos cargar/agregar todas las filas de profiles + pointsLedger
@@ -80,14 +123,20 @@ export default async function DashboardPage() {
   //   - el usuario actual ya suma puntos, o
   //   - hay al menos un punto en la liga (check EXISTS barato).
   const computeRanking =
-    tournamentStarted || myPoints > 0 ? true : await leagueHasPoints(leagueId);
+    tournamentStarted || myPoints > 0
+      ? true
+      : await safe(leagueHasPoints(leagueId), false, "leagueHasPoints");
 
-  const upcomingMatchdays = await db
-    .select()
-    .from(matchdays)
-    .where(gt(matchdays.predictionDeadlineAt, new Date()))
-    .orderBy(asc(matchdays.predictionDeadlineAt))
-    .limit(1);
+  const upcomingMatchdays = await safe(
+    db
+      .select()
+      .from(matchdays)
+      .where(gt(matchdays.predictionDeadlineAt, new Date()))
+      .orderBy(asc(matchdays.predictionDeadlineAt))
+      .limit(1),
+    [] as Array<typeof matchdays.$inferSelect>,
+    "upcomingMatchdays",
+  );
 
   const [
     groupCount,
@@ -105,89 +154,143 @@ export default async function DashboardPage() {
     pendingScorerCount,
     activity,
   ] = await Promise.all([
-    db
-      .select({ c: sql<number>`count(*)::int` })
-      .from(predGroupRanking)
-      .where(
-        and(
-          eq(predGroupRanking.userId, me.id),
-          eq(predGroupRanking.leagueId, leagueId),
+    safe(
+      db
+        .select({ c: sql<number>`count(*)::int` })
+        .from(predGroupRanking)
+        .where(
+          and(
+            eq(predGroupRanking.userId, me.id),
+            eq(predGroupRanking.leagueId, leagueId),
+          ),
         ),
-      ),
-    db
-      .select()
-      .from(predTournamentTopScorer)
-      .where(
-        and(
-          eq(predTournamentTopScorer.userId, me.id),
-          eq(predTournamentTopScorer.leagueId, leagueId),
+      [{ c: 0 }] as Array<{ c: number }>,
+      "groupCount",
+    ),
+    safe(
+      db
+        .select()
+        .from(predTournamentTopScorer)
+        .where(
+          and(
+            eq(predTournamentTopScorer.userId, me.id),
+            eq(predTournamentTopScorer.leagueId, leagueId),
+          ),
+        )
+        .limit(1),
+      [] as Array<typeof predTournamentTopScorer.$inferSelect>,
+      "topScorerSet",
+    ),
+    safe(
+      db
+        .select({ c: sql<number>`count(*)::int` })
+        .from(predSpecial)
+        .where(and(eq(predSpecial.userId, me.id), eq(predSpecial.leagueId, leagueId))),
+      [{ c: 0 }] as Array<{ c: number }>,
+      "mySpecialsRow",
+    ),
+    safe(
+      db.select({ c: sql<number>`count(*)::int` }).from(specialPredictions),
+      [{ c: 0 }] as Array<{ c: number }>,
+      "totalSpecialsRow",
+    ),
+    safe(
+      db
+        .select()
+        .from(matches)
+        .where(eq(matches.status, "finished"))
+        .orderBy(desc(matches.scheduledAt))
+        .limit(3),
+      [] as Array<typeof matches.$inferSelect>,
+      "recentMatch",
+    ),
+    safe(
+      db
+        .select()
+        .from(matches)
+        .where(gt(matches.scheduledAt, new Date()))
+        .orderBy(asc(matches.scheduledAt))
+        .limit(1),
+      [] as Array<typeof matches.$inferSelect>,
+      "nextMatch",
+    ),
+    safe(
+      db
+        .select()
+        .from(matches)
+        .where(eq(matches.status, "live"))
+        .orderBy(asc(matches.scheduledAt))
+        .limit(1),
+      [] as Array<typeof matches.$inferSelect>,
+      "liveMatchRows",
+    ),
+    safe(
+      getBracketStatus(),
+      { state: "waiting" as const, closesAt: null as Date | null },
+      "bracketStatus",
+    ),
+    safe(
+      db
+        .select({ c: sql<number>`count(*) filter (where predicted_team_id is not null)::int` })
+        .from(predBracketSlot)
+        .where(
+          and(
+            eq(predBracketSlot.userId, me.id),
+            eq(predBracketSlot.leagueId, leagueId),
+          ),
         ),
-      )
-      .limit(1),
-    db
-      .select({ c: sql<number>`count(*)::int` })
-      .from(predSpecial)
-      .where(and(eq(predSpecial.userId, me.id), eq(predSpecial.leagueId, leagueId))),
-    db.select({ c: sql<number>`count(*)::int` }).from(specialPredictions),
-    db
-      .select()
-      .from(matches)
-      .where(eq(matches.status, "finished"))
-      .orderBy(desc(matches.scheduledAt))
-      .limit(3),
-    db
-      .select()
-      .from(matches)
-      .where(gt(matches.scheduledAt, new Date()))
-      .orderBy(asc(matches.scheduledAt))
-      .limit(1),
-    db
-      .select()
-      .from(matches)
-      .where(eq(matches.status, "live"))
-      .orderBy(asc(matches.scheduledAt))
-      .limit(1),
-    getBracketStatus(),
-    db
-      .select({ c: sql<number>`count(*) filter (where predicted_team_id is not null)::int` })
-      .from(predBracketSlot)
-      .where(
-        and(
-          eq(predBracketSlot.userId, me.id),
-          eq(predBracketSlot.leagueId, leagueId),
-        ),
-      ),
-    db
-      .select()
-      .from(matchdays)
-      .where(gt(matchdays.predictionDeadlineAt, new Date()))
-      .orderBy(asc(matchdays.predictionDeadlineAt)),
-    computeRanking
-      ? loadLeaderboard(leagueId)
-      : Promise.resolve([] as LeaderboardEntry[]),
-    computeRanking ? Promise.resolve(0) : countLeagueMembers(leagueId),
-    tournamentStarted
-      ? db
-          .select({ c: sql<number>`count(*)::int` })
-          .from(matches)
-          .leftJoin(
-            predMatchScorer,
-            and(
-              eq(predMatchScorer.matchId, matches.id),
-              eq(predMatchScorer.userId, me.id),
-              eq(predMatchScorer.leagueId, leagueId),
-            ),
-          )
-          .where(
-            and(
-              gt(matches.scheduledAt, new Date()),
-              sql`${predMatchScorer.matchId} is null`,
-            ),
-          )
-      : Promise.resolve([{ c: 0 }] as Array<{ c: number }>),
-    myPoints > 0
-      ? loadActivityFeed(me.id, leagueId, 8)
-      : Promise.resolve([] as Awaited<ReturnType<typeof loadActivityFeed>>),
+      [{ c: 0 }] as Array<{ c: number }>,
+      "bracketFilledRow",
+    ),
+    safe(
+      db
+        .select()
+        .from(matchdays)
+        .where(gt(matchdays.predictionDeadlineAt, new Date()))
+        .orderBy(asc(matchdays.predictionDeadlineAt)),
+      [] as Array<typeof matchdays.$inferSelect>,
+      "allFutureMatchdays",
+    ),
+    safe(
+      computeRanking ? loadLeaderboard(leagueId) : Promise.resolve([]),
+      [] as LeaderboardEntry[],
+      "leaderboardEntries",
+    ),
+    safe(
+      computeRanking ? Promise.resolve(0) : countLeagueMembers(leagueId),
+      0,
+      "leagueMemberCountFallback",
+    ),
+    safe(
+      tournamentStarted
+        ? db
+            .select({ c: sql<number>`count(*)::int` })
+            .from(matches)
+            .leftJoin(
+              predMatchScorer,
+              and(
+                eq(predMatchScorer.matchId, matches.id),
+                eq(predMatchScorer.userId, me.id),
+                eq(predMatchScorer.leagueId, leagueId),
+              ),
+            )
+            .where(
+              and(
+                gt(matches.scheduledAt, new Date()),
+                sql`${predMatchScorer.matchId} is null`,
+              ),
+            )
+        : Promise.resolve([{ c: 0 }]),
+      [{ c: 0 }] as Array<{ c: number }>,
+      "pendingScorerCount",
+    ),
+    safe(
+      myPoints > 0
+        ? loadActivityFeed(me.id, leagueId, 8)
+        : Promise.resolve([]),
+      [] as Awaited<ReturnType<typeof loadActivityFeed>>,
+      "activity",
+    ),
   ]);
   const liveMatch = liveMatchRows[0] ?? null;
   const sorted = leaderboardEntries;
@@ -203,7 +306,14 @@ export default async function DashboardPage() {
     .filter((x): x is number => x != null);
   const teamRows =
     teamIds.length > 0
-      ? await db.select().from(teams).where(sql`id = ANY(${sql.raw(`ARRAY[${teamIds.join(",")}]::int[]`)})`)
+      ? await safe(
+          db
+            .select()
+            .from(teams)
+            .where(sql`id = ANY(${sql.raw(`ARRAY[${teamIds.join(",")}]::int[]`)})`),
+          [] as Array<typeof teams.$inferSelect>,
+          "teamRows",
+        )
       : [];
   const teamById = new Map(teamRows.map((t) => [t.id, t]));
   const next = nextMatch[0];
@@ -214,19 +324,24 @@ export default async function DashboardPage() {
   const liveHome = liveMatch?.homeTeamId ? teamById.get(liveMatch.homeTeamId) ?? null : null;
   const liveAway = liveMatch?.awayTeamId ? teamById.get(liveMatch.awayTeamId) ?? null : null;
   const liveScorerRows = liveMatch
-    ? await db
-        .select()
-        .from(matchScorers)
-        .where(eq(matchScorers.matchId, liveMatch.id))
+    ? await safe(
+        db.select().from(matchScorers).where(eq(matchScorers.matchId, liveMatch.id)),
+        [] as Array<typeof matchScorers.$inferSelect>,
+        "liveScorerRows",
+      )
     : [];
 
   const liveScorerPlayerIds = liveScorerRows.map((s) => s.playerId);
   const livePlayerRows =
     liveScorerPlayerIds.length > 0
-      ? await db
-          .select()
-          .from(players)
-          .where(sql`id = ANY(${sql.raw(`ARRAY[${liveScorerPlayerIds.join(",")}]::int[]`)})`)
+      ? await safe(
+          db
+            .select()
+            .from(players)
+            .where(sql`id = ANY(${sql.raw(`ARRAY[${liveScorerPlayerIds.join(",")}]::int[]`)})`),
+          [] as Array<typeof players.$inferSelect>,
+          "livePlayerRows",
+        )
       : [];
   const livePlayerById = new Map(livePlayerRows.map((p) => [p.id, p]));
   const liveMinute =

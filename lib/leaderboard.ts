@@ -38,7 +38,6 @@ export async function loadLeaderboard(
   try {
     return await loadLeaderboardUnsafe(leagueId, options);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error("loadLeaderboard failed:", err);
     return [];
   }
