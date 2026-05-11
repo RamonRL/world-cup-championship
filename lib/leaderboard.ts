@@ -1,5 +1,12 @@
-import { sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import {
+  leagueMemberships,
+  pointsLedger,
+  predBracketSlot,
+  profiles,
+  matches,
+} from "@/lib/db/schema";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 
 export type LeaderboardEntry = {
@@ -13,94 +20,107 @@ export type LeaderboardEntry = {
   championCorrect: boolean;
 };
 
-type LeaderboardRow = {
-  user_id: string;
-  email: string;
-  nickname: string | null;
-  avatar_url: string | null;
-  total_points: number;
-  exact_scores_count: number;
-  knockout_points: number;
-  champion_correct: boolean;
-};
-
 /**
- * Carga el leaderboard completo de una liga en UNA sola query agregada.
- * Reemplaza al patrón antiguo de traer `allUsers` + `allLedger` y procesarlos
- * en JS, que escalaba mal en la liga pública.
+ * Leaderboard agregado en UNA sola query usando el query builder de Drizzle.
+ * Reemplaza al patrón antiguo de traer todos los `profiles` + todo
+ * `points_ledger` y procesarlo en JS, que escalaba mal en la liga pública.
  *
- * Si `withChampionCorrect=true`, también determina quién acertó el campeón
- * (requiere haber resuelto la final). Default `false` — el dashboard no lo
- * necesita para el podio.
+ * Si `withChampionCorrect=true` también determina quién acertó al campeón
+ * (requiere que la final esté resuelta).
+ *
+ * Defensivo: si la query falla (statement timeout, etc.) devuelve [] en
+ * lugar de propagar — el dashboard renderiza el podio vacío sin crashear.
  */
 export async function loadLeaderboard(
   leagueId: number,
   options: { withChampionCorrect?: boolean } = {},
 ): Promise<LeaderboardEntry[]> {
-  const result = await db.execute<LeaderboardRow>(sql`
-    WITH official_champion AS (
-      SELECT winner_team_id
-      FROM matches
-      WHERE stage = 'final' AND winner_team_id IS NOT NULL
-      ORDER BY scheduled_at DESC
-      LIMIT 1
-    )
-    SELECT
-      p.id            AS user_id,
-      p.email         AS email,
-      p.nickname      AS nickname,
-      p.avatar_url    AS avatar_url,
-      COALESCE(SUM(l.points), 0)::int AS total_points,
-      COUNT(*) FILTER (
-        WHERE l.source IN ('match_exact_score', 'knockout_score_90')
-      )::int          AS exact_scores_count,
-      COALESCE(
-        SUM(l.points) FILTER (
-          WHERE l.source IN (
-            'bracket_slot', 'knockout_qualifier',
-            'knockout_pens_bonus', 'knockout_score_90'
-          )
-        ),
-        0
-      )::int          AS knockout_points,
-      ${
-        options.withChampionCorrect
-          ? sql`COALESCE((
-              SELECT b.predicted_team_id = (SELECT winner_team_id FROM official_champion)
-              FROM pred_bracket_slot b
-              WHERE b.user_id = p.id
-                AND b.league_id = ${leagueId}
-                AND b.stage = 'final'
-                AND b.slot_position = 0
-              LIMIT 1
-            ), false)`
-          : sql`false`
-      } AS champion_correct
-    FROM league_memberships m
-    INNER JOIN profiles p ON p.id = m.user_id
-    LEFT JOIN points_ledger l
-      ON l.user_id = p.id
-      AND l.league_id = m.league_id
-    WHERE m.league_id = ${leagueId}
-    GROUP BY p.id, p.email, p.nickname, p.avatar_url
-    ORDER BY total_points DESC, exact_scores_count DESC, knockout_points DESC;
-  `);
+  try {
+    return await loadLeaderboardUnsafe(leagueId, options);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("loadLeaderboard failed:", err);
+    return [];
+  }
+}
 
-  const rows = result as unknown as LeaderboardRow[];
+async function loadLeaderboardUnsafe(
+  leagueId: number,
+  options: { withChampionCorrect?: boolean },
+): Promise<LeaderboardEntry[]> {
+  const rows = await db
+    .select({
+      userId: profiles.id,
+      email: profiles.email,
+      nickname: profiles.nickname,
+      avatarUrl: profiles.avatarUrl,
+      totalPoints: sql<number>`coalesce(sum(${pointsLedger.points}), 0)::int`,
+      exactScoresCount: sql<number>`count(*) filter (where ${pointsLedger.source} in ('match_exact_score','knockout_score_90'))::int`,
+      knockoutPoints: sql<number>`coalesce(sum(${pointsLedger.points}) filter (where ${pointsLedger.source} in ('bracket_slot','knockout_qualifier','knockout_pens_bonus','knockout_score_90')), 0)::int`,
+    })
+    .from(leagueMemberships)
+    .innerJoin(profiles, eq(profiles.id, leagueMemberships.userId))
+    .leftJoin(
+      pointsLedger,
+      and(
+        eq(pointsLedger.userId, profiles.id),
+        eq(pointsLedger.leagueId, leagueMemberships.leagueId),
+      ),
+    )
+    .where(eq(leagueMemberships.leagueId, leagueId))
+    .groupBy(profiles.id, profiles.email, profiles.nickname, profiles.avatarUrl)
+    .orderBy(
+      desc(sql`coalesce(sum(${pointsLedger.points}), 0)`),
+      desc(sql`count(*) filter (where ${pointsLedger.source} in ('match_exact_score','knockout_score_90'))`),
+      desc(sql`coalesce(sum(${pointsLedger.points}) filter (where ${pointsLedger.source} in ('bracket_slot','knockout_qualifier','knockout_pens_bonus','knockout_score_90')), 0)`),
+    );
+
+  const championCorrectByUser = new Map<string, boolean>();
+  if (options.withChampionCorrect) {
+    const [officialWinner] = await db
+      .select({ winnerTeamId: matches.winnerTeamId })
+      .from(matches)
+      .where(and(eq(matches.stage, "final"), sql`${matches.winnerTeamId} is not null`))
+      .orderBy(desc(matches.scheduledAt))
+      .limit(1);
+    const winnerTeamId = officialWinner?.winnerTeamId ?? null;
+    if (winnerTeamId != null && rows.length > 0) {
+      const champPicks = await db
+        .select({
+          userId: predBracketSlot.userId,
+          predictedTeamId: predBracketSlot.predictedTeamId,
+        })
+        .from(predBracketSlot)
+        .where(
+          and(
+            eq(predBracketSlot.leagueId, leagueId),
+            eq(predBracketSlot.stage, "final"),
+            eq(predBracketSlot.slotPosition, 0),
+            inArray(
+              predBracketSlot.userId,
+              rows.map((r) => r.userId),
+            ),
+          ),
+        );
+      for (const p of champPicks) {
+        championCorrectByUser.set(p.userId, p.predictedTeamId === winnerTeamId);
+      }
+    }
+  }
+
   const entries: LeaderboardEntry[] = rows.map((r) => ({
-    userId: r.user_id,
+    userId: r.userId,
     email: r.email,
     nickname: r.nickname,
-    avatarUrl: r.avatar_url,
-    totalPoints: r.total_points,
-    exactScoresCount: r.exact_scores_count,
-    knockoutPoints: r.knockout_points,
-    championCorrect: r.champion_correct,
+    avatarUrl: r.avatarUrl,
+    totalPoints: r.totalPoints,
+    exactScoresCount: r.exactScoresCount,
+    knockoutPoints: r.knockoutPoints,
+    championCorrect: championCorrectByUser.get(r.userId) ?? false,
   }));
 
-  // SQL ya ordena por (total, exact, knockout). Si pidieron championCorrect,
-  // reordenamos los empates exactos con el comparador canónico para incluir
-  // el bit de campeón — solo afecta a empates, así que es casi free.
+  // SQL ya ordena por (total, exact, knockout). Si pedimos championCorrect,
+  // reordenamos empates con el comparador canónico (incluye el bit de campeón).
   if (options.withChampionCorrect) {
     entries.sort((a, b) => compareForRanking(a, b));
   }
@@ -109,29 +129,26 @@ export async function loadLeaderboard(
 
 /**
  * Cuenta cuántos miembros tiene la liga sin traer las filas. Útil para el
- * empty-state de "X jugadores · sin puntos aún" en pre-torneo.
+ * empty-state de "X jugadores · sin puntos aún" pre-torneo.
  */
 export async function countLeagueMembers(leagueId: number): Promise<number> {
-  const result = await db.execute<{ c: number }>(sql`
-    SELECT COUNT(*)::int AS c
-    FROM league_memberships
-    WHERE league_id = ${leagueId};
-  `);
-  const rows = result as unknown as { c: number }[];
-  return rows[0]?.c ?? 0;
+  const [row] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(leagueMemberships)
+    .where(eq(leagueMemberships.leagueId, leagueId));
+  return row?.c ?? 0;
 }
 
 /**
- * Devuelve `true` si hay AL MENOS UNA fila en points_ledger para la liga.
- * Sirve como short-circuit barato: pre-torneo nadie tiene puntos y queremos
- * saltar el cálculo del ranking sin traer miles de filas.
+ * `true` si hay al menos una fila en points_ledger para la liga. Short-circuit
+ * barato para saltar el cálculo del ranking pre-torneo cuando nadie tiene
+ * puntos todavía.
  */
 export async function leagueHasPoints(leagueId: number): Promise<boolean> {
-  const result = await db.execute<{ exists: boolean }>(sql`
-    SELECT EXISTS(
-      SELECT 1 FROM points_ledger WHERE league_id = ${leagueId}
-    ) AS exists;
-  `);
-  const rows = result as unknown as { exists: boolean }[];
-  return rows[0]?.exists ?? false;
+  const rows = await db
+    .select({ id: pointsLedger.id })
+    .from(pointsLedger)
+    .where(eq(pointsLedger.leagueId, leagueId))
+    .limit(1);
+  return rows.length > 0;
 }

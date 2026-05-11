@@ -32,6 +32,28 @@ export async function loadDeadlineSummary(
   imminent: PendingDeadline | null;
   pendingCount: number;
 }> {
+  try {
+    return await loadDeadlineSummaryUnsafe(userId, leagueId);
+  } catch (err) {
+    // Defensive: si por cualquier razón (statement timeout en Supabase,
+    // índice faltante que degrada el JOIN, etc.) esta query falla, NO
+    // queremos que el layout entero se caiga y todas las páginas de
+    // (app)/ muestren error. Devolvemos defaults seguros — el deadline
+    // banner y el badge de pendientes desaparecen temporalmente, pero el
+    // dashboard renderiza.
+    // eslint-disable-next-line no-console
+    console.error("loadDeadlineSummary failed:", err);
+    return { imminent: null, pendingCount: 0 };
+  }
+}
+
+async function loadDeadlineSummaryUnsafe(
+  userId: string,
+  leagueId: number,
+): Promise<{
+  imminent: PendingDeadline | null;
+  pendingCount: number;
+}> {
   const now = new Date();
   const soonCutoff = new Date(now.getTime() + SOON_MS);
 
