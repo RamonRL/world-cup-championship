@@ -303,10 +303,12 @@ export default async function DashboardPage() {
 
       {/* Live HUD — appears only when a match is currently in play */}
       {liveMatch ? (
-        <Link
-          href={`/partido/${liveMatch.id}`}
-          className="group relative block overflow-hidden rounded-2xl border-2 border-[var(--color-arena)]/60 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))] shadow-[var(--shadow-arena)] transition-all hover:-translate-y-0.5"
-        >
+        <div className="group relative overflow-hidden rounded-2xl border-2 border-[var(--color-arena)]/60 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))] shadow-[var(--shadow-arena)] transition-all hover:-translate-y-0.5">
+          <Link
+            href={`/partido/${liveMatch.id}`}
+            aria-label={`Partido ${liveMatch.code}`}
+            className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+          />
           <RealtimeRefresher
             channelKey={`live-hud:${liveMatch.id}`}
             subscriptions={[
@@ -372,7 +374,7 @@ export default async function DashboardPage() {
               </div>
             ) : null}
           </div>
-        </Link>
+        </div>
       ) : null}
 
       {/* Hero */}
@@ -434,17 +436,19 @@ export default async function DashboardPage() {
           {/* Right column — next match & up next deadline */}
           <div className="flex flex-col gap-4">
             {next ? (
-              <Link
-                href={`/partido/${next.id}`}
-                className="group block overflow-hidden rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface-2)] transition-colors hover:border-[var(--color-arena)]/60"
-              >
-                <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-3)]/40 px-4 py-2">
+              <div className="group relative overflow-hidden rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface-2)] transition-colors hover:border-[var(--color-arena)]/60">
+                <Link
+                  href={`/partido/${next.id}`}
+                  aria-label={`Partido ${next.code}`}
+                  className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+                />
+                <div className="relative flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-3)]/40 px-4 py-2">
                   <span className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
                     Próximo partido · {next.code}
                   </span>
                   <ArrowUpRight className="size-3.5 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                 </div>
-                <div className="space-y-4 p-4">
+                <div className="relative space-y-4 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <TeamCell team={nextHome} align="start" />
                     <span className="font-display text-2xl text-[var(--color-muted-foreground)]">
@@ -467,7 +471,7 @@ export default async function DashboardPage() {
                     ) : null}
                   </div>
                 </div>
-              </Link>
+              </div>
             ) : (
               <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] p-6 text-center text-sm text-[var(--color-muted-foreground)]">
                 Sin partidos próximos.
@@ -681,23 +685,49 @@ export default async function DashboardPage() {
                 const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
                 const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
                 return (
-                  <Link
+                  <div
                     key={m.id}
-                    href={`/partido/${m.id}`}
-                    className="group flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2.5 text-sm transition hover:border-[var(--color-arena)]/40"
+                    className="group relative flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2.5 text-sm transition hover:border-[var(--color-arena)]/40"
                   >
-                    <span className="flex items-center gap-2 truncate">
-                      <TeamFlag code={home?.code} size={24} />
-                      <span className="truncate">{home?.name ?? "—"}</span>
-                    </span>
-                    <span className="font-display tabular text-xl">
+                    <Link
+                      href={`/partido/${m.id}`}
+                      aria-label={`Partido ${m.code}`}
+                      className="absolute inset-0 z-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+                    />
+                    {home ? (
+                      <Link
+                        href={`/equipos/${home.code}`}
+                        aria-label={home.name}
+                        className="relative z-10 flex items-center gap-2 truncate hover:text-[var(--color-arena)]"
+                      >
+                        <TeamFlag code={home.code} size={24} />
+                        <span className="truncate">{home.name}</span>
+                      </Link>
+                    ) : (
+                      <span className="relative z-10 flex items-center gap-2 truncate">
+                        <TeamFlag code={undefined} size={24} />
+                        <span className="truncate">—</span>
+                      </span>
+                    )}
+                    <span className="relative font-display tabular text-xl">
                       {m.homeScore} <span className="opacity-50">·</span> {m.awayScore}
                     </span>
-                    <span className="flex items-center gap-2 truncate text-right">
-                      <span className="truncate">{away?.name ?? "—"}</span>
-                      <TeamFlag code={away?.code} size={24} />
-                    </span>
-                  </Link>
+                    {away ? (
+                      <Link
+                        href={`/equipos/${away.code}`}
+                        aria-label={away.name}
+                        className="relative z-10 flex items-center gap-2 truncate text-right hover:text-[var(--color-arena)]"
+                      >
+                        <span className="truncate">{away.name}</span>
+                        <TeamFlag code={away.code} size={24} />
+                      </Link>
+                    ) : (
+                      <span className="relative z-10 flex items-center gap-2 truncate text-right">
+                        <span className="truncate">—</span>
+                        <TeamFlag code={undefined} size={24} />
+                      </span>
+                    )}
+                  </div>
                 );
               })
             )}
@@ -989,8 +1019,17 @@ function LiveTeam({
   align?: "start" | "end";
 }) {
   const cls = align === "end" ? "flex-row-reverse text-right" : "";
+  const Wrapper: React.ElementType = team ? Link : "div";
+  const wrapperProps = team
+    ? { href: `/equipos/${team.code}`, "aria-label": team.name }
+    : {};
   return (
-    <div className={`flex min-w-0 items-center gap-2.5 ${cls}`}>
+    <Wrapper
+      {...wrapperProps}
+      className={`relative z-10 flex min-w-0 items-center gap-2.5 ${cls} ${
+        team ? "transition hover:text-[var(--color-arena)]" : ""
+      }`}
+    >
       <TeamFlag code={team?.code} size={40} />
       <div className="min-w-0">
         <p className="truncate font-display text-lg leading-none tracking-tight sm:text-2xl">
@@ -1000,7 +1039,7 @@ function LiveTeam({
           {team?.code ?? "—"}
         </p>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 
@@ -1012,8 +1051,17 @@ function TeamCell({
   align: "start" | "end";
 }) {
   const cls = align === "end" ? "flex-row-reverse text-right" : "";
+  const Wrapper: React.ElementType = team ? Link : "div";
+  const wrapperProps = team
+    ? { href: `/equipos/${team.code}`, "aria-label": team.name }
+    : {};
   return (
-    <div className={`flex min-w-0 items-center gap-3 ${cls}`}>
+    <Wrapper
+      {...wrapperProps}
+      className={`relative z-10 flex min-w-0 items-center gap-3 ${cls} ${
+        team ? "transition hover:text-[var(--color-arena)]" : ""
+      }`}
+    >
       <TeamFlag code={team?.code} size={36} />
       <div className="min-w-0">
         <p className="truncate font-display text-lg leading-none">{team?.name ?? "TBD"}</p>
@@ -1021,7 +1069,7 @@ function TeamCell({
           {team?.code ?? "—"}
         </p>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 

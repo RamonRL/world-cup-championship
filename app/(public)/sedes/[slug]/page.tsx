@@ -203,11 +203,13 @@ export default async function VenueDetailPage({
               const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
               return (
                 <li key={m.id}>
-                  <Link
-                    href={`/partido/${m.id}`}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:border-[var(--color-arena)]/40"
-                  >
-                    <span className="flex items-center gap-2">
+                  <div className="relative flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:border-[var(--color-arena)]/40">
+                    <Link
+                      href={`/partido/${m.id}`}
+                      aria-label={`Partido ${m.code}`}
+                      className="absolute inset-0 z-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+                    />
+                    <span className="relative flex items-center gap-2">
                       <Badge variant="outline" className="text-[0.55rem]">
                         {STAGE_LABEL[m.stage] ?? m.stage}
                       </Badge>
@@ -215,16 +217,48 @@ export default async function VenueDetailPage({
                         {m.code}
                       </span>
                     </span>
-                    <span className="flex min-w-0 flex-1 items-center gap-2 sm:ml-3">
-                      <TeamFlag code={home?.code} size={20} />
+                    <span className="relative z-10 flex min-w-0 flex-1 items-center gap-2 sm:ml-3">
+                      {home ? (
+                        <Link
+                          href={`/equipos/${home.code}`}
+                          aria-label={home.name}
+                          className="flex shrink-0 items-center hover:opacity-80"
+                        >
+                          <TeamFlag code={home.code} size={20} />
+                        </Link>
+                      ) : (
+                        <TeamFlag code={undefined} size={20} />
+                      )}
                       <span className="truncate text-sm font-medium">
-                        {home?.name ?? "TBD"}{" "}
+                        {home ? (
+                          <Link href={`/equipos/${home.code}`} className="hover:text-[var(--color-arena)]">
+                            {home.name}
+                          </Link>
+                        ) : (
+                          "TBD"
+                        )}{" "}
                         <span className="text-[var(--color-muted-foreground)]">·</span>{" "}
-                        {away?.name ?? "TBD"}
+                        {away ? (
+                          <Link href={`/equipos/${away.code}`} className="hover:text-[var(--color-arena)]">
+                            {away.name}
+                          </Link>
+                        ) : (
+                          "TBD"
+                        )}
                       </span>
-                      <TeamFlag code={away?.code} size={20} />
+                      {away ? (
+                        <Link
+                          href={`/equipos/${away.code}`}
+                          aria-label={away.name}
+                          className="flex shrink-0 items-center hover:opacity-80"
+                        >
+                          <TeamFlag code={away.code} size={20} />
+                        </Link>
+                      ) : (
+                        <TeamFlag code={undefined} size={20} />
+                      )}
                     </span>
-                    <span className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                    <span className="relative font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
                       {formatDateTime(m.scheduledAt, {
                         weekday: "short",
                         day: "2-digit",
@@ -233,7 +267,7 @@ export default async function VenueDetailPage({
                         minute: "2-digit",
                       })}
                     </span>
-                  </Link>
+                  </div>
                 </li>
               );
             })}

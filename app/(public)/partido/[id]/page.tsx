@@ -909,14 +909,23 @@ function ScoreboardSide({
 }) {
   const cls =
     align === "end" ? "items-end text-right" : "items-start text-left";
+  const Wrapper: React.ElementType = team ? Link : "div";
+  const wrapperProps = team
+    ? { href: `/equipos/${team.code}`, "aria-label": team.name }
+    : {};
   return (
-    <div className={`flex min-w-0 flex-col gap-1 ${cls}`}>
+    <Wrapper
+      {...wrapperProps}
+      className={`flex min-w-0 flex-col gap-1 ${cls} ${
+        team ? "transition hover:text-[var(--color-arena)]" : ""
+      }`}
+    >
       <TeamFlag code={team?.code} size={28} />
       <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
         {team?.code ?? "—"}
       </p>
       <p className="truncate font-display text-sm leading-tight">{team?.name ?? "TBD"}</p>
-    </div>
+    </Wrapper>
   );
 }
 
@@ -1044,19 +1053,24 @@ function TeamHero({
   side: "home" | "away";
   winner: boolean;
 }) {
+  const Wrapper: React.ElementType = team ? Link : "div";
+  const wrapperProps = team
+    ? { href: `/equipos/${team.code}`, "aria-label": team.name }
+    : {};
   return (
-    <div
+    <Wrapper
+      {...wrapperProps}
       className={`flex flex-col items-center gap-3 text-center ${
         side === "home" ? "sm:items-end sm:text-right" : "sm:items-start sm:text-left"
-      }`}
+      } ${team ? "group transition hover:text-[var(--color-arena)]" : ""}`}
     >
       <TeamFlag
         code={team?.code}
         size={80}
         className={
           winner
-            ? "ring-2 ring-[var(--color-arena)] shadow-[var(--shadow-arena)]"
-            : "ring-1 ring-[var(--color-border-strong)]"
+            ? "ring-2 ring-[var(--color-arena)] shadow-[var(--shadow-arena)] transition group-hover:scale-105"
+            : "ring-1 ring-[var(--color-border-strong)] transition group-hover:scale-105"
         }
       />
       <div>
@@ -1071,6 +1085,6 @@ function TeamHero({
           {team?.name ?? "TBD"}
         </p>
       </div>
-    </div>
+    </Wrapper>
   );
 }

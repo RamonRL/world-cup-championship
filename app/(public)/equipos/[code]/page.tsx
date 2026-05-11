@@ -163,11 +163,13 @@ export default async function TeamDetailPage({
               const opp = oppId ? oppById.get(oppId) : null;
               return (
                 <li key={m.id}>
-                  <Link
-                    href={`/partido/${m.id}`}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:border-[var(--color-arena)]/40"
-                  >
-                    <span className="flex items-center gap-2">
+                  <div className="relative flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 transition hover:border-[var(--color-arena)]/40">
+                    <Link
+                      href={`/partido/${m.id}`}
+                      aria-label={`Partido ${m.code}`}
+                      className="absolute inset-0 z-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+                    />
+                    <span className="relative flex items-center gap-2">
                       <Badge variant="outline" className="text-[0.55rem]">
                         {STAGE_LABEL[m.stage] ?? m.stage}
                       </Badge>
@@ -175,12 +177,25 @@ export default async function TeamDetailPage({
                         {m.code}
                       </span>
                     </span>
-                    <span className="flex min-w-0 flex-1 items-center gap-2 sm:ml-3">
+                    <span className="relative z-10 flex min-w-0 flex-1 items-center gap-2 sm:ml-3">
                       <span className="text-sm font-medium">{isHome ? "vs" : "@"}</span>
-                      <TeamFlag code={opp?.code} size={20} />
-                      <span className="truncate text-sm font-medium">{opp?.name ?? "TBD"}</span>
+                      {opp ? (
+                        <Link
+                          href={`/equipos/${opp.code}`}
+                          aria-label={opp.name}
+                          className="flex min-w-0 items-center gap-2 hover:text-[var(--color-arena)]"
+                        >
+                          <TeamFlag code={opp.code} size={20} />
+                          <span className="truncate text-sm font-medium">{opp.name}</span>
+                        </Link>
+                      ) : (
+                        <>
+                          <TeamFlag code={undefined} size={20} />
+                          <span className="truncate text-sm font-medium">TBD</span>
+                        </>
+                      )}
                     </span>
-                    <span className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                    <span className="relative font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
                       {formatDateTime(m.scheduledAt, {
                         weekday: "short",
                         day: "2-digit",
@@ -190,12 +205,12 @@ export default async function TeamDetailPage({
                       })}
                     </span>
                     {m.venue ? (
-                      <span className="hidden items-center gap-1 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] sm:inline-flex">
+                      <span className="relative hidden items-center gap-1 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] sm:inline-flex">
                         <MapPin className="size-3" />
                         {m.venue}
                       </span>
                     ) : null}
-                  </Link>
+                  </div>
                 </li>
               );
             })}

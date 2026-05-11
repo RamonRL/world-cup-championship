@@ -76,10 +76,9 @@ export default async function GroupsPage() {
             // bandos), así que played/2 da los partidos disputados.
             const matchesPlayed = Math.floor(totalPlayed / 2);
             return (
-              <Link
+              <div
                 key={g.id}
-                href={`/grupos/${g.code}`}
-                className="group relative block overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--color-arena)]/50 hover:shadow-[var(--shadow-elev-2)]"
+                className="group relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--color-arena)]/50 hover:shadow-[var(--shadow-elev-2)]"
               >
                 {/* Halftone sutil sobre la letra del grupo */}
                 <div
@@ -87,8 +86,11 @@ export default async function GroupsPage() {
                   className="halftone pointer-events-none absolute inset-x-0 top-0 h-32 opacity-[0.05]"
                 />
 
-                {/* Header — letra del grupo dominante */}
-                <header className="relative flex items-end justify-between gap-3 border-b border-[var(--color-border)] px-5 pb-4 pt-5">
+                {/* Header — letra del grupo (clic → detalle del grupo) */}
+                <Link
+                  href={`/grupos/${g.code}`}
+                  aria-label={`Grupo ${g.code}`}
+                  className="relative flex items-end justify-between gap-3 border-b border-[var(--color-border)] px-5 pb-4 pt-5 transition hover:bg-[var(--color-surface-2)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]">
                   <div>
                     <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
                       Grupo
@@ -112,7 +114,7 @@ export default async function GroupsPage() {
                     )}
                     <ArrowUpRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[var(--color-arena)]" />
                   </div>
-                </header>
+                </Link>
 
                 <StandingsHeader />
                 {sorted.length === 0 ? (
@@ -142,7 +144,7 @@ export default async function GroupsPage() {
                   </ul>
                 )}
 
-              </Link>
+              </div>
             );
           })}
         </div>
@@ -227,6 +229,11 @@ function StandingRow({
     <li
       className={`relative border-b border-[var(--color-border)] last:border-b-0 before:absolute before:inset-y-0 before:left-0 before:w-0.5 ${stripe} ${rowBg}`}
     >
+      <Link
+        href={`/equipos/${team.code}`}
+        className="block transition hover:bg-[var(--color-surface-2)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-arena)]"
+        aria-label={team.name}
+      >
       {/* Mobile row */}
       <div className="grid grid-cols-[24px_1fr_28px_36px_44px] items-center gap-2 px-5 py-2.5 sm:hidden">
         <span className={`font-display tabular text-base ${posColor}`}>{pos}</span>
@@ -289,6 +296,7 @@ function StandingRow({
           {points}
         </span>
       </div>
+      </Link>
     </li>
   );
 }

@@ -297,14 +297,21 @@ function BracketCard({
   const dataSlotHome = stage === "r32" ? encodeSlotSource(R32_SLOTS[code].home) : undefined;
   const dataSlotAway = stage === "r32" ? encodeSlotSource(R32_SLOTS[code].away) : undefined;
 
-  const inner = (
+  return (
     <div
       data-bracket-card="true"
       data-slot-home={dataSlotHome}
       data-slot-away={dataSlotAway}
-      className="bracket-card w-full overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] transition-colors hover:border-[var(--color-arena)]/40"
+      className="bracket-card relative w-full overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] transition-colors hover:border-[var(--color-arena)]/40"
     >
-      <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+      {match ? (
+        <Link
+          href={`/partido/${match.id}`}
+          aria-label={`Partido ${match.code}`}
+          className="absolute inset-0 z-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+        />
+      ) : null}
+      <div className="relative flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
         <span>{code}</span>
         {match?.status === "finished" ? (
           <span className="text-[var(--color-success)]">FIN</span>
@@ -330,18 +337,11 @@ function BracketCard({
         compact
       />
       {match?.wentToPens ? (
-        <p className="border-t border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-0.5 text-center font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+        <p className="relative border-t border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-0.5 text-center font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
           Pen.: {match.homeScorePen ?? 0} – {match.awayScorePen ?? 0}
         </p>
       ) : null}
     </div>
-  );
-
-  if (!match) return inner;
-  return (
-    <Link href={`/partido/${match.id}`} className="block w-full">
-      {inner}
-    </Link>
   );
 }
 
@@ -381,29 +381,46 @@ function TeamLine({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-2 px-2",
+        "relative flex items-center justify-between gap-2 px-2",
         compact ? "py-1" : "py-1.5",
         isWinner && "bg-[color-mix(in_oklch,var(--color-success)_10%,transparent)]",
       )}
     >
-      <div className="flex min-w-0 items-center gap-1.5">
-        <TeamFlag code={team?.code} size={16} />
-        <span
-          className={cn(
-            "truncate text-[0.7rem] font-medium",
-            isWinner && "text-[var(--color-success)]",
-            isPlaceholder &&
-              "font-mono text-[0.6rem] uppercase tracking-[0.16em] text-[var(--color-muted-foreground)]",
-          )}
+      {team ? (
+        <Link
+          href={`/equipos/${team.code}`}
+          aria-label={team.name}
+          className="relative z-10 flex min-w-0 items-center gap-1.5 hover:text-[var(--color-arena)]"
         >
-          {label}
-        </span>
-        {isMyPick ? (
-          <span className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-[var(--color-arena)]">
-            ●
+          <TeamFlag code={team.code} size={16} />
+          <span
+            className={cn(
+              "truncate text-[0.7rem] font-medium",
+              isWinner && "text-[var(--color-success)]",
+            )}
+          >
+            {label}
           </span>
-        ) : null}
-      </div>
+          {isMyPick ? (
+            <span className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-[var(--color-arena)]">
+              ●
+            </span>
+          ) : null}
+        </Link>
+      ) : (
+        <div className="flex min-w-0 items-center gap-1.5">
+          <TeamFlag code={undefined} size={16} />
+          <span
+            className={cn(
+              "truncate text-[0.7rem] font-medium",
+              isPlaceholder &&
+                "font-mono text-[0.6rem] uppercase tracking-[0.16em] text-[var(--color-muted-foreground)]",
+            )}
+          >
+            {label}
+          </span>
+        </div>
+      )}
       <span className="font-display tabular text-base">
         {score != null ? score : <span className="text-[var(--color-muted-foreground)]">·</span>}
       </span>

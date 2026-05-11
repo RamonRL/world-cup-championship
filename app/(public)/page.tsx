@@ -208,10 +208,16 @@ export default async function HomePage() {
               {allTeams.map((t) => (
                 <li
                   key={t.id}
-                  title={t.name}
                   className="aspect-square transition hover:scale-110"
                 >
-                  <TeamFlag code={t.code} fluid />
+                  <Link
+                    href={`/equipos/${t.code}`}
+                    title={t.name}
+                    aria-label={t.name}
+                    className="block size-full rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+                  >
+                    <TeamFlag code={t.code} fluid />
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -336,24 +342,66 @@ export default async function HomePage() {
                   const away = m.awayTeamId ? teamMap.get(m.awayTeamId) : null;
                   return (
                     <li key={m.id}>
-                      <Link
-                        href={`/partido/${m.id}`}
-                        className="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 transition hover:border-[var(--color-arena)]/40"
-                      >
-                        <span className="flex min-w-0 items-center gap-2">
-                          <TeamFlag code={home?.code} size={20} />
+                      <div className="group relative flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 transition hover:border-[var(--color-arena)]/40">
+                        <Link
+                          href={`/partido/${m.id}`}
+                          aria-label={`Partido ${home?.name ?? "TBD"} vs ${away?.name ?? "TBD"}`}
+                          className="absolute inset-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+                        />
+                        <span className="relative flex min-w-0 items-center gap-2">
+                          {home ? (
+                            <Link
+                              href={`/equipos/${home.code}`}
+                              className="flex shrink-0 items-center gap-1 rounded-full px-0.5 hover:opacity-80"
+                              aria-label={home.name}
+                            >
+                              <TeamFlag code={home.code} size={20} />
+                            </Link>
+                          ) : (
+                            <TeamFlag code={undefined} size={20} />
+                          )}
                           <span className="truncate text-sm font-medium">
-                            {home?.name ?? "TBD"} <span className="text-[var(--color-muted-foreground)]">·</span> {away?.name ?? "TBD"}
+                            {home ? (
+                              <Link
+                                href={`/equipos/${home.code}`}
+                                className="hover:text-[var(--color-arena)]"
+                              >
+                                {home.name}
+                              </Link>
+                            ) : (
+                              "TBD"
+                            )}{" "}
+                            <span className="text-[var(--color-muted-foreground)]">·</span>{" "}
+                            {away ? (
+                              <Link
+                                href={`/equipos/${away.code}`}
+                                className="hover:text-[var(--color-arena)]"
+                              >
+                                {away.name}
+                              </Link>
+                            ) : (
+                              "TBD"
+                            )}
                           </span>
-                          <TeamFlag code={away?.code} size={20} />
+                          {away ? (
+                            <Link
+                              href={`/equipos/${away.code}`}
+                              className="flex shrink-0 items-center gap-1 rounded-full px-0.5 hover:opacity-80"
+                              aria-label={away.name}
+                            >
+                              <TeamFlag code={away.code} size={20} />
+                            </Link>
+                          ) : (
+                            <TeamFlag code={undefined} size={20} />
+                          )}
                         </span>
-                        <span className="shrink-0 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                        <span className="relative shrink-0 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
                           {formatDateTime(m.scheduledAt, {
                             day: "2-digit",
                             month: "short",
                           })}
                         </span>
-                      </Link>
+                      </div>
                     </li>
                   );
                 })}

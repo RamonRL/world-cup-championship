@@ -194,13 +194,14 @@ export default async function GroupDetailPage({
             {/* Banderas + nombres */}
             <div className="flex flex-wrap gap-2">
               {sortedTeams.map((t) => (
-                <span
+                <Link
                   key={t.id}
-                  className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-1 text-sm"
+                  href={`/equipos/${t.code}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-1 text-sm transition hover:border-[var(--color-arena)]/40 hover:text-[var(--color-arena)]"
                 >
                   <TeamFlag code={t.code} size={18} />
                   <span className="font-medium">{t.name}</span>
-                </span>
+                </Link>
               ))}
             </div>
 
@@ -380,20 +381,38 @@ export default async function GroupDetailPage({
                 return (
                   <li
                     key={i}
-                    className={`relative flex items-center gap-3 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2.5 before:absolute before:inset-y-0 before:left-0 before:w-0.5 ${stripe}`}
+                    className={`relative overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] before:absolute before:inset-y-0 before:left-0 before:w-0.5 ${stripe}`}
                   >
-                    <span className={`font-display tabular text-2xl tracking-tight ${posColor}`}>
-                      {pos}
-                    </span>
-                    <TeamFlag code={team?.code} size={28} />
-                    <span className="min-w-0 flex-1 truncate font-display text-base tracking-tight">
-                      {team?.name ?? "—"}
-                    </span>
-                    {advances ? (
-                      <Badge variant="default" className="text-[0.55rem]">
-                        Pasa
-                      </Badge>
-                    ) : null}
+                    {team ? (
+                      <Link
+                        href={`/equipos/${team.code}`}
+                        aria-label={team.name}
+                        className="flex items-center gap-3 px-3 py-2.5 transition hover:text-[var(--color-arena)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-arena)]"
+                      >
+                        <span className={`font-display tabular text-2xl tracking-tight ${posColor}`}>
+                          {pos}
+                        </span>
+                        <TeamFlag code={team.code} size={28} />
+                        <span className="min-w-0 flex-1 truncate font-display text-base tracking-tight">
+                          {team.name}
+                        </span>
+                        {advances ? (
+                          <Badge variant="default" className="text-[0.55rem]">
+                            Pasa
+                          </Badge>
+                        ) : null}
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-3 px-3 py-2.5">
+                        <span className={`font-display tabular text-2xl tracking-tight ${posColor}`}>
+                          {pos}
+                        </span>
+                        <TeamFlag code={undefined} size={28} />
+                        <span className="min-w-0 flex-1 truncate font-display text-base tracking-tight">
+                          —
+                        </span>
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -619,6 +638,11 @@ function DetailStandingRow({
     <li
       className={`relative border-b border-[var(--color-border)] last:border-b-0 before:absolute before:inset-y-0 before:left-0 before:w-0.5 ${stripe} ${rowBg}`}
     >
+      <Link
+        href={`/equipos/${team.code}`}
+        className="block transition hover:bg-[var(--color-surface-2)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-arena)]"
+        aria-label={team.name}
+      >
       <div className="grid grid-cols-[24px_1fr_28px_36px_44px_44px] items-center gap-2 px-5 py-2.5 sm:hidden">
         <span className={`font-display tabular text-base ${posColor}`}>{pos}</span>
         <span className="flex min-w-0 items-center gap-2">
@@ -673,6 +697,7 @@ function DetailStandingRow({
         </span>
         <span className="text-right">{pickBadge}</span>
       </div>
+      </Link>
     </li>
   );
 }
@@ -708,18 +733,20 @@ function MatchCard({
   const winnerAway =
     isFinished && m.winnerTeamId != null && m.winnerTeamId === m.awayTeamId;
   return (
-    <Link
-      href={`/partido/${m.id}`}
-      className="group relative block overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)]"
-    >
-      <header className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2">
+    <div className="group relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)]">
+      <Link
+        href={`/partido/${m.id}`}
+        aria-label={`Partido ${m.code}`}
+        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+      />
+      <header className="relative flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2">
         <span className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
           {m.code}
         </span>
         <StatusPill status={m.status} />
       </header>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-5 sm:gap-3 sm:py-6">
+      <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-5 sm:gap-3 sm:py-6">
         <TeamSide team={home} side="home" winner={winnerHome} />
         <ScoreCenter
           home={m.homeScore}
@@ -730,7 +757,7 @@ function MatchCard({
         <TeamSide team={away} side="away" winner={winnerAway} />
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+      <footer className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
         <span className="inline-flex items-center gap-1.5">
           <Clock className="size-3 shrink-0" />
           {formatDateTime(m.scheduledAt, {
@@ -755,7 +782,7 @@ function MatchCard({
           className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-arena)] to-transparent"
         />
       ) : null}
-    </Link>
+    </div>
   );
 }
 
@@ -798,11 +825,19 @@ function TeamSide({
   winner: boolean;
 }) {
   const isHome = side === "home";
+  const Wrapper: React.ElementType = team ? Link : "div";
+  const wrapperProps = team
+    ? {
+        href: `/equipos/${team.code}`,
+        "aria-label": team.name,
+      }
+    : {};
   return (
-    <div
-      className={`flex min-w-0 items-center gap-2 sm:gap-3 ${
+    <Wrapper
+      {...wrapperProps}
+      className={`relative z-10 flex min-w-0 items-center gap-2 sm:gap-3 ${
         isHome ? "flex-row-reverse text-right" : "text-left"
-      }`}
+      } ${team ? "transition hover:text-[var(--color-arena)]" : ""}`}
     >
       <span className={`shrink-0 transition-transform ${winner ? "scale-105" : ""}`}>
         <span className="block sm:hidden">
@@ -829,7 +864,7 @@ function TeamSide({
           {team?.code ?? "—"}
         </p>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 

@@ -280,13 +280,26 @@ export default async function BracketPage() {
                 <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
                   Tu campeón
                 </p>
-                <p className="font-display text-3xl tracking-tight">
-                  {myChampion ? teamById.get(myChampion)?.name ?? "—" : "Sin elegir"}
-                </p>
+                {myChampion && teamById.get(myChampion) ? (
+                  <Link
+                    href={`/equipos/${teamById.get(myChampion)!.code}`}
+                    className="font-display text-3xl tracking-tight hover:text-[var(--color-arena)]"
+                  >
+                    {teamById.get(myChampion)!.name}
+                  </Link>
+                ) : (
+                  <p className="font-display text-3xl tracking-tight">Sin elegir</p>
+                )}
               </div>
             </div>
             {myChampion && teamById.get(myChampion) ? (
-              <TeamFlag code={teamById.get(myChampion)!.code} size={48} />
+              <Link
+                href={`/equipos/${teamById.get(myChampion)!.code}`}
+                aria-label={teamById.get(myChampion)!.name}
+                className="shrink-0 transition hover:scale-105"
+              >
+                <TeamFlag code={teamById.get(myChampion)!.code} size={48} />
+              </Link>
             ) : (
               <Link
                 href="/predicciones/bracket"
@@ -364,21 +377,32 @@ function MobileTeamRow({
           : "border-transparent"
       }`}
     >
-      <div className="flex min-w-0 items-center gap-2">
-        <TeamFlag code={team?.code} size={20} />
-        <span
-          className={
-            isPlaceholder
-              ? "truncate font-mono text-[0.7rem] uppercase tracking-[0.16em] text-[var(--color-muted-foreground)]"
-              : "truncate text-sm font-medium"
-          }
+      {team ? (
+        <Link
+          href={`/equipos/${team.code}`}
+          aria-label={team.name}
+          className="flex min-w-0 items-center gap-2 hover:text-[var(--color-arena)]"
         >
-          {label}
-        </span>
-        {isMyPick ? (
-          <span className="font-mono text-[0.65rem] text-[var(--color-arena)]">●</span>
-        ) : null}
-      </div>
+          <TeamFlag code={team.code} size={20} />
+          <span className="truncate text-sm font-medium">{label}</span>
+          {isMyPick ? (
+            <span className="font-mono text-[0.65rem] text-[var(--color-arena)]">●</span>
+          ) : null}
+        </Link>
+      ) : (
+        <div className="flex min-w-0 items-center gap-2">
+          <TeamFlag code={undefined} size={20} />
+          <span
+            className={
+              isPlaceholder
+                ? "truncate font-mono text-[0.7rem] uppercase tracking-[0.16em] text-[var(--color-muted-foreground)]"
+                : "truncate text-sm font-medium"
+            }
+          >
+            {label}
+          </span>
+        </div>
+      )}
       <span className="font-display tabular text-base">
         {score != null ? score : "·"}
       </span>

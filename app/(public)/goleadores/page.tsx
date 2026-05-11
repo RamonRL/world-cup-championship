@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Crown, Target } from "lucide-react";
 import { inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -114,15 +115,34 @@ export default async function ScorersPage() {
                       ) : null}
                     </span>
                     <span className="flex min-w-0 items-center gap-3">
-                      <TeamFlag code={team?.code} size={28} />
+                      {team ? (
+                        <Link
+                          href={`/equipos/${team.code}`}
+                          aria-label={team.name}
+                          className="shrink-0 transition hover:scale-105"
+                        >
+                          <TeamFlag code={team.code} size={28} />
+                        </Link>
+                      ) : (
+                        <TeamFlag code={undefined} size={28} />
+                      )}
                       <span className="min-w-0">
                         <span className="block truncate font-display text-base tracking-tight">
                           {player?.name ?? "—"}
                         </span>
                         <span className="block truncate font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-                          {team?.code ?? "—"}
+                          {team ? (
+                            <Link
+                              href={`/equipos/${team.code}`}
+                              className="hover:text-[var(--color-arena)]"
+                            >
+                              {team.code}
+                              {team.name ? ` · ${team.name}` : ""}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
                           {player?.position ? ` · ${player.position}` : ""}
-                          {team?.name ? ` · ${team.name}` : ""}
                         </span>
                       </span>
                     </span>
