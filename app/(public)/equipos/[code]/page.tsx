@@ -669,17 +669,16 @@ function NextMatchCard({
   const isHome = m.homeTeamId === team.id;
   const isLive = m.status === "live";
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/60 hover:shadow-[var(--shadow-elev-2)]">
-      <Link
-        href={`/partido/${m.id}`}
-        aria-label={`Partido ${m.code}`}
-        className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
-      />
+    <Link
+      href={`/partido/${m.id}`}
+      aria-label={`Partido ${m.code}`}
+      className="group relative block overflow-hidden rounded-2xl border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/60 hover:shadow-[var(--shadow-elev-2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+    >
       <div
         aria-hidden
         className="halftone pointer-events-none absolute inset-x-0 top-0 h-24 opacity-[0.06]"
       />
-      <header className="relative flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/50 px-5 py-2.5">
+      <header className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/50 px-5 py-2.5">
         <span className="flex items-center gap-2 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
           <span>{m.code}</span>
           <Badge variant="outline" className="text-[0.55rem]">
@@ -703,7 +702,7 @@ function NextMatchCard({
           </Badge>
         )}
       </header>
-      <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 py-6 sm:gap-6 sm:py-8">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 py-6 sm:gap-6 sm:py-8">
         <TeamSide team={isHome ? team : opp} side="home" />
         <ScoreCenter
           home={isHome ? m.homeScore : m.awayScore}
@@ -714,7 +713,7 @@ function NextMatchCard({
         />
         <TeamSide team={isHome ? opp : team} side="away" />
       </div>
-      <footer className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/30 px-5 py-2.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+      <footer className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/30 px-5 py-2.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
         <span className="inline-flex items-center gap-1.5">
           <Clock className="size-3 shrink-0" />
           {formatDateTime(m.scheduledAt, {
@@ -732,7 +731,7 @@ function NextMatchCard({
           </span>
         ) : null}
       </footer>
-    </div>
+    </Link>
   );
 }
 
@@ -772,13 +771,12 @@ function ResultCard({
       </Badge>
     );
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)]">
-      <Link
-        href={`/partido/${m.id}`}
-        aria-label={`Partido ${m.code}`}
-        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
-      />
-      <header className="relative flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+    <Link
+      href={`/partido/${m.id}`}
+      aria-label={`Partido ${m.code}`}
+      className="group relative block overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+    >
+      <header className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
         <span className="flex items-center gap-2">
           <span>{m.code}</span>
           <Badge variant="outline" className="text-[0.55rem]">
@@ -787,7 +785,7 @@ function ResultCard({
         </span>
         {resultBadge}
       </header>
-      <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-5 sm:gap-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-5 sm:gap-3">
         <TeamSide team={isHome ? team : opp} side="home" winner={result === "win" && isHome} />
         <ScoreCenter
           home={isHome ? m.homeScore : m.awayScore}
@@ -797,7 +795,7 @@ function ResultCard({
         />
         <TeamSide team={isHome ? opp : team} side="away" winner={result === "win" && !isHome} />
       </div>
-      <footer className="relative flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+      <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
         <span className="inline-flex items-center gap-1.5">
           <Clock className="size-3 shrink-0" />
           {formatDateTime(m.scheduledAt, {
@@ -807,7 +805,7 @@ function ResultCard({
           })}
         </span>
       </footer>
-    </div>
+    </Link>
   );
 }
 
@@ -818,9 +816,9 @@ function UpcomingRow({ m, opp }: { m: MatchRow; opp: TeamRow | null }) {
         <Link
           href={`/partido/${m.id}`}
           aria-label={`Partido ${m.code}`}
-          className="absolute inset-0 z-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+          className="absolute inset-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
         />
-        <span className="relative flex items-center gap-2">
+        <span className="pointer-events-none relative flex items-center gap-2">
           <Badge variant="outline" className="text-[0.55rem]">
             {STAGE_LABEL[m.stage] ?? m.stage}
           </Badge>
@@ -828,13 +826,13 @@ function UpcomingRow({ m, opp }: { m: MatchRow; opp: TeamRow | null }) {
             {m.code}
           </span>
         </span>
-        <span className="relative z-10 flex min-w-0 flex-1 items-center gap-2 sm:ml-3">
+        <span className="pointer-events-none relative flex min-w-0 flex-1 items-center gap-2 sm:ml-3">
           <span className="text-sm font-medium text-[var(--color-muted-foreground)]">vs</span>
           {opp ? (
             <Link
               href={`/equipos/${opp.code}`}
               aria-label={opp.name}
-              className="flex min-w-0 items-center gap-2 hover:text-[var(--color-arena)]"
+              className="pointer-events-auto flex min-w-0 items-center gap-2 hover:text-[var(--color-arena)]"
             >
               <TeamFlag code={opp.code} size={20} />
               <span className="truncate text-sm font-medium">{opp.name}</span>
@@ -846,7 +844,7 @@ function UpcomingRow({ m, opp }: { m: MatchRow; opp: TeamRow | null }) {
             </>
           )}
         </span>
-        <span className="relative font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+        <span className="pointer-events-none relative font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
           {formatDateTime(m.scheduledAt, {
             weekday: "short",
             day: "2-digit",
@@ -856,7 +854,7 @@ function UpcomingRow({ m, opp }: { m: MatchRow; opp: TeamRow | null }) {
           })}
         </span>
         {m.venue ? (
-          <span className="relative hidden items-center gap-1 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] sm:inline-flex">
+          <span className="pointer-events-none relative hidden items-center gap-1 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] sm:inline-flex">
             <MapPin className="size-3" />
             {m.venue}
           </span>
