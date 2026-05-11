@@ -70,3 +70,21 @@ export function formatTime(
     ...options,
   });
 }
+
+/**
+ * "hace 2 min", "hace 3 h", "hace 4 d" en español. Para timestamps recientes
+ * usados en feeds de actividad / dashboards donde la hora exacta importa
+ * menos que la cercanía. Si el delta supera ~7 días, cae a fecha corta.
+ */
+export function formatRelative(value: Date | string | number, now: Date = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  const deltaSec = Math.max(0, (now.getTime() - date.getTime()) / 1000);
+  if (deltaSec < 45) return "ahora";
+  const deltaMin = Math.round(deltaSec / 60);
+  if (deltaMin < 60) return `hace ${deltaMin} min`;
+  const deltaH = Math.round(deltaMin / 60);
+  if (deltaH < 24) return `hace ${deltaH} h`;
+  const deltaD = Math.round(deltaH / 24);
+  if (deltaD < 7) return `hace ${deltaD} d`;
+  return formatDate(date, { day: "2-digit", month: "short" });
+}

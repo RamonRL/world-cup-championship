@@ -5,7 +5,7 @@ import {
   ClipboardCheck,
   Flame,
   Goal,
-  ScrollText,
+  Radar,
   ShieldCheck,
   Sliders,
   Sparkles,
@@ -267,10 +267,10 @@ export default async function AdminHome() {
               href="/admin/operaciones"
             />
             <Shortcut
-              icon={<ScrollText className="size-4" />}
-              label="Auditoría"
+              icon={<Radar className="size-4" />}
+              label="Monitoreo"
               hint={`${goalCount} goles registrados`}
-              href="/admin/auditoria"
+              href="/admin/monitoreo"
             />
           </div>
         </article>

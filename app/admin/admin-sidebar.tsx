@@ -10,7 +10,7 @@ import {
   Gauge,
   Goal,
   MessagesSquare,
-  ScrollText,
+  Radar,
   ShieldCheck,
   Sliders,
   Sparkles,
@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 const items: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin", label: "Dashboard", icon: Gauge },
+  { href: "/admin/monitoreo", label: "Monitoreo", icon: Radar },
   { href: "/admin/ligas", label: "Ligas", icon: Trophy },
   { href: "/admin/usuarios", label: "Usuarios", icon: UserCheck },
   { href: "/admin/selecciones", label: "Selecciones", icon: Users },
@@ -34,7 +35,6 @@ const items: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/operaciones", label: "Operaciones", icon: ShieldCheck },
   { href: "/admin/progreso", label: "Progreso", icon: Activity },
   { href: "/admin/chat", label: "Moderación", icon: MessagesSquare },
-  { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },
 ];
 
 function isActive(pathname: string, href: string) {
