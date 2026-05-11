@@ -269,28 +269,28 @@ const KO_MATCHES: KOMatchSeed[] = [
   { code: "M87", stage: "r32", date: "2026-07-03", hour: 20, minute: 30, venue: "Arrowhead Stadium" },
   { code: "M88", stage: "r32", date: "2026-07-03", hour: 13, minute: 0, venue: "AT&T Stadium" },
 
-  // R16 (M89–M96) — sin hora oficial concreta, uso 16:00 local default
-  { code: "M89", stage: "r16", date: "2026-07-04", hour: 16, minute: 0, venue: "Lincoln Financial Field" },
-  { code: "M90", stage: "r16", date: "2026-07-04", hour: 16, minute: 0, venue: "NRG Stadium" },
+  // R16 (M89–M96) — horarios oficiales FIFA
+  { code: "M89", stage: "r16", date: "2026-07-04", hour: 17, minute: 0, venue: "Lincoln Financial Field" },
+  { code: "M90", stage: "r16", date: "2026-07-04", hour: 12, minute: 0, venue: "NRG Stadium" },
   { code: "M91", stage: "r16", date: "2026-07-05", hour: 16, minute: 0, venue: "MetLife Stadium" },
-  { code: "M92", stage: "r16", date: "2026-07-05", hour: 16, minute: 0, venue: "Estadio Azteca" },
-  { code: "M93", stage: "r16", date: "2026-07-06", hour: 16, minute: 0, venue: "AT&T Stadium" },
-  { code: "M94", stage: "r16", date: "2026-07-06", hour: 16, minute: 0, venue: "Lumen Field" },
-  { code: "M95", stage: "r16", date: "2026-07-07", hour: 16, minute: 0, venue: "Mercedes-Benz Stadium" },
-  { code: "M96", stage: "r16", date: "2026-07-07", hour: 16, minute: 0, venue: "BC Place" },
+  { code: "M92", stage: "r16", date: "2026-07-05", hour: 18, minute: 0, venue: "Estadio Azteca" },
+  { code: "M93", stage: "r16", date: "2026-07-06", hour: 14, minute: 0, venue: "AT&T Stadium" },
+  { code: "M94", stage: "r16", date: "2026-07-06", hour: 17, minute: 0, venue: "Lumen Field" },
+  { code: "M95", stage: "r16", date: "2026-07-07", hour: 12, minute: 0, venue: "Mercedes-Benz Stadium" },
+  { code: "M96", stage: "r16", date: "2026-07-07", hour: 13, minute: 0, venue: "BC Place" },
 
-  // QF (M97–M100)
+  // QF (M97–M100) — horarios oficiales FIFA
   { code: "M97", stage: "qf", date: "2026-07-09", hour: 16, minute: 0, venue: "Gillette Stadium" },
-  { code: "M98", stage: "qf", date: "2026-07-10", hour: 16, minute: 0, venue: "SoFi Stadium" },
-  { code: "M99", stage: "qf", date: "2026-07-11", hour: 16, minute: 0, venue: "Hard Rock Stadium" },
-  { code: "M100", stage: "qf", date: "2026-07-11", hour: 16, minute: 0, venue: "Arrowhead Stadium" },
+  { code: "M98", stage: "qf", date: "2026-07-10", hour: 12, minute: 0, venue: "SoFi Stadium" },
+  { code: "M99", stage: "qf", date: "2026-07-11", hour: 17, minute: 0, venue: "Hard Rock Stadium" },
+  { code: "M100", stage: "qf", date: "2026-07-11", hour: 20, minute: 0, venue: "Arrowhead Stadium" },
 
-  // SF (M101–M102)
-  { code: "M101", stage: "sf", date: "2026-07-14", hour: 16, minute: 0, venue: "AT&T Stadium" },
-  { code: "M102", stage: "sf", date: "2026-07-15", hour: 16, minute: 0, venue: "Mercedes-Benz Stadium" },
+  // SF (M101–M102) — horarios oficiales FIFA
+  { code: "M101", stage: "sf", date: "2026-07-14", hour: 14, minute: 0, venue: "AT&T Stadium" },
+  { code: "M102", stage: "sf", date: "2026-07-15", hour: 15, minute: 0, venue: "Mercedes-Benz Stadium" },
 
-  // 3rd place
-  { code: "M103", stage: "third", date: "2026-07-18", hour: 16, minute: 0, venue: "Hard Rock Stadium" },
+  // 3rd place — horario oficial FIFA
+  { code: "M103", stage: "third", date: "2026-07-18", hour: 17, minute: 0, venue: "Hard Rock Stadium" },
 
   // Final
   { code: "M104", stage: "final", date: "2026-07-19", hour: 15, minute: 0, venue: "MetLife Stadium" },
