@@ -279,14 +279,12 @@ function MatchCard({
   const winnerAway =
     isFinished && m.homeScore != null && m.awayScore != null && m.awayScore > m.homeScore;
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)]">
-      <Link
-        href={`/partido/${m.id}`}
-        aria-label={`Partido ${m.code}`}
-        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
-      />
+    <Link
+      href={`/partido/${m.id}`}
+      className="group relative block overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-arena)]/40 hover:shadow-[var(--shadow-elev-2)]"
+    >
       {/* Top strip — code · grupo · status */}
-      <header className="relative flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2">
+      <header className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-2">
         <div className="flex flex-wrap items-center gap-2 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
           <span>{m.code}</span>
           {groupCode ? (
@@ -299,7 +297,7 @@ function MatchCard({
       </header>
 
       {/* Versus body */}
-      <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-5 sm:gap-3 sm:py-6">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-5 sm:gap-3 sm:py-6">
         <TeamSide team={home} side="home" winner={winnerHome} />
         <ScoreCenter
           home={m.homeScore}
@@ -311,7 +309,7 @@ function MatchCard({
       </div>
 
       {/* Bottom strip — date · venue */}
-      <footer className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+      <footer className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-4 py-2 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
         <span className="inline-flex items-center gap-1.5">
           <Clock className="size-3 shrink-0" />
           {formatDateTime(m.scheduledAt, {
@@ -336,7 +334,7 @@ function MatchCard({
           className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-arena)] to-transparent"
         />
       ) : null}
-    </div>
+    </Link>
   );
 }
 
@@ -379,16 +377,11 @@ function TeamSide({
   winner: boolean;
 }) {
   const isHome = side === "home";
-  const Wrapper: React.ElementType = team ? Link : "div";
-  const wrapperProps = team
-    ? { href: `/equipos/${team.code}`, "aria-label": team.name }
-    : {};
   return (
-    <Wrapper
-      {...wrapperProps}
-      className={`relative z-10 flex min-w-0 items-center gap-2 sm:gap-3 ${
+    <div
+      className={`flex min-w-0 items-center gap-2 sm:gap-3 ${
         isHome ? "flex-row-reverse text-right" : "text-left"
-      } ${team ? "transition hover:text-[var(--color-arena)]" : ""}`}
+      }`}
     >
       <span
         className={`shrink-0 transition-transform ${winner ? "scale-105" : ""}`}
@@ -421,7 +414,7 @@ function TeamSide({
           {team?.code ?? "—"}
         </p>
       </div>
-    </Wrapper>
+    </div>
   );
 }
 
