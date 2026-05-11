@@ -352,6 +352,13 @@ export const predMatchResult = pgTable(
   (t) => [
     primaryKey({ columns: [t.userId, t.leagueId, t.matchId] }),
     index("pred_match_result_league_idx").on(t.leagueId),
+    // Cubre el JOIN de loadDeadlineSummary y buildRunningHubProps que
+    // filtran por matchId primero y luego (userId, leagueId).
+    index("pred_match_result_match_user_league_idx").on(
+      t.matchId,
+      t.userId,
+      t.leagueId,
+    ),
   ],
 );
 
@@ -375,6 +382,13 @@ export const predMatchScorer = pgTable(
   (t) => [
     primaryKey({ columns: [t.userId, t.leagueId, t.matchId] }),
     index("pred_match_scorer_league_idx").on(t.leagueId),
+    // Cubre el LEFT JOIN de pendingScorerCount en el dashboard (matchId
+    // primero, luego scope user/league).
+    index("pred_match_scorer_match_user_league_idx").on(
+      t.matchId,
+      t.userId,
+      t.leagueId,
+    ),
   ],
 );
 
@@ -442,6 +456,15 @@ export const pointsLedger = pgTable(
     index("points_ledger_user_idx").on(t.userId),
     index("points_ledger_league_idx").on(t.leagueId),
     index("points_ledger_source_key_idx").on(t.source, t.sourceKey),
+    // Cubre la query agregada del leaderboard que filtra por leagueId y
+    // agrupa/joinea por userId.
+    index("points_ledger_league_user_idx").on(t.leagueId, t.userId),
+    // Cubre loadActivityFeed (userId+leagueId, orden por computedAt DESC).
+    index("points_ledger_user_league_computed_idx").on(
+      t.userId,
+      t.leagueId,
+      t.computedAt,
+    ),
   ],
 );
 

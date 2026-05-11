@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matches } from "@/lib/db/schema";
@@ -42,7 +43,15 @@ type StageStat = {
   unmatched: number;
 };
 
-async function loadStageStats(): Promise<Map<Stage, StageStat>> {
+/**
+ * Devuelve un mapa por `stage` con totales/unfinished/unmatched.
+ * Cacheado a nivel de request con `react.cache()` para que el layout
+ * (`loadDeadlineSummary`) y el dashboard (`buildRunningHubProps`) compartan
+ * el mismo resultado en una sola navegación sin duplicar la query.
+ */
+const loadStageStats = cache(async function loadStageStats(): Promise<
+  Map<Stage, StageStat>
+> {
   const rows = await db
     .select({
       stage: matches.stage,
@@ -58,7 +67,7 @@ async function loadStageStats(): Promise<Map<Stage, StageStat>> {
       { total: r.total, unfinished: r.unfinished, unmatched: r.unmatched },
     ]),
   );
-}
+});
 
 function resolveState(
   matchday: MatchdayInput,

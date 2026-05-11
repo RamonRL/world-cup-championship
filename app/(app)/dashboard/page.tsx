@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
@@ -16,21 +17,25 @@ import {
   predMatchScorer,
   predSpecial,
   predTournamentTopScorer,
-  profiles,
   specialPredictions,
   teams,
 } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
-import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
-import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
+import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { loadActivityFeed } from "@/lib/activity-feed";
 import { ImportPredictionsBanner } from "@/components/predictions/import-banner";
 import { computeMatchdayStates, type Stage } from "@/lib/matchday-state";
 import { getBracketStatus } from "@/lib/bracket-state";
 import { ProgressHub, type ProgressHubProps } from "@/components/dashboard/progress-hub";
+import {
+  countLeagueMembers,
+  leagueHasPoints,
+  loadLeaderboard,
+  type LeaderboardEntry,
+} from "@/lib/leaderboard";
 
 const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T19:00:00Z";
 
@@ -58,6 +63,7 @@ export default async function DashboardPage() {
   const me = await requireUser();
   const leagueId = (await currentLeagueId(me))!;
   const kickoff = new Date(KICKOFF);
+  const tournamentStarted = kickoff.getTime() <= Date.now();
   const days = Math.max(0, Math.ceil((kickoff.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
   // Stats: solo cuentan los puntos que el usuario ha hecho en ESTA liga.
@@ -67,68 +73,14 @@ export default async function DashboardPage() {
     .where(and(eq(pointsLedger.userId, me.id), eq(pointsLedger.leagueId, leagueId)));
   const myPoints = myPointsRow?.total ?? 0;
 
-  // Participantes de la liga activa.
-  const leagueFilter = inLeagueFilter(leagueId);
-  const allUsers = leagueFilter
-    ? await db.select().from(profiles).where(leagueFilter)
-    : await db.select().from(profiles);
-  const allLedger = await db
-    .select()
-    .from(pointsLedger)
-    .where(eq(pointsLedger.leagueId, leagueId));
-  const stats = new Map<
-    string,
-    {
-      totalPoints: number;
-      exactScoresCount: number;
-      knockoutPoints: number;
-      championCorrect: boolean;
-    }
-  >();
-  for (const u of allUsers) {
-    stats.set(u.id, {
-      totalPoints: 0,
-      exactScoresCount: 0,
-      knockoutPoints: 0,
-      championCorrect: false,
-    });
-  }
-  for (const e of allLedger) {
-    const s = stats.get(e.userId);
-    if (!s) continue;
-    s.totalPoints += e.points;
-    if (e.source === "match_exact_score" || e.source === "knockout_score_90") {
-      s.exactScoresCount += 1;
-    }
-    if (
-      e.source === "bracket_slot" ||
-      e.source === "knockout_qualifier" ||
-      e.source === "knockout_pens_bonus" ||
-      e.source === "knockout_score_90"
-    ) {
-      s.knockoutPoints += e.points;
-    }
-  }
-  const sorted = allUsers
-    .map((u) => ({
-      user: u,
-      ...(stats.get(u.id) ?? {
-        totalPoints: 0,
-        exactScoresCount: 0,
-        knockoutPoints: 0,
-        championCorrect: false,
-      }),
-    }))
-    .sort((a, b) =>
-      compareForRanking(
-        { userId: a.user.id, ...a },
-        { userId: b.user.id, ...b },
-      ),
-    );
-  const myPosition =
-    sorted.length > 0 && myPoints > 0
-      ? sorted.findIndex((r) => r.user.id === me.id) + 1
-      : null;
+  // Pre-torneo nadie tiene puntos y el ranking renderiza empty state, así
+  // que evitamos cargar/agregar todas las filas de profiles + pointsLedger
+  // de la liga. Sólo computamos ranking si:
+  //   - el torneo ya empezó, o
+  //   - el usuario actual ya suma puntos, o
+  //   - hay al menos un punto en la liga (check EXISTS barato).
+  const computeRanking =
+    tournamentStarted || myPoints > 0 ? true : await leagueHasPoints(leagueId);
 
   const upcomingMatchdays = await db
     .select()
@@ -136,20 +88,6 @@ export default async function DashboardPage() {
     .where(gt(matchdays.predictionDeadlineAt, new Date()))
     .orderBy(asc(matchdays.predictionDeadlineAt))
     .limit(1);
-
-  const pendingScorerCount = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(matches)
-    .leftJoin(
-      predMatchScorer,
-      and(
-        eq(predMatchScorer.matchId, matches.id),
-        eq(predMatchScorer.userId, me.id),
-        eq(predMatchScorer.leagueId, leagueId),
-      ),
-    )
-    .where(and(gt(matches.scheduledAt, new Date()), sql`${predMatchScorer.matchId} is null`));
-  const pendingScorers = pendingScorerCount[0]?.c ?? 0;
 
   const [
     groupCount,
@@ -162,6 +100,10 @@ export default async function DashboardPage() {
     bracketStatus,
     bracketFilledRow,
     allFutureMatchdays,
+    leaderboardEntries,
+    leagueMemberCountFallback,
+    pendingScorerCount,
+    activity,
   ] = await Promise.all([
     db
       .select({ c: sql<number>`count(*)::int` })
@@ -220,8 +162,41 @@ export default async function DashboardPage() {
       .from(matchdays)
       .where(gt(matchdays.predictionDeadlineAt, new Date()))
       .orderBy(asc(matchdays.predictionDeadlineAt)),
+    computeRanking
+      ? loadLeaderboard(leagueId)
+      : Promise.resolve([] as LeaderboardEntry[]),
+    computeRanking ? Promise.resolve(0) : countLeagueMembers(leagueId),
+    tournamentStarted
+      ? db
+          .select({ c: sql<number>`count(*)::int` })
+          .from(matches)
+          .leftJoin(
+            predMatchScorer,
+            and(
+              eq(predMatchScorer.matchId, matches.id),
+              eq(predMatchScorer.userId, me.id),
+              eq(predMatchScorer.leagueId, leagueId),
+            ),
+          )
+          .where(
+            and(
+              gt(matches.scheduledAt, new Date()),
+              sql`${predMatchScorer.matchId} is null`,
+            ),
+          )
+      : Promise.resolve([{ c: 0 }] as Array<{ c: number }>),
+    myPoints > 0
+      ? loadActivityFeed(me.id, leagueId, 8)
+      : Promise.resolve([] as Awaited<ReturnType<typeof loadActivityFeed>>),
   ]);
   const liveMatch = liveMatchRows[0] ?? null;
+  const sorted = leaderboardEntries;
+  const totalParticipants = computeRanking ? sorted.length : leagueMemberCountFallback;
+  const myPosition =
+    sorted.length > 0 && myPoints > 0
+      ? sorted.findIndex((r) => r.userId === me.id) + 1 || null
+      : null;
+  const pendingScorers = pendingScorerCount[0]?.c ?? 0;
 
   const teamIds = [...recentMatch, ...nextMatch, ...(liveMatch ? [liveMatch] : [])]
     .flatMap((m) => [m.homeTeamId, m.awayTeamId])
@@ -244,7 +219,6 @@ export default async function DashboardPage() {
         .from(matchScorers)
         .where(eq(matchScorers.matchId, liveMatch.id))
     : [];
-  const activity = await loadActivityFeed(me.id, leagueId, 8);
 
   const liveScorerPlayerIds = liveScorerRows.map((s) => s.playerId);
   const livePlayerRows =
@@ -280,9 +254,8 @@ export default async function DashboardPage() {
   const preTorneoComplete =
     [groupsDone, topScorerDone, specialsDone].filter(Boolean).length;
   const preTorneoTotal = 3;
-  const tournamentStarted = kickoff.getTime() <= Date.now();
-  const myStats = stats.get(me.id);
-  const exactScores = myStats?.exactScoresCount ?? 0;
+  const myEntry = sorted.find((r) => r.userId === me.id) ?? null;
+  const exactScores = myEntry?.exactScoresCount ?? 0;
 
   // Compute live progress-hub props.
   const bracketFilled = bracketFilledRow[0]?.c ?? 0;
@@ -323,7 +296,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-10">
-      <ImportPredictionsBanner userId={me.id} activeLeagueId={leagueId} />
+      <Suspense fallback={null}>
+        <ImportPredictionsBanner userId={me.id} activeLeagueId={leagueId} />
+      </Suspense>
 
       {/* FWC26 mark — centrado, encima de la barra dinámica */}
       <div className="flex flex-col items-center gap-1.5 pt-2">
@@ -567,9 +542,9 @@ export default async function DashboardPage() {
           prefix={myPosition != null ? "#" : null}
           hint={
             myPosition != null
-              ? `de ${sorted.length}`
-              : sorted.length > 1
-                ? `${sorted.length} jugadores · sin puntos aún`
+              ? `de ${totalParticipants}`
+              : totalParticipants > 1
+                ? `${totalParticipants} jugadores · sin puntos aún`
                 : "Esperando primer resultado"
           }
           accent
@@ -774,8 +749,8 @@ export default async function DashboardPage() {
                   <Trophy className="size-5" />
                 </span>
                 <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
-                  {sorted.length > 1
-                    ? `${sorted.length} jugadores a cero. Que empiece.`
+                  {totalParticipants > 1
+                    ? `${totalParticipants} jugadores · sin puntos aún. Que empiece.`
                     : "Esperando más participantes."}
                 </p>
                 <Link
@@ -788,14 +763,14 @@ export default async function DashboardPage() {
             ) : (
               <ol className="space-y-2">
                 {podium.map((p, i) => {
-                  const display = p.user.nickname || p.user.email.split("@")[0];
-                  const isMe = p.user.id === me.id;
+                  const display = p.nickname || p.email.split("@")[0];
+                  const isMe = p.userId === me.id;
                   const position = i + 1;
                   const isLeader = position === 1;
                   const podiumTier = position <= 3;
                   return (
                     <li
-                      key={p.user.id}
+                      key={p.userId}
                       className={`group relative flex items-center gap-3 overflow-hidden rounded-lg border px-3 py-2.5 transition ${
                         isLeader
                           ? "border-[var(--color-arena)]/60 bg-[color-mix(in_oklch,var(--color-arena)_10%,var(--color-surface))] shadow-[var(--shadow-arena)]"
@@ -807,7 +782,7 @@ export default async function DashboardPage() {
                       }`}
                     >
                       <Link
-                        href={`/ranking/${p.user.id}`}
+                        href={`/ranking/${p.userId}`}
                         aria-label={`Perfil de ${display}`}
                         className="absolute inset-0 z-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
                       />
