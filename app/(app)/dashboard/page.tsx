@@ -442,13 +442,13 @@ export default async function DashboardPage() {
                   aria-label={`Partido ${next.code}`}
                   className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
                 />
-                <div className="relative flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-3)]/40 px-4 py-2">
+                <div className="pointer-events-none relative flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-3)]/40 px-4 py-2">
                   <span className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
                     Próximo partido · {next.code}
                   </span>
                   <ArrowUpRight className="size-3.5 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                 </div>
-                <div className="relative space-y-4 p-4">
+                <div className="pointer-events-none relative space-y-4 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <TeamCell team={nextHome} align="start" />
                     <span className="font-display text-2xl text-[var(--color-muted-foreground)]">
@@ -1059,7 +1059,7 @@ function TeamCell({
     <Wrapper
       {...wrapperProps}
       className={`relative z-10 flex min-w-0 items-center gap-3 ${cls} ${
-        team ? "transition hover:text-[var(--color-arena)]" : ""
+        team ? "pointer-events-auto transition hover:text-[var(--color-arena)]" : ""
       }`}
     >
       <TeamFlag code={team?.code} size={36} />
