@@ -19,12 +19,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PlayerAvatar } from "@/components/brand/player-avatar";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
 import { formatRemaining } from "@/lib/deadlines";
-import { Edit3, Settings2 } from "lucide-react";
+import { Edit3, Settings2, Target } from "lucide-react";
 import { BreadcrumbLD, MatchLD } from "@/components/seo/jsonld";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -413,6 +414,11 @@ export default async function MatchDetailPage({
           away={away ?? null}
           myResult={myResult}
           myScorerPlayer={myScorer ? playerById.get(myScorer.playerId) ?? null : null}
+          myScorerGoalsInMatch={
+            myScorer
+              ? scorerRows.filter((s) => s.playerId === myScorer.playerId && !s.isOwnGoal).length
+              : 0
+          }
           myLedger={myLedgerRows}
           teamById={teamById}
         />
@@ -648,6 +654,7 @@ function MyPickPanel({
   away,
   myResult,
   myScorerPlayer,
+  myScorerGoalsInMatch,
   myLedger,
   teamById,
 }: {
@@ -656,6 +663,7 @@ function MyPickPanel({
   away: typeof teams.$inferSelect | null;
   myResult: typeof predMatchResult.$inferSelect | null;
   myScorerPlayer: typeof players.$inferSelect | null;
+  myScorerGoalsInMatch: number;
   myLedger: LedgerEntry[];
   teamById: Map<number, typeof teams.$inferSelect>;
 }) {
@@ -725,9 +733,8 @@ function MyPickPanel({
           />
           <ScorerPick
             player={myScorerPlayer}
-            teamCode={
-              myScorerPlayer ? teamById.get(myScorerPlayer.teamId)?.code ?? null : null
-            }
+            team={myScorerPlayer ? teamById.get(myScorerPlayer.teamId) ?? null : null}
+            goalsScored={myScorerGoalsInMatch}
             entries={scorerEntries}
             totalPoints={scorerPoints}
             finished={finished}
@@ -871,41 +878,119 @@ function ScoreboardSide({
 
 function ScorerPick({
   player,
-  teamCode,
+  team,
+  goalsScored,
   entries,
   totalPoints,
   finished,
 }: {
   player: typeof players.$inferSelect | null;
-  teamCode: string | null;
+  team: typeof teams.$inferSelect | null;
+  goalsScored: number;
   entries: LedgerEntry[];
   totalPoints: number;
   finished: boolean;
 }) {
+  const hit = goalsScored > 0;
   return (
-    <div className="space-y-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
-      <div className="flex items-baseline justify-between gap-2">
+    <div
+      className={`relative space-y-4 overflow-hidden rounded-xl border p-4 ${
+        hit
+          ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface-2))]"
+          : "border-[var(--color-border)] bg-[var(--color-surface-2)]"
+      }`}
+    >
+      {hit ? (
+        <>
+          <div
+            aria-hidden
+            className="halftone pointer-events-none absolute inset-x-0 top-0 h-20 opacity-[0.06]"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-40 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle, color-mix(in oklch, var(--color-arena) 32%, transparent), transparent 70%)",
+            }}
+          />
+        </>
+      ) : null}
+
+      <div className="relative flex items-baseline justify-between gap-2">
         <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
           Goleador
         </p>
         {finished && player ? <PointsTag points={totalPoints} /> : null}
       </div>
-      <p
-        className={`font-display tabular text-2xl leading-tight tracking-tight ${
-          player ? "" : "text-[var(--color-muted-foreground)]"
-        }`}
-      >
-        {player?.name ?? "Sin pick"}
-      </p>
+
       {player ? (
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-          {player.jerseyNumber != null ? `#${player.jerseyNumber} · ` : ""}
-          {teamCode ?? ""}
-          {player.position ? ` · ${player.position}` : ""}
-        </p>
-      ) : null}
+        <div className="relative flex items-center gap-3">
+          <div className="relative shrink-0">
+            <PlayerAvatar
+              name={player.name}
+              photoUrl={player.photoUrl}
+              jerseyNumber={player.jerseyNumber}
+              size={64}
+              className={hit ? "border-[var(--color-arena)]/50" : ""}
+            />
+            {team ? (
+              <Link
+                href={`/equipos/${team.code}`}
+                aria-label={team.name}
+                className="absolute -bottom-1 -right-1 grid size-7 place-items-center rounded-full border-2 border-[var(--color-surface-2)] bg-[var(--color-surface)] shadow-[var(--shadow-elev-1)] transition hover:scale-110"
+              >
+                <TeamFlag code={team.code} size={22} />
+              </Link>
+            ) : null}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p
+              className={`truncate font-display text-xl leading-tight tracking-tight sm:text-2xl ${
+                hit ? "text-[var(--color-arena)] glow-arena" : ""
+              }`}
+            >
+              {player.name}
+            </p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+              {player.jerseyNumber != null ? (
+                <span className="font-display tabular text-[0.75rem] text-[var(--color-foreground)]">
+                  #{player.jerseyNumber}
+                </span>
+              ) : null}
+              {team ? <span>{team.code}</span> : null}
+              {player.position ? <span>· {player.position}</span> : null}
+            </p>
+            {hit ? (
+              <p className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_10%,transparent)] px-2 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-arena)]">
+                <Target className="size-2.5" />
+                Marcó {goalsScored} {goalsScored === 1 ? "gol" : "goles"}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <div className="relative flex items-center gap-3 py-1">
+          <span
+            className="grid size-16 shrink-0 place-items-center rounded-full border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted-foreground)]"
+          >
+            <Target className="size-6" />
+          </span>
+          <div>
+            <p className="font-display text-xl leading-tight tracking-tight text-[var(--color-muted-foreground)]">
+              Sin pick
+            </p>
+            <p className="mt-0.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+              No apostaste por goleador en este partido
+            </p>
+          </div>
+        </div>
+      )}
+
       {finished && player ? (
-        <PointsBreakdown entries={entries} emptyLabel="No marcó · 0 pts" />
+        <div className="relative">
+          <PointsBreakdown entries={entries} emptyLabel="No marcó · 0 pts" />
+        </div>
       ) : null}
     </div>
   );

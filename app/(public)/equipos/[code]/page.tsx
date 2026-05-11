@@ -13,10 +13,11 @@ import {
   teams,
 } from "@/lib/db/schema";
 import { TeamFlag } from "@/components/brand/team-flag";
+import { PlayerAvatar } from "@/components/brand/player-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shell/empty-state";
-import { formatDateTime, initials } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { POSITIONS, POSITION_LABEL, type Position, normalizePosition } from "@/lib/position";
 import { BreadcrumbLD, SportsTeamLD } from "@/components/seo/jsonld";
 import { TEAM_ANALYSES } from "@/lib/seo/team-analysis";
@@ -435,7 +436,12 @@ export default async function TeamDetailPage({
                     </span>
                     {isTop ? <Crown className="size-3.5 text-[var(--color-arena)]" /> : null}
                   </span>
-                  <PlayerAvatar player={player ?? null} size={36} />
+                  <PlayerAvatar
+                    name={player?.name}
+                    photoUrl={player?.photoUrl}
+                    jerseyNumber={player?.jerseyNumber}
+                    size={36}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-base tracking-tight">
                       {player?.name ?? "—"}
@@ -969,47 +975,15 @@ function ScoreCenter({
 
 type PlayerRow = typeof players.$inferSelect;
 
-function PlayerAvatar({
-  player,
-  size = 40,
-}: {
-  player: PlayerRow | null | undefined;
-  size?: number;
-}) {
-  const name = player?.name ?? "—";
-  const photo = player?.photoUrl ?? null;
-  const number = player?.jerseyNumber ?? null;
-  return (
-    <span
-      className="grid shrink-0 place-items-center overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)]"
-      style={{ width: size, height: size }}
-    >
-      {photo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt="" className="size-full object-cover" />
-      ) : number != null ? (
-        <span
-          className="font-display tabular text-[var(--color-foreground)]"
-          style={{ fontSize: Math.round(size * 0.42) }}
-        >
-          {number}
-        </span>
-      ) : (
-        <span
-          className="font-mono uppercase tracking-[0.1em] text-[var(--color-muted-foreground)]"
-          style={{ fontSize: Math.round(size * 0.32) }}
-        >
-          {initials(name)}
-        </span>
-      )}
-    </span>
-  );
-}
-
 function PlayerCard({ player, goals }: { player: PlayerRow; goals: number }) {
   return (
     <li className="relative flex items-center gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 transition hover:border-[var(--color-arena)]/40">
-      <PlayerAvatar player={player} size={44} />
+      <PlayerAvatar
+        name={player.name}
+        photoUrl={player.photoUrl}
+        jerseyNumber={player.jerseyNumber}
+        size={44}
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate font-display text-sm tracking-tight">{player.name}</p>
         <p className="truncate font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
