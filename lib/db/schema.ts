@@ -104,6 +104,14 @@ export const profiles = pgTable(
     }),
     bannedAt: timestamp("banned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // País del primer registro — código ISO-3166-1 alpha-2 ("ES", "MX"…)
+    // capturado en la primera ejecución de getCurrentUser leyendo la
+    // cabecera `x-vercel-ip-country`. Estático: no se sobreescribe.
+    countryCode: text("country_code"),
+    // Última conexión observada del usuario. Se actualiza en
+    // getCurrentUser con throttling de 5 minutos para no martillear la DB
+    // en cada navegación.
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   },
   (t) => [
     index("profiles_role_idx").on(t.role),

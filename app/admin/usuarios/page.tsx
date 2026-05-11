@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { profiles } from "@/lib/db/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { TeamFlag } from "@/components/brand/team-flag";
 import {
   Table,
   TableBody,
@@ -12,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
-import { formatDate, initials } from "@/lib/utils";
+import { formatDate, formatDateTime, initials } from "@/lib/utils";
 import { UserActions } from "./user-actions";
 
 export const metadata = { title: "Usuarios · Admin" };
@@ -35,7 +36,9 @@ export default async function AdminUsersPage() {
               <TableHead>Email</TableHead>
               <TableHead>Rol</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>País</TableHead>
               <TableHead>Registro</TableHead>
+              <TableHead>Última conexión</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -66,8 +69,33 @@ export default async function AdminUsersPage() {
                       <Badge variant="success">Activo</Badge>
                     )}
                   </TableCell>
+                  <TableCell>
+                    {u.countryCode ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <TeamFlag code={u.countryCode} size={18} />
+                        <span className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+                          {u.countryCode}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[var(--color-muted-foreground)]">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs text-[var(--color-muted-foreground)]">
                     {formatDate(u.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-xs text-[var(--color-muted-foreground)]">
+                    {u.lastSeenAt ? (
+                      formatDateTime(u.lastSeenAt, {
+                        day: "2-digit",
+                        month: "short",
+                        year: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    ) : (
+                      <span>—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <UserActions
@@ -83,7 +111,7 @@ export default async function AdminUsersPage() {
             {users.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={8}
                   className="py-12 text-center text-sm text-[var(--color-muted-foreground)]"
                 >
                   Aún no hay usuarios registrados.

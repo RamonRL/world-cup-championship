@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -16,7 +16,31 @@ export type CurrentUser = {
   /** Liga a la que pertenece el participante. `null` para admins. */
   leagueId: number | null;
   bannedAt: Date | null;
+  countryCode: string | null;
+  lastSeenAt: Date | null;
 };
+
+// Throttle de actualización de last_seen_at: solo escribimos cada N min
+// para no doblar las queries de cada navegación. La precisión al minuto no
+// importa para el caso admin.
+const LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
+
+/**
+ * Lee la cabecera `x-vercel-ip-country` que Vercel inyecta en cada request
+ * (ISO-3166-1 alpha-2 mayúsculas, e.g. "ES", "MX"). En local o en hosts no
+ * Vercel devuelve null — el caller decide qué hacer.
+ */
+async function detectCountryCode(): Promise<string | null> {
+  try {
+    const h = await headers();
+    const c = h.get("x-vercel-ip-country");
+    if (!c) return null;
+    const normalized = c.trim().toUpperCase();
+    return /^[A-Z]{2}$/.test(normalized) ? normalized : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Resolve the currently logged-in user (auth + profile). Side-effect free
@@ -46,6 +70,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const inviteLeagueId = await resolveInviteLeague();
     const pub = await getPublicLeague();
     const activeLeagueId = inviteLeagueId ?? null;
+    const countryCode = await detectCountryCode();
 
     const [created] = await db
       .insert(profiles)
@@ -54,6 +79,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
         email: user.email,
         role: expectedRole,
         leagueId: activeLeagueId,
+        countryCode,
+        lastSeenAt: new Date(),
       })
       .returning();
 
@@ -70,11 +97,22 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     return mapProfile(created);
   }
 
-  // Promote/demote if email allowlist diverges.
-  if (existing.role !== expectedRole) {
+  // Throttled bump de last_seen_at: solo si está vacío o más viejo que el
+  // umbral, así evitamos un UPDATE por request.
+  const now = Date.now();
+  const lastSeenStale =
+    !existing.lastSeenAt || now - existing.lastSeenAt.getTime() > LAST_SEEN_THROTTLE_MS;
+
+  // Combinamos el bump con el sync de rol cuando aplique para no hacer dos
+  // UPDATEs back-to-back. País nunca se sobreescribe (es estático).
+  const needsRoleSync = existing.role !== expectedRole;
+  if (needsRoleSync || lastSeenStale) {
+    const patch: Partial<typeof profiles.$inferInsert> = {};
+    if (needsRoleSync) patch.role = expectedRole;
+    if (lastSeenStale) patch.lastSeenAt = new Date(now);
     const [updated] = await db
       .update(profiles)
-      .set({ role: expectedRole })
+      .set(patch)
       .where(eq(profiles.id, user.id))
       .returning();
     return mapProfile(updated);
@@ -130,5 +168,7 @@ function mapProfile(row: typeof profiles.$inferSelect): CurrentUser {
     role: row.role,
     leagueId: row.leagueId,
     bannedAt: row.bannedAt,
+    countryCode: row.countryCode,
+    lastSeenAt: row.lastSeenAt,
   };
 }
