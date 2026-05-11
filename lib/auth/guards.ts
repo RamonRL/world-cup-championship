@@ -103,13 +103,21 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const lastSeenStale =
     !existing.lastSeenAt || now - existing.lastSeenAt.getTime() > LAST_SEEN_THROTTLE_MS;
 
-  // Combinamos el bump con el sync de rol cuando aplique para no hacer dos
-  // UPDATEs back-to-back. País nunca se sobreescribe (es estático).
+  // País nunca se sobreescribe (es estático), pero si la fila aún no lo
+  // tiene — perfiles creados antes de la migración 0007 o detectCountryCode
+  // devolvió null en su día — hacemos un backfill defensivo cuando ahora sí
+  // tenemos cabecera disponible.
+  const detectedCountry = !existing.countryCode ? await detectCountryCode() : null;
+  const needsCountryBackfill = detectedCountry != null;
+
+  // Combinamos los tres updates (rol + bump + backfill país) en un solo
+  // UPDATE para no hacer queries back-to-back.
   const needsRoleSync = existing.role !== expectedRole;
-  if (needsRoleSync || lastSeenStale) {
+  if (needsRoleSync || lastSeenStale || needsCountryBackfill) {
     const patch: Partial<typeof profiles.$inferInsert> = {};
     if (needsRoleSync) patch.role = expectedRole;
     if (lastSeenStale) patch.lastSeenAt = new Date(now);
+    if (needsCountryBackfill) patch.countryCode = detectedCountry;
     const [updated] = await db
       .update(profiles)
       .set(patch)
