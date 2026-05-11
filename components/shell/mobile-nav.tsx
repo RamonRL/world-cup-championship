@@ -12,9 +12,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV, buildNavItems, type NavItem } from "./nav-data";
+
+// Mismos títulos y orden que la Sidebar PC para que la navegación se sienta
+// coherente en cualquier viewport.
+const GROUP_TITLE: Record<NavItem["group"], string> = {
+  main: "Torneo",
+  predicciones: "Predicciones",
+  social: "Comunidad",
+  ayuda: "Ayuda",
+};
+const GROUP_ORDER: NavItem["group"][] = ["main", "predicciones", "social", "ayuda"];
 
 type Props = {
   isAdmin: boolean;
@@ -34,7 +43,13 @@ export function MobileBottomNav({
   const pathname = usePathname();
   const items = buildNavItems(myId, { showMyLeague, isAuthenticated });
   const primary = items.filter((i) => i.primaryMobile);
-  const overflow = items.filter((i) => !i.primaryMobile).concat(isAdmin ? ADMIN_NAV : []);
+  const overflow = items.filter((i) => !i.primaryMobile);
+  const overflowByGroup = GROUP_ORDER.map((g) => ({
+    group: g,
+    title: GROUP_TITLE[g],
+    items: overflow.filter((i) => i.group === g),
+  })).filter((g) => g.items.length > 0);
+  const adminItems = isAdmin ? ADMIN_NAV : [];
   const activeHref = pickActiveHref(pathname, [...items, ...ADMIN_NAV]);
 
   // Sheet de "Más" controlado para poder cerrarlo cuando se navega.
@@ -90,25 +105,68 @@ export function MobileBottomNav({
           <Menu className="size-5" />
           <span>Más</span>
         </SheetTrigger>
-        <SheetContent side="bottom" className="h-[80dvh] rounded-t-xl">
+        <SheetContent side="bottom" className="flex h-[80dvh] flex-col rounded-t-xl">
           <SheetHeader>
             <SheetTitle>Navegación</SheetTitle>
             <SheetDescription>Todas las secciones</SheetDescription>
           </SheetHeader>
-          <Separator className="my-4" />
-          <div className="grid grid-cols-2 gap-2">
-            {overflow.map((item) => (
-              <OverflowLink
-                key={item.href}
-                item={item}
-                active={item.href === activeHref}
+          <div className="mt-2 flex-1 space-y-6 overflow-y-auto pr-1">
+            {overflowByGroup.map(({ group, title, items }) => (
+              <NavGroup
+                key={group}
+                title={title}
+                items={items}
+                activeHref={activeHref}
                 onSelect={() => setMoreOpen(false)}
               />
             ))}
+            {adminItems.length > 0 ? (
+              <NavGroup
+                title="Admin"
+                items={adminItems}
+                activeHref={activeHref}
+                onSelect={() => setMoreOpen(false)}
+              />
+            ) : null}
           </div>
         </SheetContent>
       </Sheet>
     </nav>
+  );
+}
+
+function NavGroup({
+  title,
+  items,
+  activeHref,
+  onSelect,
+}: {
+  title: string;
+  items: NavItem[];
+  activeHref: string | null;
+  onSelect: () => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center gap-2 px-1">
+        <span className="h-px w-3 bg-[var(--color-arena)]" />
+        <p className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+          {title}
+        </p>
+        <span className="h-px flex-1 bg-[var(--color-border)]" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {items.map((item) => (
+          <OverflowLink
+            key={item.href}
+            item={item}
+            active={item.href === activeHref}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
