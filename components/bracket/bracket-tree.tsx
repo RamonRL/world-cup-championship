@@ -311,7 +311,7 @@ function BracketCard({
           className="absolute inset-0 z-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
         />
       ) : null}
-      <div className="relative flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+      <div className="pointer-events-none relative flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
         <span>{code}</span>
         {match?.status === "finished" ? (
           <span className="text-[var(--color-success)]">FIN</span>
@@ -337,7 +337,7 @@ function BracketCard({
         compact
       />
       {match?.wentToPens ? (
-        <p className="relative border-t border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-0.5 text-center font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+        <p className="pointer-events-none relative border-t border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-0.5 text-center font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
           Pen.: {match.homeScorePen ?? 0} – {match.awayScorePen ?? 0}
         </p>
       ) : null}
@@ -381,7 +381,7 @@ function TeamLine({
   return (
     <div
       className={cn(
-        "relative flex items-center justify-between gap-2 px-2",
+        "pointer-events-none relative flex items-center justify-between gap-2 px-2",
         compact ? "py-1" : "py-1.5",
         isWinner && "bg-[color-mix(in_oklch,var(--color-success)_10%,transparent)]",
       )}
@@ -390,7 +390,7 @@ function TeamLine({
         <Link
           href={`/equipos/${team.code}`}
           aria-label={team.name}
-          className="relative z-10 flex min-w-0 items-center gap-1.5 hover:text-[var(--color-arena)]"
+          className="pointer-events-auto relative z-10 flex min-w-0 items-center gap-1.5 hover:text-[var(--color-arena)]"
         >
           <TeamFlag code={team.code} size={16} />
           <span
