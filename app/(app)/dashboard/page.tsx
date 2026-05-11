@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
-import { ArrowRight, ArrowUpRight, CheckCircle2, Flame, Sparkles } from "lucide-react";
-import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
+import { ArrowRight, ArrowUpRight, Flame } from "lucide-react";
+import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   matchScorers,
@@ -10,7 +10,9 @@ import {
   matches,
   players,
   pointsLedger,
+  predBracketSlot,
   predGroupRanking,
+  predMatchResult,
   predMatchScorer,
   predSpecial,
   predTournamentTopScorer,
@@ -27,6 +29,9 @@ import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { loadActivityFeed } from "@/lib/activity-feed";
 import { ImportPredictionsBanner } from "@/components/predictions/import-banner";
+import { computeMatchdayStates, type Stage } from "@/lib/matchday-state";
+import { getBracketStatus } from "@/lib/bracket-state";
+import { ProgressHub, type ProgressHubProps } from "@/components/dashboard/progress-hub";
 
 const KICKOFF = process.env.NEXT_PUBLIC_TOURNAMENT_KICKOFF_AT ?? "2026-06-11T19:00:00Z";
 
@@ -145,6 +150,9 @@ export default async function DashboardPage() {
     recentMatch,
     nextMatch,
     liveMatchRows,
+    bracketStatus,
+    bracketFilledRow,
+    allFutureMatchdays,
   ] = await Promise.all([
     db
       .select({ c: sql<number>`count(*)::int` })
@@ -188,6 +196,21 @@ export default async function DashboardPage() {
       .where(eq(matches.status, "live"))
       .orderBy(asc(matches.scheduledAt))
       .limit(1),
+    getBracketStatus(),
+    db
+      .select({ c: sql<number>`count(*) filter (where predicted_team_id is not null)::int` })
+      .from(predBracketSlot)
+      .where(
+        and(
+          eq(predBracketSlot.userId, me.id),
+          eq(predBracketSlot.leagueId, leagueId),
+        ),
+      ),
+    db
+      .select()
+      .from(matchdays)
+      .where(gt(matchdays.predictionDeadlineAt, new Date()))
+      .orderBy(asc(matchdays.predictionDeadlineAt)),
   ]);
   const liveMatch = liveMatchRows[0] ?? null;
 
@@ -238,7 +261,9 @@ export default async function DashboardPage() {
   const podium = sorted.slice(0, 3);
 
   // Pre-torneo progress: 3 categories — group rankings, top scorer, specials.
-  const groupsDone = (groupCount[0]?.c ?? 0) === 12;
+  const groupsFilled = groupCount[0]?.c ?? 0;
+  const groupsTotal = 12;
+  const groupsDone = groupsFilled === groupsTotal;
   const topScorerDone = topScorerSet.length > 0;
   const totalSpecials = totalSpecialsRow[0]?.c ?? 0;
   const mySpecials = mySpecialsRow[0]?.c ?? 0;
@@ -249,6 +274,43 @@ export default async function DashboardPage() {
   const tournamentStarted = kickoff.getTime() <= Date.now();
   const myStats = stats.get(me.id);
   const exactScores = myStats?.exactScoresCount ?? 0;
+
+  // Compute live progress-hub props.
+  const bracketFilled = bracketFilledRow[0]?.c ?? 0;
+  const BRACKET_TOTAL_SLOTS = 32; // r16(16) + qf(8) + sf(4) + final(2 + champ 1) + third(1)
+  const progressHubProps: ProgressHubProps = !tournamentStarted
+    ? {
+        phase: "pre",
+        nickname: me.nickname,
+        groupsFilled,
+        groupsTotal,
+        topScorerDone,
+        specialsFilled: mySpecials,
+        specialsTotal: totalSpecials,
+      }
+    : await buildRunningHubProps({
+        userId: me.id,
+        leagueId,
+        allFutureMatchdays: allFutureMatchdays.map((d) => ({
+          id: d.id,
+          name: d.name,
+          stage: d.stage as Stage,
+          predictionDeadlineAt: d.predictionDeadlineAt,
+        })),
+        bracket:
+          bracketStatus.state === "open" || bracketStatus.state === "closed"
+            ? {
+                state: bracketStatus.state,
+                closesAt: bracketStatus.closesAt
+                  ? new Date(bracketStatus.closesAt).toISOString()
+                  : null,
+                filled: bracketFilled,
+                total: BRACKET_TOTAL_SLOTS,
+              }
+            : undefined,
+        preTorneoComplete,
+        preTorneoTotal,
+      });
 
   return (
     <div className="space-y-10">
@@ -285,21 +347,10 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Onboarding — solo cuando hay pre-torneo pendiente y el torneo no
-          ha empezado. Hace de wayfinder para participantes nuevos: les
-          señala dónde ir a hacer su próximo pick. Desaparece al completar
-          las 3 categorías. */}
-      {!tournamentStarted && preTorneoComplete < preTorneoTotal ? (
-        <OnboardingPanel
-          groupsDone={groupsDone}
-          topScorerDone={topScorerDone}
-          specialsDone={specialsDone}
-          totalSpecials={totalSpecials}
-          mySpecials={mySpecials}
-          daysToKickoff={days}
-          nickname={me.nickname}
-        />
-      ) : null}
+      {/* Progress Hub — visual centerpiece. Pre-torneo: donut + 3 satellites.
+          En-torneo: tarjeta de próximo cierre con countdown + satellites de
+          jornadas abiertas y bracket. */}
+      <ProgressHub {...progressHubProps} />
 
       {/* Live HUD — appears only when a match is currently in play */}
       {liveMatch ? (
@@ -416,21 +467,6 @@ export default async function DashboardPage() {
                 minute: "2-digit",
               })}
             </p>
-            {!tournamentStarted ? (
-              <div className="flex items-center gap-3 border-t border-dashed border-[var(--color-border)] pt-4">
-                <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                  Pre-torneo
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <ProgressDot done={groupsDone} label="Grupos" />
-                  <ProgressDot done={topScorerDone} label="Bota" />
-                  <ProgressDot done={specialsDone} label="Especiales" />
-                </div>
-                <span className="ml-auto font-display tabular text-base text-[var(--color-arena)] glow-arena">
-                  {preTorneoComplete}/{preTorneoTotal}
-                </span>
-              </div>
-            ) : null}
           </div>
 
           {/* Right column — next match & up next deadline */}
@@ -604,58 +640,9 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      {/* Body — checklist + recent + podium. La tarjeta "Pre-torneo"
-          sólo aparece cuando ya está cerrado o el torneo arrancó; antes,
-          el OnboardingPanel arriba ya hace ese trabajo y duplicar
-          redundaría. */}
-      {(() => {
-        const showPreTorneoCard =
-          tournamentStarted || preTorneoComplete === preTorneoTotal;
-        return (
-          <section
-            className={`grid gap-4 ${
-              showPreTorneoCard
-                ? "lg:grid-cols-[1.2fr_1fr_1fr]"
-                : "lg:grid-cols-2"
-            }`}
-          >
-            {showPreTorneoCard ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pre-torneo</CardTitle>
-                  <CardDescription>
-                    {tournamentStarted
-                      ? "Tus picks de antes del kickoff."
-                      : "Listo para el inicio."}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <PreCheck
-                    done={groupsDone}
-                    label="Posiciones de grupo"
-                    hint={`${groupCount[0]?.c ?? 0}/12 grupos`}
-                    href="/predicciones/grupos"
-                  />
-                  <PreCheck
-                    done={topScorerDone}
-                    label="Bota de Oro"
-                    hint="Tu candidato"
-                    href="/predicciones/goleador-torneo"
-                  />
-                  <PreCheck
-                    done={specialsDone}
-                    label="Predicciones especiales"
-                    hint={
-                      totalSpecials > 0
-                        ? `${mySpecials}/${totalSpecials} respondidas`
-                        : "Balón / Guante / Anfitrión / África…"
-                    }
-                    href="/predicciones/especiales"
-                  />
-                </CardContent>
-              </Card>
-            ) : null}
-
+      {/* Body — resultados recientes + podio. La tarjeta redundante de
+          "Pre-torneo" la cubre ahora el Progress Hub de arriba. */}
+      <section className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Resultados recientes</CardTitle>
@@ -788,118 +775,8 @@ export default async function DashboardPage() {
             </Link>
           </CardContent>
         </Card>
-          </section>
-        );
-      })()}
+      </section>
     </div>
-  );
-}
-
-function OnboardingPanel({
-  groupsDone,
-  topScorerDone,
-  specialsDone,
-  totalSpecials,
-  mySpecials,
-  daysToKickoff,
-  nickname,
-}: {
-  groupsDone: boolean;
-  topScorerDone: boolean;
-  specialsDone: boolean;
-  totalSpecials: number;
-  mySpecials: number;
-  daysToKickoff: number;
-  nickname: string | null;
-}) {
-  const completed = [groupsDone, topScorerDone, specialsDone].filter(Boolean).length;
-  const isFresh = completed === 0;
-  // Pick the next undone category in canonical order.
-  const next = !groupsDone
-    ? { href: "/predicciones/grupos", label: "Posiciones de grupo" }
-    : !topScorerDone
-      ? { href: "/predicciones/goleador-torneo", label: "Bota de Oro" }
-      : { href: "/predicciones/especiales", label: "Especiales" };
-
-  return (
-    <section className="relative overflow-hidden rounded-2xl border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_8%,var(--color-surface))]">
-      <div className="halftone pointer-events-none absolute inset-0 opacity-[0.06]" aria-hidden />
-      <div className="pitch-grid pointer-events-none absolute inset-0 opacity-20" aria-hidden />
-      <div className="relative grid gap-6 p-5 sm:p-7 lg:grid-cols-[1.4fr_auto] lg:items-center">
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-arena)]">
-            <Sparkles className="size-3.5" />
-            {isFresh ? "Bienvenido al Mundial" : "Continúa donde lo dejaste"}
-          </div>
-          <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
-            {isFresh
-              ? `Hola${nickname ? `, ${nickname}` : ""}. Cierra tus 3 picks pre-torneo`
-              : `${3 - completed} ${3 - completed === 1 ? "categoría" : "categorías"} sin cerrar`}
-          </h2>
-          <p className="font-editorial text-sm italic leading-relaxed text-[var(--color-muted-foreground)] sm:text-base">
-            {isFresh
-              ? "Tres picks ahora. Se cierran al kickoff."
-              : `Quedan ${daysToKickoff} ${daysToKickoff === 1 ? "día" : "días"}.`}
-          </p>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <OnboardingStep n="01" label="Grupos" done={groupsDone} />
-            <OnboardingStep n="02" label="Bota" done={topScorerDone} />
-            <OnboardingStep
-              n="03"
-              label={
-                totalSpecials > 0
-                  ? `Especiales ${mySpecials}/${totalSpecials}`
-                  : "Especiales"
-              }
-              done={specialsDone}
-            />
-            <span className="ml-1 font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-              {completed}/3 listo
-            </span>
-          </div>
-        </div>
-        <div className="flex flex-col items-stretch gap-2 lg:items-end">
-          <Link
-            href={next.href}
-            className="group inline-flex items-center justify-center gap-2 rounded-md bg-[var(--color-arena)] px-5 py-3 font-display text-base text-white shadow-[var(--shadow-arena)] transition hover:scale-[1.02]"
-          >
-            {isFresh ? "Empezar por" : "Continuar con"}{" "}
-            <span className="font-medium">{next.label}</span>
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </Link>
-          <Link
-            href="/predicciones"
-            className="text-center font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] hover:text-[var(--color-arena)]"
-          >
-            Ver todas las categorías →
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function OnboardingStep({
-  n,
-  label,
-  done,
-}: {
-  n: string;
-  label: string;
-  done: boolean;
-}) {
-  return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.18em] ${
-        done
-          ? "border-[var(--color-success)]/40 bg-[color-mix(in_oklch,var(--color-success)_10%,transparent)] text-[var(--color-success)]"
-          : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted-foreground)]"
-      }`}
-    >
-      <span className="font-display text-xs tracking-tight">{n}</span>
-      <span>{label}</span>
-      {done ? <CheckCircle2 className="size-3.5" /> : null}
-    </span>
   );
 }
 
@@ -965,52 +842,6 @@ function Stat({
   );
 }
 
-function ProgressDot({ done, label }: { done: boolean; label: string }) {
-  return (
-    <span
-      title={`${label}: ${done ? "completo" : "pendiente"}`}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] ${
-        done
-          ? "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_12%,transparent)] text-[var(--color-arena)]"
-          : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted-foreground)]"
-      }`}
-    >
-      <span className={`size-1.5 rounded-full ${done ? "bg-[var(--color-arena)]" : "bg-[var(--color-muted-foreground)]/40"}`} />
-      {label}
-    </span>
-  );
-}
-
-function PreCheck({
-  done,
-  label,
-  hint,
-  href,
-}: {
-  done: boolean;
-  label: string;
-  hint?: string;
-  href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 transition hover:border-[var(--color-arena)]/40"
-    >
-      <div className="flex items-center gap-3">
-        <Badge variant={done ? "success" : "warning"}>{done ? "Hecho" : "Pendiente"}</Badge>
-        <div className="leading-tight">
-          <p className="text-sm font-medium">{label}</p>
-          {hint ? (
-            <p className="text-[0.7rem] text-[var(--color-muted-foreground)]">{hint}</p>
-          ) : null}
-        </div>
-      </div>
-      <ArrowRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1" />
-    </Link>
-  );
-}
-
 function LiveTeam({
   team,
   align,
@@ -1073,3 +904,148 @@ function TeamCell({
   );
 }
 
+async function buildRunningHubProps({
+  userId,
+  leagueId,
+  allFutureMatchdays,
+  bracket,
+  preTorneoComplete,
+  preTorneoTotal,
+}: {
+  userId: string;
+  leagueId: number;
+  allFutureMatchdays: Array<{
+    id: number;
+    name: string;
+    stage: Stage;
+    predictionDeadlineAt: Date | string;
+  }>;
+  bracket?: {
+    state: "open" | "closed";
+    closesAt: string | null;
+    filled: number;
+    total: number;
+  };
+  preTorneoComplete: number;
+  preTorneoTotal: number;
+}): Promise<ProgressHubProps> {
+  const annotated = await computeMatchdayStates(allFutureMatchdays);
+  const openMatchdays = annotated.filter((m) => m.state === "open");
+
+  const openIds = openMatchdays.map((m) => m.id);
+  const [totalsByDay, filledByDay] =
+    openIds.length === 0
+      ? [new Map<number, number>(), new Map<number, number>()]
+      : await Promise.all([
+          db
+            .select({
+              matchdayId: matches.matchdayId,
+              total: sql<number>`count(*)::int`,
+            })
+            .from(matches)
+            .where(inArray(matches.matchdayId, openIds))
+            .groupBy(matches.matchdayId)
+            .then(
+              (rows) =>
+                new Map(rows.map((r) => [r.matchdayId ?? 0, r.total])),
+            ),
+          db
+            .select({
+              matchdayId: matches.matchdayId,
+              filled: sql<number>`count(*)::int`,
+            })
+            .from(predMatchResult)
+            .innerJoin(matches, eq(matches.id, predMatchResult.matchId))
+            .where(
+              and(
+                eq(predMatchResult.userId, userId),
+                eq(predMatchResult.leagueId, leagueId),
+                inArray(matches.matchdayId, openIds),
+              ),
+            )
+            .groupBy(matches.matchdayId)
+            .then(
+              (rows) =>
+                new Map(rows.map((r) => [r.matchdayId ?? 0, r.filled])),
+            ),
+        ]);
+
+  type OpenMatchday = {
+    id: number;
+    label: string;
+    closesAt: string;
+    filled: number;
+    total: number;
+  };
+  const openMatchdayItems: OpenMatchday[] = openMatchdays.map((m) => {
+    const total = totalsByDay.get(m.id) ?? 0;
+    const filled = filledByDay.get(m.id) ?? 0;
+    return {
+      id: m.id,
+      label: m.name,
+      closesAt: new Date(m.predictionDeadlineAt).toISOString(),
+      filled,
+      total,
+    };
+  });
+
+  // Choose the most urgent deadline: matchday vs bracket (whichever closes first).
+  type Candidate = {
+    kind: "matchday" | "bracket";
+    label: string;
+    href: string;
+    closesAt: string;
+    missing: number;
+    total: number;
+    closesAtMs: number;
+  };
+  const candidates: Candidate[] = [];
+  for (const m of openMatchdayItems) {
+    const missing = m.total - m.filled;
+    if (missing > 0) {
+      candidates.push({
+        kind: "matchday",
+        label: m.label,
+        href: `/predicciones/jornada/${m.id}`,
+        closesAt: m.closesAt,
+        missing,
+        total: m.total,
+        closesAtMs: new Date(m.closesAt).getTime(),
+      });
+    }
+  }
+  if (bracket && bracket.state === "open" && bracket.closesAt) {
+    const missing = bracket.total - bracket.filled;
+    if (missing > 0) {
+      candidates.push({
+        kind: "bracket",
+        label: "Bracket eliminatorio",
+        href: "/predicciones/bracket",
+        closesAt: bracket.closesAt,
+        missing,
+        total: bracket.total,
+        closesAtMs: new Date(bracket.closesAt).getTime(),
+      });
+    }
+  }
+  candidates.sort((a, b) => a.closesAtMs - b.closesAtMs);
+  const nextDeadline = candidates[0] ?? null;
+
+  return {
+    phase: "running",
+    nextDeadline: nextDeadline
+      ? {
+          kind: nextDeadline.kind,
+          label: nextDeadline.label,
+          href: nextDeadline.href,
+          closesAt: nextDeadline.closesAt,
+          missing: nextDeadline.missing,
+          total: nextDeadline.total,
+        }
+      : null,
+    openMatchdays: openMatchdayItems,
+    bracket: bracket && bracket.state === "open" ? bracket : undefined,
+    preTorneoComplete,
+    preTorneoTotal,
+  };
+}
