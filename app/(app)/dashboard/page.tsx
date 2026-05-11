@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
-import { ArrowRight, ArrowUpRight, Flame } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CalendarDays, Crown, Flame, Trophy } from "lucide-react";
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
@@ -21,7 +21,6 @@ import {
   teams,
 } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
@@ -44,6 +43,16 @@ const MARQUEE_TOKENS = [
   "48 SELECCIONES",
   "104 PARTIDOS",
 ];
+
+const STAGE_BADGE: Record<string, string> = {
+  group: "GRUPOS",
+  r32: "R32",
+  r16: "OCTAVOS",
+  qf: "CUARTOS",
+  sf: "SEMIS",
+  third: "3ER",
+  final: "FINAL",
+};
 
 export default async function DashboardPage() {
   const me = await requireUser();
@@ -258,7 +267,7 @@ export default async function DashboardPage() {
       : null;
 
   const greeting = me.nickname || me.email.split("@")[0];
-  const podium = sorted.slice(0, 3);
+  const podium = sorted.slice(0, 5);
 
   // Pre-torneo progress: 3 categories — group rankings, top scorer, specials.
   const groupsFilled = groupCount[0]?.c ?? 0;
@@ -346,11 +355,6 @@ export default async function DashboardPage() {
           ))}
         </div>
       </div>
-
-      {/* Progress Hub — visual centerpiece. Pre-torneo: donut + 3 satellites.
-          En-torneo: tarjeta de próximo cierre con countdown + satellites de
-          jornadas abiertas y bracket. */}
-      <ProgressHub {...progressHubProps} />
 
       {/* Live HUD — appears only when a match is currently in play */}
       {liveMatch ? (
@@ -549,7 +553,13 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Scoreboard stats */}
+      {/* Progress Hub — visual centerpiece. Pre-torneo: donut + 3 satellites.
+          En-torneo: tarjeta de próximo cierre con countdown + satellites de
+          jornadas abiertas y bracket. */}
+      <ProgressHub {...progressHubProps} />
+
+      {/* Scoreboard stats — solo en-torneo (pre-torneo todo es 0/--). */}
+      {tournamentStarted ? (
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="TU POSICIÓN"
@@ -566,44 +576,18 @@ export default async function DashboardPage() {
           href={`/ranking/${me.id}`}
         />
         <Stat label="PUNTOS" value={myPoints.toString()} hint="acumulados" />
-        {tournamentStarted ? (
-          <>
-            <Stat
-              label="GOLEADORES PEND."
-              value={pendingScorers.toString()}
-              hint="próximos sin pick"
-            />
-            <Stat
-              label="EXACTOS"
-              value={exactScores.toString()}
-              hint="marcadores clavados"
-            />
-          </>
-        ) : (
-          <>
-            <Stat
-              label="PRE-TORNEO"
-              value={`${preTorneoComplete}/${preTorneoTotal}`}
-              hint={
-                preTorneoComplete === preTorneoTotal
-                  ? "todo listo · puedes editar hasta el kickoff"
-                  : "categorías por cerrar"
-              }
-            />
-            <Stat
-              label="ESPECIALES"
-              value={`${mySpecials}/${totalSpecials || "—"}`}
-              hint={
-                totalSpecials === 0
-                  ? "aún no publicadas"
-                  : mySpecials === totalSpecials
-                    ? "todas respondidas"
-                    : "preguntas sin responder"
-              }
-            />
-          </>
-        )}
+        <Stat
+          label="GOLEADORES PEND."
+          value={pendingScorers.toString()}
+          hint="próximos sin pick"
+        />
+        <Stat
+          label="EXACTOS"
+          value={exactScores.toString()}
+          hint="marcadores clavados"
+        />
       </section>
+      ) : null}
 
       {/* Activity feed — appears once the user has earned points */}
       {activity.length > 0 ? (
@@ -640,95 +624,155 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      {/* Body — resultados recientes + podio. La tarjeta redundante de
-          "Pre-torneo" la cubre ahora el Progress Hub de arriba. */}
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Resultados recientes</CardTitle>
-            <CardDescription>Lo último de la cancha.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
+      {/* Body — resultados recientes + podio. Layout 2 columnas con paneles
+          de altura igual para que el dashboard cierre balanceado. */}
+      <section className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+        {/* Resultados recientes — panel editorial scoreboard */}
+        <div className="rise-in relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <span aria-hidden className="halftone pointer-events-none absolute inset-0 opacity-[0.04]" />
+          <header className="relative flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/50 px-5 py-3">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="size-4 text-[var(--color-arena)]" />
+              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Resultados · últimos pitidos
+              </p>
+            </div>
+            <Link
+              href="/calendario"
+              className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-arena)]"
+            >
+              Calendario →
+            </Link>
+          </header>
+          <div className="relative flex-1 p-3">
             {recentMatch.length === 0 ? (
-              <div className="space-y-3">
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                <span className="grid size-12 place-items-center rounded-full border border-dashed border-[var(--color-border-strong)] text-[var(--color-muted-foreground)]">
+                  <CalendarDays className="size-5" />
+                </span>
                 <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
                   Aún sin pitidos finales.
                 </p>
                 <Link
                   href="/calendario"
-                  className="group flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-sm transition hover:border-[var(--color-arena)]/40"
+                  className="inline-flex items-center gap-1 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-arena)] hover:underline"
                 >
-                  <span>
-                    <p className="font-medium">Calendario completo</p>
-                    <p className="text-[0.7rem] text-[var(--color-muted-foreground)]">
-                      104 partidos
-                    </p>
-                  </span>
-                  <ArrowRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1" />
+                  Mira el calendario <ArrowRight className="size-3" />
                 </Link>
               </div>
             ) : (
-              recentMatch.map((m) => {
-                const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
-                const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
-                return (
-                  <div
-                    key={m.id}
-                    className="group relative flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2.5 text-sm transition hover:border-[var(--color-arena)]/40"
-                  >
-                    <Link
-                      href={`/partido/${m.id}`}
-                      aria-label={`Partido ${m.code}`}
-                      className="absolute inset-0 z-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
-                    />
-                    {home ? (
+              <ul className="space-y-2">
+                {recentMatch.map((m) => {
+                  const home = m.homeTeamId ? teamById.get(m.homeTeamId) : null;
+                  const away = m.awayTeamId ? teamById.get(m.awayTeamId) : null;
+                  const hs = m.homeScore ?? 0;
+                  const as = m.awayScore ?? 0;
+                  const winnerSide: "home" | "away" | "draw" =
+                    m.winnerTeamId != null
+                      ? m.winnerTeamId === m.homeTeamId
+                        ? "home"
+                        : "away"
+                      : hs > as
+                        ? "home"
+                        : as > hs
+                          ? "away"
+                          : "draw";
+                  return (
+                    <li
+                      key={m.id}
+                      className="group relative overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] transition hover:border-[var(--color-arena)]/45 hover:shadow-[var(--shadow-elev-1)]"
+                    >
                       <Link
-                        href={`/equipos/${home.code}`}
-                        aria-label={home.name}
-                        className="relative z-10 flex items-center gap-2 truncate hover:text-[var(--color-arena)]"
-                      >
-                        <TeamFlag code={home.code} size={24} />
-                        <span className="truncate">{home.name}</span>
-                      </Link>
-                    ) : (
-                      <span className="relative z-10 flex items-center gap-2 truncate">
-                        <TeamFlag code={undefined} size={24} />
-                        <span className="truncate">—</span>
-                      </span>
-                    )}
-                    <span className="relative font-display tabular text-xl">
-                      {m.homeScore} <span className="opacity-50">·</span> {m.awayScore}
-                    </span>
-                    {away ? (
-                      <Link
-                        href={`/equipos/${away.code}`}
-                        aria-label={away.name}
-                        className="relative z-10 flex items-center gap-2 truncate text-right hover:text-[var(--color-arena)]"
-                      >
-                        <span className="truncate">{away.name}</span>
-                        <TeamFlag code={away.code} size={24} />
-                      </Link>
-                    ) : (
-                      <span className="relative z-10 flex items-center gap-2 truncate text-right">
-                        <span className="truncate">—</span>
-                        <TeamFlag code={undefined} size={24} />
-                      </span>
-                    )}
-                  </div>
-                );
-              })
+                        href={`/partido/${m.id}`}
+                        aria-label={`Partido ${m.code}`}
+                        className="absolute inset-0 z-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+                      />
+                      <div className="pointer-events-none relative flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-3)]/40 px-3 py-1">
+                        <span className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+                          {STAGE_BADGE[m.stage] ?? m.stage.toUpperCase()} · {m.code}
+                        </span>
+                        <span className="font-mono text-[0.55rem] uppercase tracking-[0.22em] text-[var(--color-muted-foreground)]">
+                          {formatDateTime(m.scheduledAt, {
+                            day: "2-digit",
+                            month: "short",
+                          })}
+                        </span>
+                      </div>
+                      <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-3">
+                        <TeamSide
+                          team={home}
+                          align="start"
+                          isWinner={winnerSide === "home"}
+                          isLoser={winnerSide === "away"}
+                        />
+                        <span className="font-display tabular text-2xl leading-none tracking-tighter sm:text-3xl">
+                          <span
+                            className={
+                              winnerSide === "home"
+                                ? "text-[var(--color-arena)] glow-arena"
+                                : winnerSide === "draw"
+                                  ? ""
+                                  : "text-[var(--color-muted-foreground)]"
+                            }
+                          >
+                            {hs}
+                          </span>
+                          <span className="mx-1 text-[var(--color-muted-foreground)] opacity-50">·</span>
+                          <span
+                            className={
+                              winnerSide === "away"
+                                ? "text-[var(--color-arena)] glow-arena"
+                                : winnerSide === "draw"
+                                  ? ""
+                                  : "text-[var(--color-muted-foreground)]"
+                            }
+                          >
+                            {as}
+                          </span>
+                        </span>
+                        <TeamSide
+                          team={away}
+                          align="end"
+                          isWinner={winnerSide === "away"}
+                          isLoser={winnerSide === "home"}
+                        />
+                      </div>
+                      {m.wentToPens ? (
+                        <p className="relative border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-3)]/30 px-3 py-1 text-center font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
+                          Penaltis · {m.homeScorePen ?? 0}–{m.awayScorePen ?? 0}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Cabeza de tabla</CardTitle>
-            <CardDescription>El podio en directo.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        {/* Cabeza de tabla — top 5 con podio destacado */}
+        <div className="rise-in relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <span aria-hidden className="halftone pointer-events-none absolute inset-0 opacity-[0.04]" />
+          <header className="relative flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]/50 px-5 py-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="size-4 text-[var(--color-arena)]" />
+              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+                Top 5 · cabeza de tabla
+              </p>
+            </div>
+            <Link
+              href="/ranking"
+              className="font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-arena)]"
+            >
+              Ranking →
+            </Link>
+          </header>
+          <div className="relative flex-1 p-3">
             {podium.length === 0 || podium[0].totalPoints === 0 ? (
-              <div className="space-y-3">
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                <span className="grid size-12 place-items-center rounded-full border border-dashed border-[var(--color-border-strong)] text-[var(--color-muted-foreground)]">
+                  <Trophy className="size-5" />
+                </span>
                 <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
                   {sorted.length > 1
                     ? `${sorted.length} jugadores a cero. Que empiece.`
@@ -736,45 +780,98 @@ export default async function DashboardPage() {
                 </p>
                 <Link
                   href="/ranking"
-                  className="group flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-sm transition hover:border-[var(--color-arena)]/40"
+                  className="inline-flex items-center gap-1 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-arena)] hover:underline"
                 >
-                  <span>
-                    <p className="font-medium">Ver el ranking completo</p>
-                    <p className="text-[0.7rem] text-[var(--color-muted-foreground)]">
-                      Todos los participantes inscritos
-                    </p>
-                  </span>
-                  <ArrowRight className="size-4 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-1" />
+                  Ver participantes <ArrowRight className="size-3" />
                 </Link>
               </div>
             ) : (
-              podium.map((p, i) => {
-                const display = p.user.nickname || p.user.email.split("@")[0];
-                const isMe = p.user.id === me.id;
-                return (
-                  <div
-                    key={p.user.id}
-                    className={`flex items-center gap-3 rounded-md border border-[var(--color-border)] p-2.5 ${
-                      isMe ? "bg-[var(--color-arena)]/10 border-[var(--color-arena)]/40" : "bg-[var(--color-surface-2)]"
-                    }`}
-                  >
-                    <span className="font-display text-2xl tabular text-[var(--color-arena)]">
-                      {i + 1}
-                    </span>
-                    <span className="flex-1 truncate text-sm font-medium">{display}</span>
-                    <span className="font-display tabular text-xl">{p.totalPoints}</span>
-                  </div>
-                );
-              })
+              <ol className="space-y-2">
+                {podium.map((p, i) => {
+                  const display = p.user.nickname || p.user.email.split("@")[0];
+                  const isMe = p.user.id === me.id;
+                  const position = i + 1;
+                  const isLeader = position === 1;
+                  const podiumTier = position <= 3;
+                  return (
+                    <li
+                      key={p.user.id}
+                      className={`group relative flex items-center gap-3 overflow-hidden rounded-lg border px-3 py-2.5 transition ${
+                        isLeader
+                          ? "border-[var(--color-arena)]/60 bg-[color-mix(in_oklch,var(--color-arena)_10%,var(--color-surface))] shadow-[var(--shadow-arena)]"
+                          : isMe
+                            ? "border-[var(--color-arena)]/45 bg-[color-mix(in_oklch,var(--color-arena)_6%,var(--color-surface))]"
+                            : podiumTier
+                              ? "border-[var(--color-border)] bg-[var(--color-surface-2)]"
+                              : "border-[var(--color-border)] bg-[var(--color-surface)]"
+                      }`}
+                    >
+                      <Link
+                        href={`/ranking/${p.user.id}`}
+                        aria-label={`Perfil de ${display}`}
+                        className="absolute inset-0 z-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
+                      />
+                      <span
+                        className={`relative grid size-9 shrink-0 place-items-center rounded-md font-display tabular text-xl leading-none ${
+                          isLeader
+                            ? "border border-[var(--color-arena)]/50 bg-[color-mix(in_oklch,var(--color-arena)_18%,transparent)] text-[var(--color-arena)] glow-arena"
+                            : podiumTier
+                              ? "border border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-arena)]"
+                              : "text-[var(--color-muted-foreground)]"
+                        }`}
+                      >
+                        {isLeader ? <Crown className="size-4" /> : position}
+                      </span>
+                      <div className="relative min-w-0 flex-1">
+                        <p className="truncate font-display text-base leading-none tracking-tight">
+                          {display}
+                          {isMe ? (
+                            <span className="ml-1.5 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-arena)]">
+                              tú
+                            </span>
+                          ) : null}
+                        </p>
+                        {p.exactScoresCount > 0 || p.knockoutPoints > 0 ? (
+                          <p className="mt-1 font-mono text-[0.55rem] uppercase tracking-[0.22em] text-[var(--color-muted-foreground)]">
+                            {p.exactScoresCount > 0
+                              ? `${p.exactScoresCount} exacto${p.exactScoresCount === 1 ? "" : "s"}`
+                              : null}
+                            {p.exactScoresCount > 0 && p.knockoutPoints > 0 ? " · " : ""}
+                            {p.knockoutPoints > 0 ? `${p.knockoutPoints} KO` : null}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span
+                        className={`relative font-display tabular leading-none ${
+                          isLeader
+                            ? "text-3xl text-[var(--color-arena)] glow-arena"
+                            : "text-2xl"
+                        }`}
+                      >
+                        {p.totalPoints}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
             )}
-            <Link
-              href="/ranking"
-              className="mt-2 flex items-center justify-end gap-1 text-xs uppercase tracking-[0.2em] text-[var(--color-muted-foreground)] hover:text-[var(--color-arena)]"
-            >
-              Ver ranking <ArrowRight className="size-3.5" />
-            </Link>
-          </CardContent>
-        </Card>
+          </div>
+          {myPosition != null && myPosition > 5 ? (
+            <footer className="relative border-t border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)]/40 px-4 py-2.5">
+              <Link
+                href={`/ranking/${me.id}`}
+                className="flex items-center justify-between gap-2 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-arena)]"
+              >
+                <span>
+                  Tu posición · <span className="font-display text-base text-[var(--color-arena)]">#{myPosition}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  Ver mi tarjeta <ArrowRight className="size-3" />
+                </span>
+              </Link>
+            </footer>
+          ) : null}
+        </div>
       </section>
     </div>
   );
@@ -900,6 +997,42 @@ function TeamCell({
           {team?.code ?? "—"}
         </p>
       </div>
+    </Wrapper>
+  );
+}
+
+function TeamSide({
+  team,
+  align,
+  isWinner,
+  isLoser,
+}: {
+  team: { code: string; name: string; flagUrl: string | null } | null | undefined;
+  align: "start" | "end";
+  isWinner: boolean;
+  isLoser: boolean;
+}) {
+  const flip = align === "end" ? "flex-row-reverse text-right" : "";
+  const tone = isWinner
+    ? "text-[var(--color-foreground)] font-semibold"
+    : isLoser
+      ? "text-[var(--color-muted-foreground)]"
+      : "text-[var(--color-foreground)]";
+  const Wrapper: React.ElementType = team ? Link : "div";
+  const wrapperProps = team
+    ? { href: `/equipos/${team.code}`, "aria-label": team.name }
+    : {};
+  return (
+    <Wrapper
+      {...wrapperProps}
+      className={`relative z-10 flex min-w-0 items-center gap-2 ${flip} ${
+        team ? "pointer-events-auto transition hover:text-[var(--color-arena)]" : ""
+      } ${tone}`}
+    >
+      <TeamFlag code={team?.code} size={22} />
+      <span className="truncate font-display text-sm leading-none tracking-tight sm:text-base">
+        {team?.name ?? "TBD"}
+      </span>
     </Wrapper>
   );
 }
