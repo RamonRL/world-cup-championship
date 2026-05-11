@@ -6,12 +6,11 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { chatMessages, profiles } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/auth/guards";
+import { currentLeagueId, isMemberOf } from "@/lib/leagues";
 
 export type FormState = { ok: boolean; error?: string };
 
 const schema = z.object({
-  scope: z.enum(["global", "match"]),
-  matchId: z.coerce.number().int().optional().nullable(),
   body: z.string().trim().min(1).max(1000),
 });
 
@@ -21,24 +20,21 @@ export async function sendMessage(
 ): Promise<FormState> {
   const me = await requireUser();
   if (me.bannedAt) return { ok: false, error: "Tu cuenta está suspendida." };
-  const parsed = schema.safeParse({
-    scope: formData.get("scope"),
-    matchId: formData.get("matchId") || null,
-    body: formData.get("body"),
-  });
+  const parsed = schema.safeParse({ body: formData.get("body") });
   if (!parsed.success) return { ok: false, error: "Mensaje vacío o demasiado largo." };
 
+  const leagueId = await currentLeagueId(me);
+  if (leagueId == null) return { ok: false, error: "Sin liga activa." };
+  const member = await isMemberOf(me.id, leagueId);
+  if (!member) return { ok: false, error: "No perteneces a esta liga." };
+
   await db.insert(chatMessages).values({
-    scope: parsed.data.scope,
-    matchId: parsed.data.scope === "match" ? parsed.data.matchId ?? null : null,
+    leagueId,
     userId: me.id,
     body: parsed.data.body,
   });
 
-  if (parsed.data.scope === "global") revalidatePath("/chat");
-  if (parsed.data.scope === "match" && parsed.data.matchId) {
-    revalidatePath(`/partido/${parsed.data.matchId}`);
-  }
+  revalidatePath("/chat");
   return { ok: true };
 }
 

@@ -2,10 +2,9 @@ import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
-  chatMessages,
   groups,
   matchScorers,
   matches,
@@ -20,7 +19,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChatThread } from "@/app/(app)/chat/chat-thread";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { currentLeagueId } from "@/lib/leagues";
@@ -151,37 +149,10 @@ export default async function MatchDetailPage({
   const predsPublic = new Date(match.scheduledAt) <= new Date();
 
   const playerIds = scorerRows.map((s) => s.playerId);
-  const [playerRows, chatRows, resultPreds, scorerPreds] = await Promise.all([
+  const [playerRows, resultPreds, scorerPreds] = await Promise.all([
     playerIds.length > 0
       ? db.select().from(players).where(inArray(players.id, playerIds))
       : Promise.resolve([]),
-    me
-      ? db
-          .select({
-            id: chatMessages.id,
-            body: chatMessages.body,
-            createdAt: chatMessages.createdAt,
-            userId: chatMessages.userId,
-            deletedAt: chatMessages.deletedAt,
-            authorEmail: profiles.email,
-            authorNickname: profiles.nickname,
-            authorAvatar: profiles.avatarUrl,
-          })
-          .from(chatMessages)
-          .leftJoin(profiles, eq(chatMessages.userId, profiles.id))
-          .where(eq(chatMessages.matchId, matchId))
-          .orderBy(desc(chatMessages.createdAt))
-          .limit(100)
-      : Promise.resolve([] as {
-          id: number;
-          body: string;
-          createdAt: Date;
-          userId: string;
-          deletedAt: Date | null;
-          authorEmail: string | null;
-          authorNickname: string | null;
-          authorAvatar: string | null;
-        }[]),
     predsPublic && leagueId != null
       ? db
           .select({
@@ -646,37 +617,6 @@ export default async function MatchDetailPage({
         </Card>
       ) : null}
 
-      {/* Match thread — solo logueados; visitantes ven invitación a unirse. */}
-      {me ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Hilo del partido</CardTitle>
-            <CardDescription>
-              Comentario en directo. El admin puede borrar mensajes que se pasen de raya.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChatThread
-              scope="match"
-              matchId={matchId}
-              currentUserId={me.id}
-              isAdmin={me.role === "admin"}
-              messages={chatRows.reverse().map((m) => ({
-                id: m.id,
-                body: m.body,
-                createdAt: m.createdAt.toISOString(),
-                userId: m.userId,
-                deletedAt: m.deletedAt ? m.deletedAt.toISOString() : null,
-                author: {
-                  email: m.authorEmail ?? "",
-                  nickname: m.authorNickname,
-                  avatarUrl: m.authorAvatar,
-                },
-              }))}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }

@@ -43,6 +43,13 @@
       "when": 1778198400000,
       "tag": "0005_postpone_pens_in_r16",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778544000000,
+      "tag": "0006_chat_per_league",
+      "breakpoints": true
     }
   ]
 }

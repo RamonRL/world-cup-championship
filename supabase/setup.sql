@@ -82,14 +82,30 @@ begin
 end;
 $$;
 
--- 5) Chat: read for everyone, insert for self, update via service role only.
+-- 5) Chat: cada liga tiene su hilo. Read e insert limitados a miembros de
+--    esa liga; las updates (soft-delete) van por service role.
 drop policy if exists "chat read" on public.chat_messages;
 create policy "chat read" on public.chat_messages
-  for select to authenticated using (true);
+  for select to authenticated
+  using (
+    exists (
+      select 1 from public.league_memberships lm
+      where lm.league_id = chat_messages.league_id
+        and lm.user_id = auth.uid()
+    )
+  );
 
 drop policy if exists "chat self insert" on public.chat_messages;
 create policy "chat self insert" on public.chat_messages
-  for insert to authenticated with check (auth.uid() = user_id);
+  for insert to authenticated
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.league_memberships lm
+      where lm.league_id = chat_messages.league_id
+        and lm.user_id = auth.uid()
+    )
+  );
 
 -- 6a) Leagues + league_memberships: lectura para usuarios autenticados.
 --     Las escrituras siempre van por el server (postgres role bypassa RLS),

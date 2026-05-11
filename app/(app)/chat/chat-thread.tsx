@@ -25,14 +25,12 @@ export type ChatMessage = {
 };
 
 export function ChatThread({
-  scope,
-  matchId,
+  leagueId,
   messages,
   currentUserId,
   isAdmin,
 }: {
-  scope: "global" | "match";
-  matchId?: number;
+  leagueId: number | null;
   messages: ChatMessage[];
   currentUserId: string;
   isAdmin: boolean;
@@ -55,11 +53,11 @@ export function ChatThread({
   return (
     <div className="flex h-[60dvh] flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
       <RealtimeRefresher
-        channelKey={`chat:${scope}:${matchId ?? "global"}`}
+        channelKey={`chat:league:${leagueId ?? "none"}`}
         subscriptions={[
           {
             table: "chat_messages",
-            filter: scope === "match" ? `match_id=eq.${matchId}` : undefined,
+            filter: leagueId != null ? `league_id=eq.${leagueId}` : undefined,
           },
         ]}
       />
@@ -135,8 +133,6 @@ export function ChatThread({
         action={action}
         className="flex items-center gap-2 border-t border-[var(--color-border)] p-3"
       >
-        <input type="hidden" name="scope" value={scope} />
-        {matchId != null ? <input type="hidden" name="matchId" value={matchId} /> : null}
         <Input
           name="body"
           placeholder="Escribe un mensaje…"

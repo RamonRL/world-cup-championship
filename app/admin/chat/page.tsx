@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { chatMessages, profiles } from "@/lib/db/schema";
+import { chatMessages, leagues, profiles } from "@/lib/db/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,9 @@ export default async function AdminChatPage() {
     .select({
       id: chatMessages.id,
       body: chatMessages.body,
-      scope: chatMessages.scope,
-      matchId: chatMessages.matchId,
+      leagueId: chatMessages.leagueId,
+      leagueName: leagues.name,
+      leagueIsPublic: leagues.isPublic,
       createdAt: chatMessages.createdAt,
       deletedAt: chatMessages.deletedAt,
       userId: chatMessages.userId,
@@ -27,6 +28,7 @@ export default async function AdminChatPage() {
     })
     .from(chatMessages)
     .leftJoin(profiles, eq(chatMessages.userId, profiles.id))
+    .leftJoin(leagues, eq(chatMessages.leagueId, leagues.id))
     .orderBy(desc(chatMessages.createdAt))
     .limit(200);
 
@@ -46,6 +48,11 @@ export default async function AdminChatPage() {
           {rows.map((m) => {
             const display = m.authorNickname ?? m.authorEmail?.split("@")[0] ?? "—";
             const deleted = m.deletedAt != null;
+            const leagueLabel = m.leagueName
+              ? m.leagueIsPublic
+                ? `Pública · ${m.leagueName}`
+                : m.leagueName
+              : `Liga #${m.leagueId}`;
             return (
               <li
                 key={m.id}
@@ -59,8 +66,7 @@ export default async function AdminChatPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-semibold">{display}</span>
                     <Badge variant="outline" className="text-[0.6rem]">
-                      {m.scope}
-                      {m.matchId ? ` · #${m.matchId}` : ""}
+                      {leagueLabel}
                     </Badge>
                     {deleted ? (
                       <Badge variant="danger" className="text-[0.6rem]">

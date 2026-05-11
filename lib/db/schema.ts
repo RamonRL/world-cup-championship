@@ -31,8 +31,6 @@ export const matchStage = pgEnum("match_stage", [
 
 export const matchStatus = pgEnum("match_status", ["scheduled", "live", "finished"]);
 
-export const chatScope = pgEnum("chat_scope", ["global", "match"]);
-
 export const specialPredictionType = pgEnum("special_prediction_type", [
   "yes_no",
   "single_choice",
@@ -445,8 +443,9 @@ export const chatMessages = pgTable(
   "chat_messages",
   {
     id: serial("id").primaryKey(),
-    scope: chatScope("scope").notNull(),
-    matchId: integer("match_id").references(() => matches.id, { onDelete: "cascade" }),
+    leagueId: integer("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
@@ -455,10 +454,7 @@ export const chatMessages = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     deletedBy: uuid("deleted_by").references(() => profiles.id, { onDelete: "set null" }),
   },
-  (t) => [
-    index("chat_messages_scope_idx").on(t.scope, t.createdAt),
-    index("chat_messages_match_idx").on(t.matchId),
-  ],
+  (t) => [index("chat_messages_league_idx").on(t.leagueId, t.createdAt)],
 );
 
 export const auditLog = pgTable(
