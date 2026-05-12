@@ -108,10 +108,16 @@ function PreHub({
   const ctaTarget = firstIncomplete
     ? hrefFor(firstIncomplete.key)
     : "/predicciones";
+  // El verbo del CTA depende de cuántas categorías llevas ya hechas, no
+  // del estado de la siguiente. Esto da la cadencia narrativa que pidió
+  // el usuario: empezar → seguir → acabar.
+  const remaining = visibleTotal - completed;
+  const ctaVerb =
+    completed === 0 ? "Empezar por" : remaining === 1 ? "Acaba con" : "Sigue con";
   const ctaLabel = isDone
     ? "Revisar mis picks"
     : firstIncomplete
-      ? `${firstIncomplete.status === "not-started" ? "Empezar" : "Continuar"} por ${labelFor(firstIncomplete.key)}`
+      ? `${ctaVerb} ${labelFor(firstIncomplete.key)}`
       : "Ver todas las categorías";
 
   return (

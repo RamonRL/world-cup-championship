@@ -82,6 +82,10 @@ export function ProgressDonut({
         height={size}
         role="img"
         aria-label={`${value} de ${total} completado`}
+        // overflow visible: sin esto, el drop-shadow del arc se recorta al
+        // bounding box del SVG y deja un recuadro visible alrededor del
+        // halo cuando la parte iluminada toca un borde.
+        style={{ overflow: "visible" }}
       >
         {/* Track */}
         <circle
@@ -136,14 +140,15 @@ export function ProgressDonut({
           }}
         />
       </svg>
-      {/* Center label */}
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 text-center">
+      {/* Center label — gap mayor + leading-tight para que el glow del
+          número grande no se solape con el caption pequeño. */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-6 text-center">
         <span
-          className={`font-display tabular text-4xl leading-none tracking-tight sm:text-5xl ${centerTopClass}`}
+          className={`font-display tabular text-4xl leading-tight tracking-tight sm:text-5xl ${centerTopClass}`}
         >
           {centerTop}
         </span>
-        <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+        <span className="font-mono text-[0.55rem] uppercase leading-tight tracking-[0.28em] text-[var(--color-muted-foreground)]">
           {centerBottom}
         </span>
       </div>
