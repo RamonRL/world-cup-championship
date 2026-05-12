@@ -105,40 +105,14 @@ export default async function DashboardPage() {
   const tournamentStarted = kickoff.getTime() <= Date.now();
   const days = Math.max(0, Math.ceil((kickoff.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
-  // Stats: solo cuentan los puntos que el usuario ha hecho en ESTA liga.
-  const myPointsRows = await safe(
-    db
-      .select({ total: sql<number>`coalesce(sum(${pointsLedger.points}), 0)::int` })
-      .from(pointsLedger)
-      .where(and(eq(pointsLedger.userId, me.id), eq(pointsLedger.leagueId, leagueId))),
-    [{ total: 0 }] as Array<{ total: number }>,
-    "myPointsRow",
-  );
-  const myPoints = myPointsRows[0]?.total ?? 0;
-
-  // Pre-torneo nadie tiene puntos y el ranking renderiza empty state, así
-  // que evitamos cargar/agregar todas las filas de profiles + pointsLedger
-  // de la liga. Sólo computamos ranking si:
-  //   - el torneo ya empezó, o
-  //   - el usuario actual ya suma puntos, o
-  //   - hay al menos un punto en la liga (check EXISTS barato).
-  const computeRanking =
-    tournamentStarted || myPoints > 0
-      ? true
-      : await safe(leagueHasPoints(leagueId), false, "leagueHasPoints");
-
-  const upcomingMatchdays = await safe(
-    db
-      .select()
-      .from(matchdays)
-      .where(gt(matchdays.predictionDeadlineAt, new Date()))
-      .orderBy(asc(matchdays.predictionDeadlineAt))
-      .limit(1),
-    [] as Array<typeof matchdays.$inferSelect>,
-    "upcomingMatchdays",
-  );
-
+  // Lanzamos en paralelo todo lo que no depende de otra query — antes
+  // myPointsRows / leagueHasPoints / upcomingMatchdays eran secuenciales
+  // y en el peor caso (cada una agotando su timeout) sumaban 15s antes de
+  // empezar el Promise.all gordo. Con Vercel a 10s ya estaba muerto.
   const [
+    myPointsRows,
+    leagueHasPointsResult,
+    upcomingMatchdays,
     groupCount,
     topScorerSet,
     mySpecialsRow,
@@ -149,11 +123,27 @@ export default async function DashboardPage() {
     bracketStatus,
     bracketFilledRow,
     allFutureMatchdays,
-    leaderboardEntries,
-    leagueMemberCountFallback,
     pendingScorerCount,
-    activity,
   ] = await Promise.all([
+    safe(
+      db
+        .select({ total: sql<number>`coalesce(sum(${pointsLedger.points}), 0)::int` })
+        .from(pointsLedger)
+        .where(and(eq(pointsLedger.userId, me.id), eq(pointsLedger.leagueId, leagueId))),
+      [{ total: 0 }] as Array<{ total: number }>,
+      "myPointsRow",
+    ),
+    safe(leagueHasPoints(leagueId), false, "leagueHasPoints"),
+    safe(
+      db
+        .select()
+        .from(matchdays)
+        .where(gt(matchdays.predictionDeadlineAt, new Date()))
+        .orderBy(asc(matchdays.predictionDeadlineAt))
+        .limit(1),
+      [] as Array<typeof matchdays.$inferSelect>,
+      "upcomingMatchdays",
+    ),
     safe(
       db
         .select({ c: sql<number>`count(*)::int` })
@@ -252,16 +242,6 @@ export default async function DashboardPage() {
       "allFutureMatchdays",
     ),
     safe(
-      computeRanking ? loadLeaderboard(leagueId) : Promise.resolve([]),
-      [] as LeaderboardEntry[],
-      "leaderboardEntries",
-    ),
-    safe(
-      computeRanking ? Promise.resolve(0) : countLeagueMembers(leagueId),
-      0,
-      "leagueMemberCountFallback",
-    ),
-    safe(
       tournamentStarted
         ? db
             .select({ c: sql<number>`count(*)::int` })
@@ -283,6 +263,29 @@ export default async function DashboardPage() {
         : Promise.resolve([{ c: 0 }]),
       [{ c: 0 }] as Array<{ c: number }>,
       "pendingScorerCount",
+    ),
+  ]);
+  const myPoints = myPointsRows[0]?.total ?? 0;
+
+  // Pre-torneo nadie tiene puntos y el ranking renderiza empty state, así
+  // que evitamos cargar/agregar todas las filas de profiles + pointsLedger
+  // de la liga. Sólo computamos ranking si:
+  //   - el torneo ya empezó, o
+  //   - el usuario actual ya suma puntos, o
+  //   - hay al menos un punto en la liga (check EXISTS barato).
+  const computeRanking = tournamentStarted || myPoints > 0 || leagueHasPointsResult;
+
+  // Segunda fase: queries que dependen de `myPoints` / `computeRanking`.
+  const [leaderboardEntries, leagueMemberCountFallback, activity] = await Promise.all([
+    safe(
+      computeRanking ? loadLeaderboard(leagueId) : Promise.resolve([]),
+      [] as LeaderboardEntry[],
+      "leaderboardEntries",
+    ),
+    safe(
+      computeRanking ? Promise.resolve(0) : countLeagueMembers(leagueId),
+      0,
+      "leagueMemberCountFallback",
     ),
     safe(
       myPoints > 0

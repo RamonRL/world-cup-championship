@@ -1,12 +1,48 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/guards";
-import { currentLeagueId, getMembershipsForUser } from "@/lib/leagues";
+import {
+  currentLeagueId,
+  getMembershipsForUser,
+  type Membership,
+} from "@/lib/leagues";
 import { AppHeader } from "@/components/shell/header";
 import { Sidebar } from "@/components/shell/sidebar";
 import { MobileBottomNav } from "@/components/shell/mobile-nav";
 import { DeadlineBanner } from "@/components/shell/deadline-banner";
 import { loadDeadlineSummary } from "@/lib/deadlines";
+
+// Mismo patrón que en dashboard: timeout + fallback para que un query
+// colgado nunca derribe el shell entero. El layout corre en CADA navegación,
+// así que aquí es donde más duele un hang.
+const LAYOUT_QUERY_TIMEOUT_MS = 4000;
+
+function withTimeout<T>(promise: Promise<T>, fallback: T, label: string): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      console.error(`layout query timeout: ${label} (>${LAYOUT_QUERY_TIMEOUT_MS}ms)`);
+      resolve(fallback);
+    }, LAYOUT_QUERY_TIMEOUT_MS);
+    promise.then(
+      (v) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        console.error(`layout query failed: ${label}`, err);
+        resolve(fallback);
+      },
+    );
+  });
+}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireUser();
@@ -23,7 +59,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const currentView = await currentLeagueId(me);
   const [{ imminent, pendingCount }, memberships] = await Promise.all([
     loadDeadlineSummary(me.id, currentView ?? me.leagueId!),
-    getMembershipsForUser(me.id),
+    withTimeout(
+      getMembershipsForUser(me.id),
+      [] as Membership[],
+      "getMembershipsForUser",
+    ),
   ]);
   // Mostramos "Mi Quiniela" en la nav solo cuando la liga activa es privada.
   // En la pública no hay nada que gestionar (no es del usuario, no se invita,
