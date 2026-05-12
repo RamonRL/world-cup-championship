@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { matchScorers, matches, teams } from "@/lib/db/schema";
 import { TeamFlag } from "@/components/brand/team-flag";
@@ -49,7 +49,16 @@ export default async function StatsPage() {
     );
   }
 
-  const [scorerRows, drawsRows, finishedMatches, allTeams, stagesAgg] = await Promise.all([
+  // Una sola pasada: para cada equipo, sumamos goles a favor / en contra y
+  // partidos jugados (filas home + away) directamente en SQL. Antes traíamos
+  // todos los partidos terminados a memoria y los recorríamos en JS dos veces
+  // por equipo.
+  const [
+    scorerRows,
+    drawsRows,
+    teamStatsRows,
+    stagesAgg,
+  ] = await Promise.all([
     db.select({ goals: sql<number>`count(*)::int` }).from(matchScorers),
     db
       .select({
@@ -58,8 +67,33 @@ export default async function StatsPage() {
         over6: sql<number>`count(*) filter (where home_score + away_score > 6)::int`,
       })
       .from(matches),
-    db.select().from(matches).where(eq(matches.status, "finished")),
-    db.select().from(teams),
+    db.execute<{
+      team_id: number;
+      code: string;
+      name: string;
+      scored: number;
+      conceded: number;
+      played: number;
+    }>(sql`
+      WITH per_match AS (
+        SELECT home_team_id AS team_id, home_score AS scored, away_score AS conceded
+          FROM matches WHERE status = 'finished' AND home_team_id IS NOT NULL
+        UNION ALL
+        SELECT away_team_id AS team_id, away_score AS scored, home_score AS conceded
+          FROM matches WHERE status = 'finished' AND away_team_id IS NOT NULL
+      )
+      SELECT
+        t.id AS team_id,
+        t.code,
+        t.name,
+        coalesce(sum(pm.scored), 0)::int AS scored,
+        coalesce(sum(pm.conceded), 0)::int AS conceded,
+        count(pm.team_id)::int AS played
+      FROM teams t
+      JOIN per_match pm ON pm.team_id = t.id
+      GROUP BY t.id, t.code, t.name
+      HAVING count(pm.team_id) > 0
+    `),
     db
       .select({
         stage: matches.stage,
@@ -72,36 +106,21 @@ export default async function StatsPage() {
   const scorerCount = scorerRows[0] ?? { goals: 0 };
   const drawsRow = drawsRows[0] ?? { draws: 0, penalties: 0, over6: 0 };
 
-  // Per-team aggregate from finished matches.
-  const tally = new Map<number, { scored: number; conceded: number; played: number }>();
-  for (const m of finishedMatches) {
-    if (
-      m.homeScore == null ||
-      m.awayScore == null ||
-      m.homeTeamId == null ||
-      m.awayTeamId == null
-    ) {
-      continue;
-    }
-    const home = tally.get(m.homeTeamId) ?? { scored: 0, conceded: 0, played: 0 };
-    home.scored += m.homeScore;
-    home.conceded += m.awayScore;
-    home.played += 1;
-    tally.set(m.homeTeamId, home);
-    const away = tally.get(m.awayTeamId) ?? { scored: 0, conceded: 0, played: 0 };
-    away.scored += m.awayScore;
-    away.conceded += m.homeScore;
-    away.played += 1;
-    tally.set(m.awayTeamId, away);
-  }
-  const teamById = new Map(allTeams.map((t) => [t.id, t]));
-  const teamRows = Array.from(tally.entries()).map(([teamId, t]) => ({
-    team: teamById.get(teamId) ?? null,
-    ...t,
+  const teamRows = (teamStatsRows as Array<{
+    team_id: number;
+    code: string;
+    name: string;
+    scored: number;
+    conceded: number;
+    played: number;
+  }>).map((r) => ({
+    team: { id: r.team_id, code: r.code, name: r.name },
+    scored: r.scored,
+    conceded: r.conceded,
+    played: r.played,
   }));
   const bestAttack = [...teamRows].sort((a, b) => b.scored - a.scored).slice(0, 3);
   const bestDefense = [...teamRows]
-    .filter((r) => r.played > 0)
     .sort(
       (a, b) =>
         a.conceded / Math.max(1, a.played) - b.conceded / Math.max(1, b.played),

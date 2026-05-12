@@ -116,6 +116,12 @@ export const profiles = pgTable(
   (t) => [
     index("profiles_role_idx").on(t.role),
     index("profiles_league_idx").on(t.leagueId),
+    // Cubre el GROUP BY de /admin/monitoreo/geo y el COUNT(DISTINCT country_code)
+    // del overview. Sin índice el geo page hace full scan.
+    index("profiles_country_code_idx").on(t.countryCode),
+    // Acelera /admin/monitoreo (online/DAU/WAU/MAU filtran por last_seen_at)
+    // y la columna de "última conexión" en /admin/usuarios.
+    index("profiles_last_seen_idx").on(t.lastSeenAt),
   ],
 );
 

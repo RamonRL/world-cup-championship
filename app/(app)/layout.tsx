@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/guards";
@@ -9,12 +10,13 @@ import {
 import { AppHeader } from "@/components/shell/header";
 import { Sidebar } from "@/components/shell/sidebar";
 import { MobileBottomNav } from "@/components/shell/mobile-nav";
-import { DeadlineBanner } from "@/components/shell/deadline-banner";
-import { loadDeadlineSummary } from "@/lib/deadlines";
+import { DeadlineSlot } from "@/components/shell/deadline-slot";
 
-// Mismo patrón que en dashboard: timeout + fallback para que un query
-// colgado nunca derribe el shell entero. El layout corre en CADA navegación,
-// así que aquí es donde más duele un hang.
+// El layout corre en CADA navegación, así que aquí es donde más duele un
+// hang. Sólo bloqueamos lo imprescindible para pintar el shell (auth,
+// memberships para el switcher). El banner de deadline va por Suspense
+// para que su query (que era el culpable de los timeouts de 4-5s) no
+// frene la página.
 const LAYOUT_QUERY_TIMEOUT_MS = 4000;
 
 function withTimeout<T>(promise: Promise<T>, fallback: T, label: string): Promise<T> {
@@ -57,30 +59,29 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const cookieStore = await cookies();
   const sidebarCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
   const currentView = await currentLeagueId(me);
-  const [{ imminent, pendingCount }, memberships] = await Promise.all([
-    loadDeadlineSummary(me.id, currentView ?? me.leagueId!),
-    withTimeout(
-      getMembershipsForUser(me.id),
-      [] as Membership[],
-      "getMembershipsForUser",
-    ),
-  ]);
+  const memberships = await withTimeout(
+    getMembershipsForUser(me.id),
+    [] as Membership[],
+    "getMembershipsForUser",
+  );
   // Mostramos "Mi Quiniela" en la nav solo cuando la liga activa es privada.
   // En la pública no hay nada que gestionar (no es del usuario, no se invita,
   // no se sale).
   const activeMembership = memberships.find((m) => m.id === currentView);
   const showMyLeague = activeMembership ? !activeMembership.isPublic : false;
+  const activeLeagueId = currentView ?? me.leagueId!;
   return (
     <div className="flex min-h-dvh">
       <Sidebar
         isAdmin={isAdmin}
         myId={me.id}
-        pendingCount={pendingCount}
         defaultCollapsed={sidebarCollapsed}
         showMyLeague={showMyLeague}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <DeadlineBanner deadline={imminent} />
+        <Suspense fallback={null}>
+          <DeadlineSlot userId={me.id} leagueId={activeLeagueId} />
+        </Suspense>
         <AppHeader
           email={me.email}
           nickname={me.nickname}
@@ -95,7 +96,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <MobileBottomNav
           isAdmin={isAdmin}
           myId={me.id}
-          pendingCount={pendingCount}
           showMyLeague={showMyLeague}
         />
       </div>

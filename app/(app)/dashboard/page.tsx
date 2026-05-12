@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { ArrowRight, ArrowUpRight, CalendarDays, Crown, Flame, Trophy } from "lucide-react";
-import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   matchScorers,
@@ -13,7 +13,6 @@ import {
   pointsLedger,
   predBracketSlot,
   predGroupRanking,
-  predMatchResult,
   predMatchScorer,
   predSpecial,
   predTournamentTopScorer,
@@ -27,12 +26,11 @@ import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
 import { loadActivityFeed } from "@/lib/activity-feed";
 import { ImportPredictionsBanner } from "@/components/predictions/import-banner";
-import { computeMatchdayStates, type Stage } from "@/lib/matchday-state";
+import { loadOpenMatchdays, type OpenMatchdayEntry } from "@/lib/deadlines";
 import { getBracketStatus } from "@/lib/bracket-state";
 import { ProgressHub, type ProgressHubProps } from "@/components/dashboard/progress-hub";
 import {
   countLeagueMembers,
-  leagueHasPoints,
   loadLeaderboard,
   type LeaderboardEntry,
 } from "@/lib/leaderboard";
@@ -105,13 +103,13 @@ export default async function DashboardPage() {
   const tournamentStarted = kickoff.getTime() <= Date.now();
   const days = Math.max(0, Math.ceil((kickoff.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
-  // Lanzamos en paralelo todo lo que no depende de otra query — antes
-  // myPointsRows / leagueHasPoints / upcomingMatchdays eran secuenciales
-  // y en el peor caso (cada una agotando su timeout) sumaban 15s antes de
-  // empezar el Promise.all gordo. Con Vercel a 10s ya estaba muerto.
+  // Pre-torneo nadie tiene puntos: no hay nada que rankear ni actividad
+  // que listar, así que evitamos por completo `myPoints`, `leagueHasPoints`,
+  // `loadLeaderboard`, `loadActivityFeed` y `pendingScorerCount`. Pasamos
+  // de ~8 queries a ~6 pre-torneo, y a la mitad de coste agregado.
+  const computeRanking = tournamentStarted;
+
   const [
-    myPointsRows,
-    leagueHasPointsResult,
     upcomingMatchdays,
     groupCount,
     topScorerSet,
@@ -122,18 +120,12 @@ export default async function DashboardPage() {
     liveMatchRows,
     bracketStatus,
     bracketFilledRow,
-    allFutureMatchdays,
+    openMatchdays,
     pendingScorerCount,
+    myPointsRows,
+    leaderboardEntries,
+    leagueMemberCountFallback,
   ] = await Promise.all([
-    safe(
-      db
-        .select({ total: sql<number>`coalesce(sum(${pointsLedger.points}), 0)::int` })
-        .from(pointsLedger)
-        .where(and(eq(pointsLedger.userId, me.id), eq(pointsLedger.leagueId, leagueId))),
-      [{ total: 0 }] as Array<{ total: number }>,
-      "myPointsRow",
-    ),
-    safe(leagueHasPoints(leagueId), false, "leagueHasPoints"),
     safe(
       db
         .select()
@@ -232,14 +224,14 @@ export default async function DashboardPage() {
       [{ c: 0 }] as Array<{ c: number }>,
       "bracketFilledRow",
     ),
+    // Reusa la misma función cacheada que alimenta al deadline banner del
+    // layout. React.cache() dedupe la query: cero round-trips extra.
     safe(
-      db
-        .select()
-        .from(matchdays)
-        .where(gt(matchdays.predictionDeadlineAt, new Date()))
-        .orderBy(asc(matchdays.predictionDeadlineAt)),
-      [] as Array<typeof matchdays.$inferSelect>,
-      "allFutureMatchdays",
+      tournamentStarted
+        ? loadOpenMatchdays(me.id, leagueId)
+        : Promise.resolve([] as OpenMatchdayEntry[]),
+      [] as OpenMatchdayEntry[],
+      "openMatchdays",
     ),
     safe(
       tournamentStarted
@@ -264,19 +256,16 @@ export default async function DashboardPage() {
       [{ c: 0 }] as Array<{ c: number }>,
       "pendingScorerCount",
     ),
-  ]);
-  const myPoints = myPointsRows[0]?.total ?? 0;
-
-  // Pre-torneo nadie tiene puntos y el ranking renderiza empty state, así
-  // que evitamos cargar/agregar todas las filas de profiles + pointsLedger
-  // de la liga. Sólo computamos ranking si:
-  //   - el torneo ya empezó, o
-  //   - el usuario actual ya suma puntos, o
-  //   - hay al menos un punto en la liga (check EXISTS barato).
-  const computeRanking = tournamentStarted || myPoints > 0 || leagueHasPointsResult;
-
-  // Segunda fase: queries que dependen de `myPoints` / `computeRanking`.
-  const [leaderboardEntries, leagueMemberCountFallback, activity] = await Promise.all([
+    safe(
+      tournamentStarted
+        ? db
+            .select({ total: sql<number>`coalesce(sum(${pointsLedger.points}), 0)::int` })
+            .from(pointsLedger)
+            .where(and(eq(pointsLedger.userId, me.id), eq(pointsLedger.leagueId, leagueId)))
+        : Promise.resolve([{ total: 0 }]),
+      [{ total: 0 }] as Array<{ total: number }>,
+      "myPointsRows",
+    ),
     safe(
       computeRanking ? loadLeaderboard(leagueId) : Promise.resolve([]),
       [] as LeaderboardEntry[],
@@ -287,14 +276,14 @@ export default async function DashboardPage() {
       0,
       "leagueMemberCountFallback",
     ),
-    safe(
-      myPoints > 0
-        ? loadActivityFeed(me.id, leagueId, 8)
-        : Promise.resolve([]),
-      [] as Awaited<ReturnType<typeof loadActivityFeed>>,
-      "activity",
-    ),
   ]);
+  const myPoints = myPointsRows[0]?.total ?? 0;
+
+  const activity = await safe(
+    myPoints > 0 ? loadActivityFeed(me.id, leagueId, 8) : Promise.resolve([]),
+    [] as Awaited<ReturnType<typeof loadActivityFeed>>,
+    "activity",
+  );
   const liveMatch = liveMatchRows[0] ?? null;
   const sorted = leaderboardEntries;
   const totalParticipants = computeRanking ? sorted.length : leagueMemberCountFallback;
@@ -388,15 +377,8 @@ export default async function DashboardPage() {
         specialsFilled: mySpecials,
         specialsTotal: totalSpecials,
       }
-    : await buildRunningHubProps({
-        userId: me.id,
-        leagueId,
-        allFutureMatchdays: allFutureMatchdays.map((d) => ({
-          id: d.id,
-          name: d.name,
-          stage: d.stage as Stage,
-          predictionDeadlineAt: d.predictionDeadlineAt,
-        })),
+    : buildRunningHubProps({
+        openMatchdays,
         bracket:
           bracketStatus.state === "open" || bracketStatus.state === "closed"
             ? {
@@ -1130,22 +1112,13 @@ function TeamSide({
   );
 }
 
-async function buildRunningHubProps({
-  userId,
-  leagueId,
-  allFutureMatchdays,
+function buildRunningHubProps({
+  openMatchdays,
   bracket,
   preTorneoComplete,
   preTorneoTotal,
 }: {
-  userId: string;
-  leagueId: number;
-  allFutureMatchdays: Array<{
-    id: number;
-    name: string;
-    stage: Stage;
-    predictionDeadlineAt: Date | string;
-  }>;
+  openMatchdays: OpenMatchdayEntry[];
   bracket?: {
     state: "open" | "closed";
     closesAt: string | null;
@@ -1154,48 +1127,10 @@ async function buildRunningHubProps({
   };
   preTorneoComplete: number;
   preTorneoTotal: number;
-}): Promise<ProgressHubProps> {
-  const annotated = await computeMatchdayStates(allFutureMatchdays);
-  const openMatchdays = annotated.filter((m) => m.state === "open");
-
-  const openIds = openMatchdays.map((m) => m.id);
-  const [totalsByDay, filledByDay] =
-    openIds.length === 0
-      ? [new Map<number, number>(), new Map<number, number>()]
-      : await Promise.all([
-          db
-            .select({
-              matchdayId: matches.matchdayId,
-              total: sql<number>`count(*)::int`,
-            })
-            .from(matches)
-            .where(inArray(matches.matchdayId, openIds))
-            .groupBy(matches.matchdayId)
-            .then(
-              (rows) =>
-                new Map(rows.map((r) => [r.matchdayId ?? 0, r.total])),
-            ),
-          db
-            .select({
-              matchdayId: matches.matchdayId,
-              filled: sql<number>`count(*)::int`,
-            })
-            .from(predMatchResult)
-            .innerJoin(matches, eq(matches.id, predMatchResult.matchId))
-            .where(
-              and(
-                eq(predMatchResult.userId, userId),
-                eq(predMatchResult.leagueId, leagueId),
-                inArray(matches.matchdayId, openIds),
-              ),
-            )
-            .groupBy(matches.matchdayId)
-            .then(
-              (rows) =>
-                new Map(rows.map((r) => [r.matchdayId ?? 0, r.filled])),
-            ),
-        ]);
-
+}): ProgressHubProps {
+  // Pure data transformation. Las queries ya las hizo loadOpenMatchdays
+  // (cacheada por React.cache, así que comparte resultado con el banner
+  // del layout).
   type OpenMatchday = {
     id: number;
     label: string;
@@ -1203,19 +1138,14 @@ async function buildRunningHubProps({
     filled: number;
     total: number;
   };
-  const openMatchdayItems: OpenMatchday[] = openMatchdays.map((m) => {
-    const total = totalsByDay.get(m.id) ?? 0;
-    const filled = filledByDay.get(m.id) ?? 0;
-    return {
-      id: m.id,
-      label: m.name,
-      closesAt: new Date(m.predictionDeadlineAt).toISOString(),
-      filled,
-      total,
-    };
-  });
+  const openMatchdayItems: OpenMatchday[] = openMatchdays.map((m) => ({
+    id: m.id,
+    label: m.name,
+    closesAt: m.predictionDeadlineAt.toISOString(),
+    filled: m.filled,
+    total: m.total,
+  }));
 
-  // Choose the most urgent deadline: matchday vs bracket (whichever closes first).
   type Candidate = {
     kind: "matchday" | "bracket";
     label: string;

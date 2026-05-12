@@ -11,7 +11,6 @@ import { db } from "@/lib/db";
 import { auditLog, chatMessages, leagues, profiles } from "@/lib/db/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { requireAdmin } from "@/lib/auth/guards";
 import { formatRelative, initials } from "@/lib/utils";
 import { SignupsTrendChart } from "./charts";
@@ -166,16 +165,6 @@ export default async function MonitoringOverviewPage() {
 
   return (
     <div className="space-y-6">
-      {/* Live refresh: las tres tablas que ya publican a supabase_realtime. */}
-      <RealtimeRefresher
-        channelKey="admin-monitoreo-overview"
-        subscriptions={[
-          { table: "chat_messages" },
-          { table: "matches" },
-          { table: "match_scorers" },
-        ]}
-      />
-
       {/* KPI cards */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
@@ -235,7 +224,7 @@ export default async function MonitoringOverviewPage() {
             Actividad reciente
           </p>
           <Badge variant="outline" className="text-[0.55rem]">
-            En vivo
+            Recarga manual
           </Badge>
         </header>
         {stream.length === 0 ? (

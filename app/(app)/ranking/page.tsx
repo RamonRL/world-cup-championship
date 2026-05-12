@@ -1,96 +1,26 @@
 import Link from "next/link";
 import { Award, Crown, ListOrdered, Medal } from "lucide-react";
-import { eq, sql } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { pointsLedger, profiles } from "@/lib/db/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
-import { compareForRanking } from "@/lib/scoring/tiebreaker";
 import { requireUser } from "@/lib/auth/guards";
-import { currentLeagueId, inLeagueFilter } from "@/lib/leagues";
+import { currentLeagueId } from "@/lib/leagues";
+import { loadLeaderboard, type LeaderboardEntry } from "@/lib/leaderboard";
 import { initials } from "@/lib/utils";
 
 export const metadata = { title: "Ranking" };
 
-const KNOCKOUT_SOURCES = [
-  "bracket_slot",
-  "knockout_qualifier",
-  "knockout_pens_bonus",
-  "knockout_score_90",
-] as const;
-
 export default async function RankingPage() {
   const me = await requireUser();
   const leagueId = (await currentLeagueId(me))!;
-  // Miembros de la liga activa.
-  const filter = inLeagueFilter(leagueId);
-  const allUsers = filter
-    ? await db.select().from(profiles).where(filter)
-    : await db.select().from(profiles);
-  const ledger = await db
-    .select()
-    .from(pointsLedger)
-    .where(eq(pointsLedger.leagueId, leagueId));
+  // Una sola query agregada en SQL — antes traíamos todos los profiles +
+  // todo points_ledger y procesábamos en JS, lo que escalaba mal en la
+  // liga pública.
+  const ranked = await loadLeaderboard(leagueId, { withChampionCorrect: true });
 
-  // Picks de campeón scoped a esta liga.
-  const championPredId = await db.execute<{ user_id: string; team_id: number }>(sql`
-    SELECT user_id, predicted_team_id AS team_id
-    FROM pred_bracket_slot
-    WHERE stage = 'final' AND slot_position = 0 AND league_id = ${leagueId}
-  `);
-  const championByUser = new Map<string, number | null>();
-  for (const row of championPredId as unknown as { user_id: string; team_id: number }[]) {
-    championByUser.set(row.user_id, row.team_id);
-  }
-  const championTrue = await db.execute<{ winner_team_id: number | null }>(sql`
-    SELECT winner_team_id FROM matches WHERE stage = 'final' ORDER BY scheduled_at DESC LIMIT 1
-  `);
-  const officialChampion = ((championTrue as unknown as { winner_team_id: number | null }[])[0])
-    ?.winner_team_id ?? null;
-
-  const stats = new Map<
-    string,
-    { totalPoints: number; exactScoresCount: number; knockoutPoints: number; championCorrect: boolean }
-  >();
-  for (const u of allUsers) {
-    stats.set(u.id, {
-      totalPoints: 0,
-      exactScoresCount: 0,
-      knockoutPoints: 0,
-      championCorrect:
-        officialChampion != null && championByUser.get(u.id) === officialChampion,
-    });
-  }
-  for (const e of ledger) {
-    const s = stats.get(e.userId);
-    if (!s) continue;
-    s.totalPoints += e.points;
-    if (e.source === "match_exact_score" || e.source === "knockout_score_90") {
-      s.exactScoresCount += 1;
-    }
-    if ((KNOCKOUT_SOURCES as readonly string[]).includes(e.source)) {
-      s.knockoutPoints += e.points;
-    }
-  }
-
-  const ranked = allUsers
-    .map((u) => ({
-      user: u,
-      ...(stats.get(u.id) ?? {
-        totalPoints: 0,
-        exactScoresCount: 0,
-        knockoutPoints: 0,
-        championCorrect: false,
-      }),
-    }))
-    .sort((a, b) =>
-      compareForRanking({ userId: a.user.id, ...a }, { userId: b.user.id, ...b }),
-    );
-
-  const myEntry = ranked.find((r) => r.user.id === me.id) ?? null;
-  const myIndex = ranked.findIndex((r) => r.user.id === me.id);
+  const myEntry = ranked.find((r) => r.userId === me.id) ?? null;
+  const myIndex = ranked.findIndex((r) => r.userId === me.id);
   const leader = ranked[0] ?? null;
   const lead = leader ? leader.totalPoints - (myEntry?.totalPoints ?? 0) : 0;
 
@@ -151,10 +81,10 @@ export default async function RankingPage() {
           }
           return (
             <PodiumCard
-              key={p.user.id}
+              key={p.userId}
               position={position}
               entry={p}
-              isMe={p.user.id === me.id}
+              isMe={p.userId === me.id}
             />
           );
         })}
@@ -176,7 +106,7 @@ export default async function RankingPage() {
                 Tu posición
               </p>
               <p className="font-display text-xl tracking-tight">
-                {myEntry.user.nickname || myEntry.user.email.split("@")[0]}
+                {myEntry.nickname || myEntry.email.split("@")[0]}
               </p>
             </div>
           </div>
@@ -210,12 +140,12 @@ export default async function RankingPage() {
             <ul>
               {rest.map((r, i) => {
                 const position = i + 4;
-                const isMe = r.user.id === me.id;
-                const display = r.user.nickname || r.user.email.split("@")[0];
+                const isMe = r.userId === me.id;
+                const display = r.nickname || r.email.split("@")[0];
                 return (
-                  <li key={r.user.id}>
+                  <li key={r.userId}>
                     <Link
-                      href={`/ranking/${r.user.id}`}
+                      href={`/ranking/${r.userId}`}
                       className={`grid grid-cols-[56px_1fr_72px] items-center gap-2 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0 transition hover:bg-[var(--color-surface-2)] sm:grid-cols-[56px_1fr_72px_64px_64px] ${
                         isMe
                           ? "bg-[color-mix(in_oklch,var(--color-arena)_6%,transparent)]"
@@ -227,7 +157,7 @@ export default async function RankingPage() {
                       </span>
                       <span className="flex items-center gap-3 truncate">
                         <Avatar className="size-8 border border-[var(--color-border)]">
-                          {r.user.avatarUrl ? <AvatarImage src={r.user.avatarUrl} alt="" /> : null}
+                          {r.avatarUrl ? <AvatarImage src={r.avatarUrl} alt="" /> : null}
                           <AvatarFallback>{initials(display)}</AvatarFallback>
                         </Avatar>
                         <span className="truncate text-sm font-medium">{display}</span>
@@ -258,13 +188,7 @@ export default async function RankingPage() {
   );
 }
 
-type PodiumEntry = {
-  user: typeof profiles.$inferSelect;
-  totalPoints: number;
-  exactScoresCount: number;
-  knockoutPoints: number;
-  championCorrect: boolean;
-};
+type PodiumEntry = LeaderboardEntry;
 
 const PODIUM_LAYOUT: Record<
   number,
@@ -326,7 +250,7 @@ function PodiumCard({
 }) {
   const layout = PODIUM_LAYOUT[position]!;
   const Icon = layout.icon;
-  const display = entry.user.nickname || entry.user.email.split("@")[0];
+  const display = entry.nickname || entry.email.split("@")[0];
   // Avatares dimensionados por posición — el #1 dominante, decreciendo
   // en plata y bronce. La posición vive arriba a la izquierda como número
   // grande; el avatar va centrado horizontalmente para ser el foco visual.
@@ -344,7 +268,7 @@ function PodiumCard({
 
   return (
     <Link
-      href={`/ranking/${entry.user.id}`}
+      href={`/ranking/${entry.userId}`}
       className={`group relative flex flex-col overflow-hidden rounded-xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elev-2)] ${layout.order} ${layout.height} ${layout.border} ${
         isMe ? "ring-2 ring-[var(--color-arena)]/40 ring-offset-2 ring-offset-[var(--color-bg)]" : ""
       }`}
@@ -378,7 +302,7 @@ function PodiumCard({
         <Avatar
           className={`${avatarSize} border-2 border-[var(--color-border-strong)] ${layout.medalRing}`}
         >
-          {entry.user.avatarUrl ? <AvatarImage src={entry.user.avatarUrl} alt="" /> : null}
+          {entry.avatarUrl ? <AvatarImage src={entry.avatarUrl} alt="" /> : null}
           <AvatarFallback className="font-display text-3xl tracking-tight">
             {initials(display)}
           </AvatarFallback>

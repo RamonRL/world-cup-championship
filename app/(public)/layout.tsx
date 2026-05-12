@@ -1,11 +1,11 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { currentLeagueId, getMembershipsForUser } from "@/lib/leagues";
 import { AppHeader } from "@/components/shell/header";
 import { Sidebar } from "@/components/shell/sidebar";
 import { MobileBottomNav } from "@/components/shell/mobile-nav";
-import { DeadlineBanner } from "@/components/shell/deadline-banner";
-import { loadDeadlineSummary } from "@/lib/deadlines";
+import { DeadlineSlot } from "@/components/shell/deadline-slot";
 
 /**
  * Layout PÚBLICO. Igual que (app)/layout.tsx pero sin requireUser():
@@ -31,34 +31,30 @@ export default async function PublicLayout({
 
   let activeLeagueId: number | null = null;
   let memberships: Awaited<ReturnType<typeof getMembershipsForUser>> = [];
-  let imminent: Awaited<ReturnType<typeof loadDeadlineSummary>>["imminent"] = null;
-  let pendingCount = 0;
   if (me) {
     activeLeagueId = await currentLeagueId(me);
-    const [{ imminent: imm, pendingCount: pc }, ms] = await Promise.all([
-      loadDeadlineSummary(me.id, activeLeagueId ?? me.leagueId!),
-      getMembershipsForUser(me.id),
-    ]);
-    imminent = imm;
-    pendingCount = pc;
-    memberships = ms;
+    memberships = await getMembershipsForUser(me.id);
   }
 
   const activeMembership = memberships.find((m) => m.id === activeLeagueId);
   const showMyLeague = activeMembership ? !activeMembership.isPublic : false;
+  const deadlineLeagueId = me ? activeLeagueId ?? me.leagueId ?? null : null;
 
   return (
     <div className="flex min-h-dvh">
       <Sidebar
         isAdmin={isAdmin}
         myId={me?.id ?? ""}
-        pendingCount={pendingCount}
         defaultCollapsed={sidebarCollapsed}
         showMyLeague={showMyLeague}
         isAuthenticated={isAuthenticated}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        {isAuthenticated ? <DeadlineBanner deadline={imminent} /> : null}
+        {me && deadlineLeagueId != null ? (
+          <Suspense fallback={null}>
+            <DeadlineSlot userId={me.id} leagueId={deadlineLeagueId} />
+          </Suspense>
+        ) : null}
         <AppHeader
           email={me?.email ?? null}
           nickname={me?.nickname ?? null}
@@ -73,7 +69,6 @@ export default async function PublicLayout({
         <MobileBottomNav
           isAdmin={isAdmin}
           myId={me?.id ?? ""}
-          pendingCount={pendingCount}
           showMyLeague={showMyLeague}
           isAuthenticated={isAuthenticated}
         />
