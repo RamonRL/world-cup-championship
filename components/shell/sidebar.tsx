@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronsLeft, ChevronsRight, Globe2, Plus } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Globe2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV, buildNavItems, type NavItem } from "./nav-data";
 
@@ -134,18 +134,6 @@ export function Sidebar({
             badgeFor="/predicciones"
             badgeCount={pendingCount}
             collapsed={collapsed}
-            fallback={
-              !isAuthenticated ? (
-                <VisitorCTA
-                  collapsed={collapsed}
-                  icon={<Plus className="size-5" />}
-                  title="Empieza a predecir"
-                  copy="Crea tu quiniela y predice los 104 partidos."
-                  ctaLabel="Crear quiniela"
-                  href="/login?next=%2Fonboarding"
-                />
-              ) : null
-            }
           />
           <NavGroup
             title="Comunidad"

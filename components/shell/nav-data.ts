@@ -76,8 +76,6 @@ export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] 
     },
     { href: "/bracket", label: "Bracket", icon: Swords, group: "main" },
     { href: "/goleadores", label: "Goleadores", icon: Target, group: "main" },
-    { href: "/equipos", label: "Selecciones", icon: Flag, group: "main" },
-    { href: "/sedes", label: "Sedes", icon: MapPin, group: "main" },
     {
       href: "/estadisticas",
       label: "Estadísticas",
@@ -138,6 +136,16 @@ export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] 
     group: "social",
     requiresAuth: true,
   });
+  // Selecciones y Sedes son páginas SEO orientadas a visitantes (alta
+  // intención de búsqueda: "selecciones mundial 2026", "estadios mundial").
+  // El logueado tiene atajos directos desde /equipos/[code] y /partido/[id],
+  // así que las sacamos de su navegación para no saturarle el menú.
+  if (!isAuthed) {
+    all.push(
+      { href: "/equipos", label: "Selecciones", icon: Flag, group: "main" },
+      { href: "/sedes", label: "Sedes", icon: MapPin, group: "main" },
+    );
+  }
   // Ayuda — públicas para que también las indexen Googlebot y compañía.
   // FAQ tiene su propio FAQPageLD; Contacto contiene la presentación del
   // creador, email y redes sociales.
