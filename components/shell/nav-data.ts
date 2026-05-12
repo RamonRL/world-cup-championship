@@ -3,10 +3,12 @@ import {
   CalendarDays,
   CircleUser,
   ClipboardList,
+  Flag,
   HelpCircle,
   Home,
   ListOrdered,
   Mail,
+  MapPin,
   MessagesSquare,
   Settings2,
   Swords,
@@ -37,25 +39,45 @@ type BuildOptions = {
   showMyLeague?: boolean;
   /**
    * Sesión activa. Si false (visitante público), filtramos los items con
-   * requiresAuth para que solo se vean los públicos del torneo.
+   * requiresAuth y reordenamos los primarios de la barra inferior móvil
+   * (Inicio, Calendario, Grupos) para que el visitante tenga atajos al
+   * contenido público.
    */
   isAuthenticated?: boolean;
 };
 
 export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] {
+  const isAuthed = opts.isAuthenticated !== false;
   const all: NavItem[] = [
     {
-      href: "/dashboard",
+      // Visitante → landing pública. Autenticado → dashboard de su liga.
+      href: isAuthed ? "/dashboard" : "/",
       label: "Inicio",
       icon: Home,
       group: "main",
       primaryMobile: true,
-      requiresAuth: true,
     },
-    { href: "/calendario", label: "Calendario", icon: CalendarDays, group: "main" },
-    { href: "/grupos", label: "Grupos", icon: Users, group: "main" },
+    {
+      href: "/calendario",
+      label: "Calendario",
+      icon: CalendarDays,
+      group: "main",
+      // Para visitantes lo sacamos a la barra inferior — sin sesión no
+      // hay predicciones que mostrar como atajo rápido, así que damos
+      // protagonismo al contenido del torneo.
+      primaryMobile: !isAuthed,
+    },
+    {
+      href: "/grupos",
+      label: "Grupos",
+      icon: Users,
+      group: "main",
+      primaryMobile: !isAuthed,
+    },
     { href: "/bracket", label: "Bracket", icon: Swords, group: "main" },
     { href: "/goleadores", label: "Goleadores", icon: Target, group: "main" },
+    { href: "/equipos", label: "Selecciones", icon: Flag, group: "main" },
+    { href: "/sedes", label: "Sedes", icon: MapPin, group: "main" },
     {
       href: "/estadisticas",
       label: "Estadísticas",
@@ -69,7 +91,7 @@ export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] 
       mobileLabel: "Predicciones",
       icon: ClipboardList,
       group: "predicciones",
-      primaryMobile: true,
+      primaryMobile: isAuthed,
       requiresAuth: true,
     },
     {
@@ -94,7 +116,7 @@ export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] 
     label: "Ranking",
     icon: ListOrdered,
     group: "social",
-    primaryMobile: true,
+    primaryMobile: isAuthed,
     requiresAuth: true,
   });
   // Comparar solo tiene sentido en quinielas privadas (la pública es
@@ -133,7 +155,7 @@ export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] 
       group: "ayuda",
     },
   );
-  if (opts.isAuthenticated === false) {
+  if (!isAuthed) {
     return all.filter((it) => !it.requiresAuth);
   }
   return all;

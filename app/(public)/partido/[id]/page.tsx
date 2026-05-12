@@ -25,8 +25,9 @@ import { getCurrentUser } from "@/lib/auth/guards";
 import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime, initials } from "@/lib/utils";
 import { formatRemaining } from "@/lib/deadlines";
-import { Edit3, Settings2, Target } from "lucide-react";
+import { Edit3, MapPin, Settings2, Target } from "lucide-react";
 import { BreadcrumbLD, MatchLD } from "@/components/seo/jsonld";
+import { findVenueByMatchVenue } from "@/lib/seo/venues";
 
 const STAGE_LABEL: Record<string, string> = {
   group: "Fase de grupos",
@@ -400,7 +401,7 @@ export default async function MatchDetailPage({
 
           <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] pt-4 font-editorial text-sm italic text-[var(--color-muted-foreground)]">
             <span>{formatDateTime(match.scheduledAt)}</span>
-            {match.venue ? <span className="truncate">{match.venue}</span> : null}
+            <VenueLink venue={match.venue} />
           </footer>
         </div>
       </section>
@@ -1066,6 +1067,26 @@ function KickoffCountdown({ scheduledAt }: { scheduledAt: Date | string }) {
         {formatRemaining(ms)}
       </span>
     </div>
+  );
+}
+
+function VenueLink({ venue }: { venue: string | null }) {
+  if (!venue) return null;
+  // matches.venue se guarda como "Estadio · Ciudad". Si encontramos la
+  // sede en el catálogo SEO, linkeamos a /sedes/[slug]. Si no, dejamos
+  // texto plano para no enviar al usuario a un 404.
+  const resolved = findVenueByMatchVenue(venue);
+  if (!resolved) {
+    return <span className="truncate">{venue}</span>;
+  }
+  return (
+    <Link
+      href={`/sedes/${resolved.slug}`}
+      className="group inline-flex max-w-full items-center gap-1.5 truncate not-italic font-mono text-[0.7rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-arena)]"
+    >
+      <MapPin className="size-3.5 shrink-0" />
+      <span className="truncate">{venue}</span>
+    </Link>
   );
 }
 

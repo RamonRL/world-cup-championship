@@ -43,11 +43,14 @@ export function MobileBottomNav({
   const pathname = usePathname();
   const items = buildNavItems(myId, { showMyLeague, isAuthenticated });
   const primary = items.filter((i) => i.primaryMobile);
-  const overflow = items.filter((i) => !i.primaryMobile);
-  const overflowByGroup = GROUP_ORDER.map((g) => ({
+  // El sheet "Más" lista todos los items por grupo, no sólo los que no
+  // están en la barra inferior. La duplicación es intencional: el sheet
+  // funciona como el sidebar del PC (mismo árbol completo de navegación),
+  // y los atajos de la barra siguen siendo el acceso rápido pulgar-friendly.
+  const itemsByGroup = GROUP_ORDER.map((g) => ({
     group: g,
     title: GROUP_TITLE[g],
-    items: overflow.filter((i) => i.group === g),
+    items: items.filter((i) => i.group === g),
   })).filter((g) => g.items.length > 0);
   const adminItems = isAdmin ? ADMIN_NAV : [];
   const activeHref = pickActiveHref(pathname, [...items, ...ADMIN_NAV]);
@@ -111,7 +114,7 @@ export function MobileBottomNav({
             <SheetDescription>Todas las secciones</SheetDescription>
           </SheetHeader>
           <div className="mt-2 flex-1 space-y-6 overflow-y-auto pr-1">
-            {overflowByGroup.map(({ group, title, items }) => (
+            {itemsByGroup.map(({ group, title, items }) => (
               <NavGroup
                 key={group}
                 title={title}
