@@ -34,6 +34,13 @@ const STAGE_LABEL: Record<string, string> = {
   final: "Final",
 };
 
+const POSITION_STYLE: Record<Position, { tone: string }> = {
+  POR: { tone: "var(--color-warning)" },
+  DEF: { tone: "var(--color-pitch)" },
+  MED: { tone: "var(--color-accent)" },
+  DEL: { tone: "var(--color-arena)" },
+};
+
 export async function generateMetadata({
   params,
 }: {
@@ -110,6 +117,7 @@ export default async function TeamDetailPage({
   const playerById = new Map(squad.map((p) => [p.id, p]));
   const goalsByPlayer = new Map(scorerAggRows.map((r) => [r.playerId, r.goals]));
   const teamGoals = scorerAggRows.reduce((s, r) => s + r.goals, 0);
+  const topScorerId = scorerAggRows[0]?.playerId ?? null;
 
   // Rivales para tarjetas de partido.
   const oppIds = Array.from(
@@ -475,16 +483,29 @@ export default async function TeamDetailPage({
             description="Las listas finales de 26 jugadores se confirman semanas antes del torneo."
           />
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-10">
             {POSITIONS.map((pos) => {
               const list = squadByPosition[pos]
                 .slice()
                 .sort((a, b) => (a.jerseyNumber ?? 99) - (b.jerseyNumber ?? 99));
               if (list.length === 0) return null;
+              const style = POSITION_STYLE[pos];
               return (
-                <div key={pos} className="space-y-3">
+                <div key={pos} className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center gap-2 rounded-md border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_6%,transparent)] px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-arena)]">
+                    <span
+                      className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-[0.28em]"
+                      style={{
+                        borderColor: `color-mix(in oklch, ${style.tone} 40%, transparent)`,
+                        background: `color-mix(in oklch, ${style.tone} 8%, transparent)`,
+                        color: style.tone,
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        className="inline-block size-1.5 rounded-full"
+                        style={{ background: style.tone }}
+                      />
                       {pos} · {POSITION_LABEL[pos]}
                     </span>
                     <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
@@ -492,25 +513,35 @@ export default async function TeamDetailPage({
                     </span>
                     <span className="h-px flex-1 bg-[var(--color-border)]" />
                   </div>
-                  <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {list.map((p) => (
-                      <PlayerCard key={p.id} player={p} goals={goalsByPlayer.get(p.id) ?? 0} />
+                      <PlayerCard
+                        key={p.id}
+                        player={p}
+                        goals={goalsByPlayer.get(p.id) ?? 0}
+                        isTopScorer={p.id === topScorerId}
+                      />
                     ))}
                   </ul>
                 </div>
               );
             })}
             {squadOther.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
                     Otros
                   </span>
                   <span className="h-px flex-1 bg-[var(--color-border)]" />
                 </div>
-                <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {squadOther.map((p) => (
-                    <PlayerCard key={p.id} player={p} goals={goalsByPlayer.get(p.id) ?? 0} />
+                    <PlayerCard
+                      key={p.id}
+                      player={p}
+                      goals={goalsByPlayer.get(p.id) ?? 0}
+                      isTopScorer={p.id === topScorerId}
+                    />
                   ))}
                 </ul>
               </div>
@@ -975,28 +1006,98 @@ function ScoreCenter({
 
 type PlayerRow = typeof players.$inferSelect;
 
-function PlayerCard({ player, goals }: { player: PlayerRow; goals: number }) {
+function PlayerCard({
+  player,
+  goals,
+  isTopScorer,
+}: {
+  player: PlayerRow;
+  goals: number;
+  isTopScorer?: boolean;
+}) {
+  const norm = player.position ? normalizePosition(player.position) : null;
+  const style = norm ? POSITION_STYLE[norm] : null;
+  const tone = style?.tone ?? "var(--color-border-strong)";
+  const positionLabel = norm ?? player.position ?? "—";
+  const highlight = isTopScorer && goals > 0;
   return (
-    <li className="relative flex items-center gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 transition hover:border-[var(--color-arena)]/40">
-      <PlayerAvatar
-        name={player.name}
-        photoUrl={player.photoUrl}
-        jerseyNumber={player.jerseyNumber}
-        size={44}
+    <li
+      className="group relative flex items-stretch gap-3 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] pr-3 transition-all hover:-translate-y-0.5 hover:border-[color-mix(in_oklch,var(--color-arena)_50%,var(--color-border))] hover:shadow-[var(--shadow-elev-2)]"
+      style={
+        highlight
+          ? {
+              borderColor: `color-mix(in oklch, var(--color-arena) 40%, var(--color-border))`,
+              background: `color-mix(in oklch, var(--color-arena) 4%, var(--color-surface))`,
+            }
+          : undefined
+      }
+    >
+      <span
+        aria-hidden
+        className="block w-1 shrink-0"
+        style={{ background: tone }}
       />
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-display text-sm tracking-tight">{player.name}</p>
-        <p className="truncate font-mono text-[0.55rem] uppercase tracking-[0.28em] text-[var(--color-muted-foreground)]">
-          {player.position ?? "—"}
-          {player.jerseyNumber != null ? ` · #${player.jerseyNumber}` : ""}
-        </p>
+      <div className="flex min-w-0 flex-1 items-center gap-3 py-3">
+        <div className="relative shrink-0">
+          <PlayerAvatar
+            name={player.name}
+            photoUrl={player.photoUrl}
+            jerseyNumber={player.jerseyNumber}
+            size={60}
+          />
+          {player.photoUrl && player.jerseyNumber != null ? (
+            <span
+              className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-surface-2)] font-display tabular text-[0.7rem] leading-none shadow-[var(--shadow-elev-1)]"
+              aria-hidden
+            >
+              {player.jerseyNumber}
+            </span>
+          ) : null}
+          {highlight ? (
+            <span
+              className="absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-arena)] shadow-[var(--shadow-arena)]"
+              aria-label="Máximo goleador del equipo"
+              title="Máximo goleador del equipo"
+            >
+              <Crown className="size-2.5 text-white" />
+            </span>
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-display text-base leading-tight tracking-tight">
+            {player.name}
+          </p>
+          <p className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span
+              className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.22em]"
+              style={{
+                background: `color-mix(in oklch, ${tone} 10%, transparent)`,
+                color: tone,
+              }}
+            >
+              {positionLabel}
+            </span>
+            {player.jerseyNumber != null ? (
+              <span className="font-mono text-[0.6rem] tabular text-[var(--color-muted-foreground)]">
+                #{player.jerseyNumber}
+              </span>
+            ) : null}
+          </p>
+        </div>
+        {goals > 0 ? (
+          <span
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 font-display tabular text-sm ${
+              highlight
+                ? "border-[var(--color-arena)] bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)]"
+                : "border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_10%,transparent)] text-[var(--color-arena)]"
+            }`}
+            title={`${goals} ${goals === 1 ? "gol" : "goles"} en el torneo`}
+          >
+            <Goal className="size-3.5" />
+            {goals}
+          </span>
+        ) : null}
       </div>
-      {goals > 0 ? (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--color-arena)]/40 bg-[color-mix(in_oklch,var(--color-arena)_10%,transparent)] px-2 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-arena)]">
-          <Goal className="size-3" />
-          {goals}
-        </span>
-      ) : null}
     </li>
   );
 }
