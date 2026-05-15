@@ -396,7 +396,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-10">
-      <Suspense fallback={null}>
+      <Suspense fallback={<div aria-hidden />}>
         <ImportPredictionsBanner userId={me.id} activeLeagueId={leagueId} />
       </Suspense>
 

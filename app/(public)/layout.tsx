@@ -51,7 +51,7 @@ export default async function PublicLayout({
       />
       <div className="flex min-w-0 flex-1 flex-col">
         {me && deadlineLeagueId != null ? (
-          <Suspense fallback={null}>
+          <Suspense fallback={<div aria-hidden />}>
             <DeadlineSlot userId={me.id} leagueId={deadlineLeagueId} />
           </Suspense>
         ) : null}

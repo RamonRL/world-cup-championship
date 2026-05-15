@@ -79,7 +79,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         showMyLeague={showMyLeague}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Suspense fallback={null}>
+        <Suspense fallback={<div aria-hidden />}>
           <DeadlineSlot userId={me.id} leagueId={activeLeagueId} />
         </Suspense>
         <AppHeader
