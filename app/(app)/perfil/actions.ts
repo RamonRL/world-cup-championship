@@ -27,13 +27,17 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
 
   const update: Record<string, unknown> = { nickname: parsed.data.nickname };
 
-  const MAX_AVATAR_BYTES = 1024 * 1024; // 1 MB
+  // El cliente comprime la imagen a JPEG 800x800 q=0.85 (~100-200 KB)
+  // antes de subirla — ver `profile-form.tsx` + `lib/client-image.ts`.
+  // Este límite es una red de seguridad para abuso directo de la action.
+  const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
   const avatar = formData.get("avatar");
   if (avatar instanceof File && avatar.size > 0) {
     if (avatar.size > MAX_AVATAR_BYTES) {
       return {
         ok: false,
-        error: "La imagen pesa más de 1 MB. Súbela algo más ligera.",
+        error:
+          "La imagen excede el tamaño aceptado tras optimizar. Prueba con otra foto.",
       };
     }
     const url = await uploadImage({

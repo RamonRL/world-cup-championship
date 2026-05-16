@@ -1,15 +1,27 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Camera, Save } from "lucide-react";
+import { Camera, Loader2, Save } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { initials } from "@/lib/utils";
+import { compressImage, formatBytes } from "@/lib/client-image";
 import { updateProfile, type FormState } from "./actions";
 
 const initial: FormState = { ok: false };
-const MAX_AVATAR_BYTES = 1024 * 1024; // 1 MB
+/**
+ * Tope absoluto del archivo crudo que el usuario elige (antes de comprimir).
+ * Lo subimos a 20 MB para aceptar cualquier foto de móvil moderna; el
+ * pipeline de compresión la deja en ~100-200 KB antes de salir.
+ */
+const MAX_RAW_INPUT_BYTES = 20 * 1024 * 1024;
+
+type CompressInfo = {
+  originalBytes: number;
+  finalBytes: number;
+  skipped: boolean;
+};
 
 export function ProfileForm({
   email,
@@ -22,19 +34,48 @@ export function ProfileForm({
 }) {
   const [state, action, pending] = useActionState(updateProfile, initial);
   const [preview, setPreview] = useState<string | null>(avatarUrl);
-  const [sizeError, setSizeError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [compressing, setCompressing] = useState(false);
+  const [compressInfo, setCompressInfo] = useState<CompressInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const display = nickname || email.split("@")[0];
 
-  function pickFile(file: File) {
-    if (file.size > MAX_AVATAR_BYTES) {
-      setSizeError("La imagen pesa más de 1 MB. Súbela algo más ligera.");
-      // Restablecer el input para que el form NO envíe el archivo grande.
+  async function pickFile(file: File) {
+    setError(null);
+    setCompressInfo(null);
+
+    if (file.size > MAX_RAW_INPUT_BYTES) {
+      setError(
+        `La imagen pesa ${formatBytes(file.size)}. Demasiado grande, prueba con otra.`,
+      );
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
-    setSizeError(null);
-    setPreview(URL.createObjectURL(file));
+
+    setCompressing(true);
+    try {
+      const result = await compressImage(file, { maxDim: 800, quality: 0.85 });
+
+      // Reemplazamos el File del <input type="file"> por la versión
+      // comprimida usando DataTransfer — así la FormData del submit
+      // envía el archivo optimizado sin tocar el server action.
+      if (fileInputRef.current) {
+        const dt = new DataTransfer();
+        dt.items.add(result.file);
+        fileInputRef.current.files = dt.files;
+      }
+      setPreview(URL.createObjectURL(result.file));
+      setCompressInfo({
+        originalBytes: result.originalBytes,
+        finalBytes: result.finalBytes,
+        skipped: result.skipped,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo procesar la imagen.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } finally {
+      setCompressing(false);
+    }
   }
 
   return (
@@ -56,9 +97,10 @@ export function ProfileForm({
               onDrop={(e) => {
                 e.preventDefault();
                 const file = e.dataTransfer.files?.[0];
-                if (file) pickFile(file);
+                if (file) void pickFile(file);
               }}
               aria-label="Cambiar avatar"
+              disabled={compressing}
               className="group relative mx-auto size-32 shrink-0 sm:mx-0"
             >
               <Avatar className="size-32 border-2 border-[var(--color-border-strong)] shadow-[var(--shadow-elev-1)] transition-all group-hover:border-[var(--color-arena)] group-hover:shadow-[var(--shadow-arena)]">
@@ -67,19 +109,24 @@ export function ProfileForm({
                   {initials(display)}
                 </AvatarFallback>
               </Avatar>
-              {/* Overlay al hover */}
+              {/* Overlay: spinner durante compresión, cámara al hover */}
               <span
                 aria-hidden
-                className="absolute inset-0 grid place-items-center rounded-full bg-black/55 opacity-0 transition-opacity group-hover:opacity-100"
+                className={`absolute inset-0 grid place-items-center rounded-full bg-black/55 transition-opacity ${
+                  compressing ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                }`}
               >
                 <span className="flex flex-col items-center gap-1 text-white">
-                  <Camera className="size-6" />
+                  {compressing ? (
+                    <Loader2 className="size-6 animate-spin" />
+                  ) : (
+                    <Camera className="size-6" />
+                  )}
                   <span className="font-mono text-[0.55rem] uppercase tracking-[0.18em]">
-                    Cambiar
+                    {compressing ? "Optimizando" : "Cambiar"}
                   </span>
                 </span>
               </span>
-              {/* Chip "Subir" siempre visible */}
               <span className="absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full bg-[var(--color-arena)] text-white shadow-[var(--shadow-arena)] ring-4 ring-[var(--color-surface)]">
                 <Camera className="size-4" />
               </span>
@@ -96,11 +143,18 @@ export function ProfileForm({
                 Pulsa o arrastra una imagen sobre el avatar.
                 <br />
                 <span className="font-mono not-italic uppercase tracking-[0.18em]">
-                  PNG/JPG · 1 MB máx
+                  PNG/JPG/WEBP · Optimizamos la imagen automáticamente
                 </span>
               </p>
-              {sizeError ? (
-                <p className="text-xs text-[var(--color-danger)]">{sizeError}</p>
+              {compressInfo ? (
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-pitch)]">
+                  {compressInfo.skipped
+                    ? `Imagen lista (${formatBytes(compressInfo.finalBytes)})`
+                    : `Optimizada: ${formatBytes(compressInfo.originalBytes)} → ${formatBytes(compressInfo.finalBytes)}`}
+                </p>
+              ) : null}
+              {error ? (
+                <p className="text-xs text-[var(--color-danger)]">{error}</p>
               ) : null}
             </div>
 
@@ -109,11 +163,11 @@ export function ProfileForm({
               id="avatar"
               name="avatar"
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
               className="sr-only"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) pickFile(f);
+                if (f) void pickFile(f);
               }}
             />
           </div>
@@ -146,7 +200,7 @@ export function ProfileForm({
       ) : null}
 
       <div className="flex justify-end">
-        <Button type="submit" size="lg" disabled={pending}>
+        <Button type="submit" size="lg" disabled={pending || compressing}>
           <Save />
           {pending ? "Guardando…" : "Guardar"}
         </Button>
