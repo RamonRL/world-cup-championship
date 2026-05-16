@@ -27,11 +27,11 @@ export const MINIGAMES: MinigameDef[] = [
     slug: "adivina-la-bandera",
     gameKey: "adivina-la-bandera",
     name: "Adivina la bandera",
-    tagline: "Próximamente",
+    tagline: "60 s · 197 países",
     description:
-      "Misma mecánica que ¿Quién es quién?, pero con banderas de selecciones del Mundial.",
+      "Banderas de todo el mundo, no solo del Mundial. Tienes un minuto para acertar tantas como puedas entre cuatro opciones por ronda.",
     icon: Flag,
-    status: "soon",
+    status: "live",
   },
 ];
 
