@@ -1,4 +1,5 @@
 import { Award, Crown, Medal } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, initials } from "@/lib/utils";
 
 export type MinigameScoreRow = {
@@ -6,6 +7,8 @@ export type MinigameScoreRow = {
   displayName: string;
   bestScore: number;
   isGuest: boolean;
+  /** Avatar/escudo del usuario logueado. Null para invitados. */
+  avatarUrl: string | null;
 };
 
 type Props = {
@@ -104,9 +107,12 @@ export function MinigameScoreTable({
                       {position.toString().padStart(2, "0")}
                     </span>
                     <span className="flex items-center gap-3 truncate">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] font-mono text-[0.65rem] uppercase tracking-tight text-[var(--color-muted-foreground)]">
-                        {initials(r.displayName)}
-                      </span>
+                      <Avatar className="size-8 border border-[var(--color-border)]">
+                        {r.avatarUrl ? <AvatarImage src={r.avatarUrl} alt="" /> : null}
+                        <AvatarFallback className="font-mono text-[0.65rem] uppercase tracking-tight text-[var(--color-muted-foreground)]">
+                          {initials(r.displayName)}
+                        </AvatarFallback>
+                      </Avatar>
                       <span className="truncate text-sm font-medium">{r.displayName}</span>
                       {r.isGuest ? (
                         <span className="rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
@@ -228,16 +234,18 @@ function PodiumCard({
       </div>
 
       <div className="relative flex flex-1 flex-col items-center justify-center gap-3 py-3">
-        <span
+        <Avatar
           className={cn(
-            "grid place-items-center rounded-full border-2 border-[var(--color-border-strong)] bg-[var(--color-surface-2)] font-display tracking-tight text-[var(--color-foreground)]",
+            "border-2 border-[var(--color-border-strong)]",
             avatarSize,
             layout.ring,
           )}
-          style={{ fontSize: "1.75rem" }}
         >
-          {initials(entry.displayName)}
-        </span>
+          {entry.avatarUrl ? <AvatarImage src={entry.avatarUrl} alt="" /> : null}
+          <AvatarFallback className="font-display text-3xl tracking-tight">
+            {initials(entry.displayName)}
+          </AvatarFallback>
+        </Avatar>
         <div className="px-2 text-center">
           <p className={cn("truncate font-display tracking-tight", nameSize)}>
             {entry.displayName}

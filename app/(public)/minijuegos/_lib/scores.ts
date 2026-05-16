@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { minigameScores } from "@/lib/db/schema";
+import { minigameScores, profiles } from "@/lib/db/schema";
 import type { MinigameScoreRow } from "../_shared/score-table";
 
 /** Carga el ranking ordenado descendente por mejor puntuación, top N. */
@@ -9,14 +9,19 @@ export async function loadScoreboard(
   gameKey: string,
   limit = 100,
 ): Promise<MinigameScoreRow[]> {
+  // LEFT JOIN con profiles para traer el avatar/escudo del usuario logueado
+  // (los invitados no tienen `userId` → el join devuelve null y caen al
+  // fallback de iniciales en el cliente).
   const rows = await db
     .select({
       identityKey: minigameScores.identityKey,
       displayName: minigameScores.displayName,
       bestScore: minigameScores.bestScore,
       userId: minigameScores.userId,
+      avatarUrl: profiles.avatarUrl,
     })
     .from(minigameScores)
+    .leftJoin(profiles, eq(minigameScores.userId, profiles.id))
     .where(eq(minigameScores.gameKey, gameKey))
     .orderBy(desc(minigameScores.bestScore), minigameScores.playedAt)
     .limit(limit);
@@ -26,6 +31,7 @@ export async function loadScoreboard(
     displayName: r.displayName,
     bestScore: r.bestScore,
     isGuest: r.userId == null,
+    avatarUrl: r.avatarUrl,
   }));
 }
 
