@@ -26,6 +26,12 @@ export type Round = {
   roundId: number;
   photoUrl: string;
   options: RoundOption[];
+  /**
+   * Respuesta correcta enviada al cliente para feedback inmediato. El
+   * ranking sigue siendo seguro porque el servidor recomputa el score en
+   * `submitScore` a partir del token HMAC; el campo aquí es solo UI.
+   */
+  correctPlayerId: number;
 };
 
 type StartResult =
@@ -110,7 +116,12 @@ export async function startRound(): Promise<StartResult> {
       name: p.name,
       teamCode: p.teamCode,
     }));
-    rounds.push({ roundId, photoUrl: correct.photoUrl, options });
+    rounds.push({
+      roundId,
+      photoUrl: correct.photoUrl,
+      options,
+      correctPlayerId: correct.id,
+    });
     answers[roundId] = correct.id;
   }
 

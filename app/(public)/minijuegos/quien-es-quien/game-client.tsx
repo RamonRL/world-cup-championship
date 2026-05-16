@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowRight, Clock, Trophy, Users2 } from "lucide-react";
+import { Check, Clock, Target, Trophy, Users2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { cn } from "@/lib/utils";
@@ -13,18 +13,28 @@ import {
 import { startRound, submitScore, type Round, type RoundOption } from "./actions";
 
 const GAME_SECONDS = 60;
+/** Tiempo que se queda visible el feedback verde/rojo antes de avanzar. */
+const REVEAL_MS = 450;
 
 type Props = {
-  /** identityKey del usuario logueado, o null si visita pública. */
   myIdentityKey: string | null;
-  /** Mejor puntuación previa del logueado (null si aún no jugó). */
   myBestScore: number | null;
 };
+
+type RevealState = { chosenPlayerId: number; isCorrect: boolean };
 
 type Phase =
   | { kind: "idle" }
   | { kind: "starting" }
-  | { kind: "playing"; rounds: Round[]; token: string; index: number; choices: ChosenAnswer[] }
+  | {
+      kind: "playing";
+      rounds: Round[];
+      token: string;
+      index: number;
+      choices: ChosenAnswer[];
+      correctCount: number;
+      reveal: RevealState | null;
+    }
   | { kind: "submitting"; rounds: Round[]; token: string; choices: ChosenAnswer[] }
   | {
       kind: "done";
@@ -45,10 +55,10 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
   const [showGate, setShowGate] = useState(false);
   const phaseRef = useRef<Phase>(phase);
   phaseRef.current = phase;
+  const revealTimerRef = useRef<number | null>(null);
 
-  // Timer global de la partida. Usamos un setInterval con tick por segundo;
-  // suficiente para mostrar la cuenta atrás. La verdad del fin es el reloj
-  // de pared (`startedAt + 60s`) por si el tab se desactiva un momento.
+  // Timer global de la partida. Tick a 250ms; el reloj de pared
+  // (`startedAt + 60s`) es la verdad por si el tab se desactiva un momento.
   useEffect(() => {
     if (phase.kind !== "playing") return;
     const startedAt = Date.now();
@@ -67,6 +77,14 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase.kind === "playing" ? (phase as { token: string }).token : null]);
 
+  // Limpiamos cualquier timer de reveal pendiente al desmontar / cambiar fase.
+  useEffect(
+    () => () => {
+      if (revealTimerRef.current != null) window.clearTimeout(revealTimerRef.current);
+    },
+    [],
+  );
+
   const beginGame = useCallback(async () => {
     setPhase({ kind: "starting" });
     try {
@@ -82,6 +100,8 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
         token: res.token,
         index: 0,
         choices: [],
+        correctCount: 0,
+        reveal: null,
       });
     } catch (err) {
       setPhase({
@@ -109,32 +129,54 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
     void beginGame();
   };
 
+  const advance = useCallback(() => {
+    setPhase((current) => {
+      if (current.kind !== "playing") return current;
+      const nextIndex = current.index + 1;
+      if (nextIndex >= current.rounds.length) {
+        finishGame(current);
+        return current;
+      }
+      preloadPhotos(current.rounds.slice(nextIndex, nextIndex + 2));
+      return { ...current, index: nextIndex, reveal: null };
+    });
+  }, []);
+
   const handleChoose = (option: RoundOption) => {
     setPhase((current) => {
       if (current.kind !== "playing") return current;
+      // Si ya hay un reveal activo en esta ronda, ignoramos el tap (evita
+      // contar doble si el jugador hace clic en otra opción mientras se
+      // muestra el feedback).
+      if (current.reveal) return current;
       const round = current.rounds[current.index];
       if (!round) return current;
-      // El servidor decide si es acierto al hacer submit (no enviamos la
-      // respuesta correcta al cliente para que no se pueda hacer trampa).
-      // Aquí solo registramos la elección y avanzamos.
+      const isCorrect = option.playerId === round.correctPlayerId;
       const newChoices = [
         ...current.choices,
         { roundId: round.roundId, chosenPlayerId: option.playerId },
       ];
-      const nextIndex = current.index + 1;
-      if (nextIndex >= current.rounds.length) {
-        // Sin rondas — terminamos antes de que se agote el timer.
-        finishGame({ ...current, choices: newChoices });
-        return { ...current, choices: newChoices };
-      }
-      // Prefetch ligero de la siguiente foto.
-      preloadPhotos(current.rounds.slice(nextIndex, nextIndex + 2));
-      return { ...current, index: nextIndex, choices: newChoices };
+
+      // Programa el avance tras la ventana de feedback. Lo hacemos aquí
+      // (dentro del updater) para arrancar el timer en el mismo tick que
+      // el cambio de estado.
+      if (revealTimerRef.current != null) window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = window.setTimeout(() => {
+        advance();
+      }, REVEAL_MS);
+
+      return {
+        ...current,
+        choices: newChoices,
+        correctCount: current.correctCount + (isCorrect ? 1 : 0),
+        reveal: { chosenPlayerId: option.playerId, isCorrect },
+      };
     });
   };
 
   const finishGame = useCallback(
     async (state: Extract<Phase, { kind: "playing" }>) => {
+      if (revealTimerRef.current != null) window.clearTimeout(revealTimerRef.current);
       setPhase({
         kind: "submitting",
         rounds: state.rounds,
@@ -224,14 +266,15 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
 
   // playing
   const round = phase.rounds[phase.index]!;
-  const answered = phase.choices.length;
   return (
     <PlayPanel
       round={round}
       roundNumber={phase.index + 1}
       totalRounds={phase.rounds.length}
-      answered={answered}
+      correctCount={phase.correctCount}
+      answered={phase.choices.length}
       secondsLeft={secondsLeft}
+      reveal={phase.reveal}
       onChoose={handleChoose}
     />
   );
@@ -257,7 +300,7 @@ function IntroPanel({
         </h2>
         <p className="max-w-md font-editorial text-base italic text-[var(--color-muted-foreground)]">
           Aparecerán caras de jugadores. Elige el nombre correcto entre cuatro
-          opciones. Aciertes o falles, pasamos a la siguiente.
+          opciones. Verás al instante si has acertado.
         </p>
       </div>
       {myBestScore != null ? (
@@ -284,22 +327,28 @@ function PlayPanel({
   round,
   roundNumber,
   totalRounds,
+  correctCount,
   answered,
   secondsLeft,
+  reveal,
   onChoose,
 }: {
   round: Round;
   roundNumber: number;
   totalRounds: number;
+  correctCount: number;
   answered: number;
   secondsLeft: number;
+  reveal: RevealState | null;
   onChoose: (option: RoundOption) => void;
 }) {
   const progressPct = Math.max(0, Math.min(100, (secondsLeft / GAME_SECONDS) * 100));
   const lowTime = secondsLeft <= 10;
+  const failed = answered - correctCount;
+
   return (
     <div className="space-y-5">
-      {/* HUD: timer + contador */}
+      {/* HUD: timer + aciertos + ronda */}
       <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5">
         <div className="flex items-center gap-2">
           <Clock
@@ -317,6 +366,22 @@ function PlayPanel({
             {secondsLeft}s
           </span>
         </div>
+
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <Target className="size-3.5 text-emerald-500" />
+            <span className="font-display text-lg tabular text-emerald-500">
+              {correctCount}
+            </span>
+          </span>
+          {failed > 0 ? (
+            <span className="flex items-center gap-1 font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
+              <X className="size-3" />
+              {failed}
+            </span>
+          ) : null}
+        </div>
+
         <div className="flex items-center gap-2">
           <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
             Ronda
@@ -325,12 +390,6 @@ function PlayPanel({
             {roundNumber}
             <span className="text-[var(--color-muted-foreground)]"> / {totalRounds}</span>
           </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-            Respondidas
-          </span>
-          <span className="font-display text-lg tabular">{answered}</span>
         </div>
       </div>
 
@@ -346,7 +405,16 @@ function PlayPanel({
       </div>
 
       {/* Foto */}
-      <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+      <div
+        className={cn(
+          "relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl border bg-[var(--color-surface-2)] transition-colors",
+          reveal == null
+            ? "border-[var(--color-border)]"
+            : reveal.isCorrect
+              ? "border-emerald-500/70 ring-2 ring-emerald-500/40"
+              : "border-[var(--color-danger)]/70 ring-2 ring-[var(--color-danger)]/40",
+        )}
+      >
         <Image
           key={round.roundId}
           src={round.photoUrl}
@@ -357,22 +425,70 @@ function PlayPanel({
           priority={roundNumber <= 2}
           unoptimized
         />
+        {reveal != null ? (
+          <span
+            aria-hidden
+            className={cn(
+              "absolute right-3 top-3 grid size-10 place-items-center rounded-full text-white shadow-lg",
+              reveal.isCorrect ? "bg-emerald-500" : "bg-[var(--color-danger)]",
+            )}
+          >
+            {reveal.isCorrect ? <Check className="size-5" /> : <X className="size-5" />}
+          </span>
+        ) : null}
       </div>
 
       {/* Opciones */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {round.options.map((opt) => (
-          <button
-            key={opt.playerId}
-            type="button"
-            onClick={() => onChoose(opt)}
-            className="group flex items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3.5 text-left transition hover:-translate-y-0.5 hover:border-[var(--color-arena)]/60 hover:shadow-[var(--shadow-elev-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-arena)]"
-          >
-            <TeamFlag code={opt.teamCode} size={28} />
-            <span className="truncate text-sm font-medium">{opt.name}</span>
-            <ArrowRight className="ml-auto size-4 text-[var(--color-muted-foreground)] transition group-hover:translate-x-0.5 group-hover:text-[var(--color-arena)]" />
-          </button>
-        ))}
+        {round.options.map((opt) => {
+          const isChosen = reveal?.chosenPlayerId === opt.playerId;
+          const isCorrect = opt.playerId === round.correctPlayerId;
+          // Durante el reveal mostramos:
+          // - chosen: verde si correcto, rojo si no.
+          // - correct (no chosen): borde verde tenue para que el usuario
+          //   vea cuál era la buena cuando ha fallado.
+          // - resto: opacidad reducida.
+          let stateClass = "";
+          if (reveal != null) {
+            if (isChosen) {
+              stateClass = reveal.isCorrect
+                ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : "border-[var(--color-danger)] bg-[var(--color-danger)]/10 text-[var(--color-danger)]";
+            } else if (isCorrect && !reveal.isCorrect) {
+              stateClass =
+                "border-emerald-500/70 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300";
+            } else {
+              stateClass = "opacity-60";
+            }
+          }
+          return (
+            <button
+              key={opt.playerId}
+              type="button"
+              disabled={reveal != null}
+              onClick={() => onChoose(opt)}
+              className={cn(
+                "group flex items-center gap-3 rounded-lg border px-4 py-3.5 text-left transition disabled:cursor-default",
+                reveal == null
+                  ? "border-[var(--color-border)] bg-[var(--color-surface)] hover:-translate-y-0.5 hover:border-[var(--color-arena)]/60 hover:shadow-[var(--shadow-elev-2)]"
+                  : "bg-[var(--color-surface)]",
+                stateClass,
+              )}
+            >
+              <TeamFlag code={opt.teamCode} size={28} />
+              <span className="truncate text-sm font-medium">{opt.name}</span>
+              {reveal != null && isChosen ? (
+                reveal.isCorrect ? (
+                  <Check className="ml-auto size-4 text-emerald-500" />
+                ) : (
+                  <X className="ml-auto size-4 text-[var(--color-danger)]" />
+                )
+              ) : reveal != null && isCorrect ? (
+                <Check className="ml-auto size-4 text-emerald-500" />
+              ) : null}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -415,18 +531,14 @@ function ResultPanel({
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-left">
           <div className="flex items-center gap-2 text-[var(--color-arena)]">
             <Trophy className="size-4" />
-            <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em]">
-              Posición
-            </p>
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em]">Posición</p>
           </div>
           <p className="mt-1 font-display text-3xl tabular">#{rank}</p>
         </div>
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-left">
           <div className="flex items-center gap-2 text-[var(--color-arena)]">
             <Users2 className="size-4" />
-            <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em]">
-              Jugadores
-            </p>
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em]">Jugadores</p>
           </div>
           <p className="mt-1 font-display text-3xl tabular">{totalParticipants}</p>
         </div>
