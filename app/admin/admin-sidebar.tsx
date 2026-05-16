@@ -7,6 +7,7 @@ import {
   Activity,
   CalendarRange,
   ClipboardCheck,
+  Gamepad2,
   Gauge,
   Goal,
   MessagesSquare,
@@ -35,6 +36,7 @@ const items: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/operaciones", label: "Operaciones", icon: ShieldCheck },
   { href: "/admin/progreso", label: "Progreso", icon: Activity },
   { href: "/admin/chat", label: "Moderación", icon: MessagesSquare },
+  { href: "/admin/minijuegos", label: "Minijuegos", icon: Gamepad2 },
 ];
 
 function isActive(pathname: string, href: string) {
