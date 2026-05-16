@@ -505,3 +505,23 @@ export const auditLog = pgTable(
   },
   (t) => [index("audit_log_created_idx").on(t.createdAt)],
 );
+
+// ───────────────────────── minijuegos ─────────────────────────
+
+export const minigameScores = pgTable(
+  "minigame_scores",
+  {
+    id: serial("id").primaryKey(),
+    gameKey: text("game_key").notNull(),
+    userId: uuid("user_id").references(() => profiles.id, { onDelete: "cascade" }),
+    guestNickname: text("guest_nickname"),
+    identityKey: text("identity_key").notNull(),
+    displayName: text("display_name").notNull(),
+    bestScore: integer("best_score").notNull(),
+    playedAt: timestamp("played_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("minigame_scores_identity").on(t.gameKey, t.identityKey),
+    index("minigame_scores_game_score_idx").on(t.gameKey, t.bestScore),
+  ],
+);

@@ -4,6 +4,7 @@ import {
   CircleUser,
   ClipboardList,
   Flag,
+  Gamepad2,
   HelpCircle,
   Home,
   ListOrdered,
@@ -135,6 +136,14 @@ export function buildNavItems(myId: string, opts: BuildOptions = {}): NavItem[] 
     icon: MessagesSquare,
     group: "social",
     requiresAuth: true,
+  });
+  // Minijuegos — visibles a todos. La ruta vive en (public)/minijuegos y
+  // permite jugar como invitado tras introducir un apodo. Sin requiresAuth.
+  all.push({
+    href: "/minijuegos",
+    label: "Minijuegos",
+    icon: Gamepad2,
+    group: "social",
   });
   // Selecciones y Sedes son páginas SEO orientadas a visitantes (alta
   // intención de búsqueda: "selecciones mundial 2026", "estadios mundial").

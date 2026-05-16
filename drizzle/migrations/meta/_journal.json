@@ -71,6 +71,13 @@
       "when": 1778544637281,
       "tag": "0009_tidy_patch",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778897788176,
+      "tag": "0010_mature_emma_frost",
+      "breakpoints": true
     }
   ]
 }
