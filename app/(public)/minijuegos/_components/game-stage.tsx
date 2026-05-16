@@ -119,11 +119,8 @@ export function GameStage({
         {label}
       </button>
 
-      {/* Contenido del juego, centrado. En móvil apretamos el padding
-          vertical (`py-4`) para que toda la jugada quepa sin scroll —
-          la foto/bandera y los 4 botones tienen que verse a la vez.
-          En sm+ recuperamos aire para que respire la composición. */}
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4 py-4 sm:px-6 sm:py-20">
+      {/* Contenido del juego, centrado, con margen para el HUD */}
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4 py-16 sm:px-6 sm:py-20">
         {children}
       </div>
     </div>,
