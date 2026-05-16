@@ -461,7 +461,7 @@ function PlayPanel({
       <div
         key={round.roundId}
         className={cn(
-          "relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl border-2 bg-[var(--mj-bg-3)] transition-colors mj-slam-in",
+          "relative mx-auto aspect-square w-full max-w-[20.4rem] overflow-hidden rounded-xl border-2 bg-[var(--mj-bg-3)] transition-colors mj-slam-in",
           reveal == null
             ? "border-[var(--mj-line-strong)]"
             : reveal.isCorrect
