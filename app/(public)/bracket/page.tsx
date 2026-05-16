@@ -137,12 +137,11 @@ export default async function BracketPage() {
   };
 
   return (
-    // El árbol mide ~1080px. En max-w-6xl (1152px) cabe holgado. Para
-    // pantallas grandes le damos más aire con márgenes negativos que
-    // SE QUEDAN dentro del padding del main column (lg:px-8 = 2rem),
-    // así no se solapan con el sidebar (-mx-8 = -2rem es el máximo
-    // seguro).
-    <div className="space-y-8 xl:-mx-6 2xl:-mx-8">
+    // El árbol mide ~1080px. En max-w-6xl (1152px) cabe holgado. En PC
+    // (lg+) aplicamos `-mx-10` (=-2.5rem cada lado, +80px total = +7%)
+    // para ganar anchura de visualización; los breakpoints xl/2xl ya no
+    // necesitan ajuste propio porque heredan el de lg.
+    <div className="space-y-8 lg:-mx-10">
       <BreadcrumbLD
         items={[
           { name: "Inicio", href: "/" },
