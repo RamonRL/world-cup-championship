@@ -362,11 +362,11 @@ function PlayPanel({
       : "var(--mj-pitch)";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       {/* HUD */}
       <div
         className={cn(
-          "relative grid grid-cols-3 items-center gap-2 rounded-lg border bg-[var(--mj-bg-2)]/85 p-4 backdrop-blur-sm sm:p-5",
+          "relative grid grid-cols-3 items-center gap-2 rounded-lg border bg-[var(--mj-bg-2)]/85 p-3 backdrop-blur-sm sm:p-5",
           reveal == null
             ? "border-[var(--mj-line)]"
             : reveal.isCorrect
@@ -392,7 +392,7 @@ function PlayPanel({
             />
             <span
               className={cn(
-                "font-display text-5xl tabular leading-none sm:text-6xl",
+                "font-display text-4xl tabular leading-none sm:text-6xl",
                 lowTime ? "mj-glow-red" : secondsLeft <= 20 ? "mj-glow-amber" : "mj-glow-pitch",
               )}
               style={{ color: timerColor }}
@@ -406,7 +406,7 @@ function PlayPanel({
           <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--mj-text-dim)]">
             Aciertos
           </span>
-          <span className="font-display text-5xl tabular leading-none text-[var(--mj-pitch)] mj-glow-pitch sm:text-6xl">
+          <span className="font-display text-4xl tabular leading-none text-[var(--mj-pitch)] mj-glow-pitch sm:text-6xl">
             {correctCount.toString().padStart(2, "0")}
           </span>
         </div>
@@ -415,9 +415,9 @@ function PlayPanel({
           <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--mj-text-dim)]">
             Ronda
           </span>
-          <span className="font-display text-3xl tabular leading-none text-[var(--mj-text)] sm:text-4xl">
+          <span className="font-display text-2xl tabular leading-none text-[var(--mj-text)] sm:text-4xl">
             <span>{roundNumber.toString().padStart(2, "0")}</span>
-            <span className="text-2xl text-[var(--mj-text-dim)]">
+            <span className="text-lg text-[var(--mj-text-dim)] sm:text-2xl">
               /{totalRounds.toString().padStart(2, "0")}
             </span>
           </span>
@@ -435,11 +435,12 @@ function PlayPanel({
         />
       </div>
 
-      {/* Bandera con frame "viewfinder" */}
+      {/* Bandera con frame "viewfinder" — más compacta en móvil para
+          que los 4 botones quepan sin scroll. */}
       <div
         key={round.roundId}
         className={cn(
-          "mj-slam-in relative mx-auto flex aspect-[4/3] w-full max-w-md items-center justify-center overflow-hidden rounded-xl border-2 bg-[var(--mj-bg-3)] p-8 transition-colors",
+          "mj-slam-in relative mx-auto flex aspect-[4/3] w-full max-w-[14rem] items-center justify-center overflow-hidden rounded-xl border-2 bg-[var(--mj-bg-3)] p-4 transition-colors sm:max-w-md sm:p-8",
           reveal == null
             ? "border-[var(--mj-line-strong)]"
             : reveal.isCorrect
@@ -495,7 +496,7 @@ function PlayPanel({
       </div>
 
       {/* Opciones · solo nombre, sin chip de bandera (sería un spoiler) */}
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
         {round.options.map((opt) => {
           const isChosen = reveal?.chosenCode === opt.code;
           const isCorrect = opt.code === round.correctCode;
@@ -519,7 +520,7 @@ function PlayPanel({
               disabled={reveal != null}
               onClick={() => onChoose(opt)}
               className={cn(
-                "group flex items-center justify-between gap-3 rounded-lg border-2 px-4 py-4 text-left transition disabled:cursor-default",
+                "group flex items-center justify-between gap-3 rounded-lg border-2 px-4 py-2.5 text-left transition disabled:cursor-default sm:py-4",
                 reveal == null
                   ? "border-[var(--mj-line)] bg-[var(--mj-bg-2)]/70 text-[var(--mj-text)] hover:-translate-y-0.5 hover:border-[var(--mj-pitch)] hover:bg-[var(--mj-bg-3)] hover:text-[var(--mj-pitch)]"
                   : "bg-[var(--mj-bg-2)]/70",
