@@ -2,18 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Check, Clock, Target, Trophy, Users2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Check, Clock3, Loader2, Play, Trophy, Users2, X, Zap } from "lucide-react";
 import { TeamFlag } from "@/components/brand/team-flag";
 import { cn } from "@/lib/utils";
 import {
   NicknameGate,
   getStoredGuestNickname,
 } from "../_components/nickname-gate";
+import { GameStage } from "../_components/game-stage";
 import { startRound, submitScore, type Round, type RoundOption } from "./actions";
 
 const GAME_SECONDS = 60;
-/** Tiempo que se queda visible el feedback verde/rojo antes de avanzar. */
 const REVEAL_MS = 450;
 
 type Props = {
@@ -57,8 +56,15 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
   phaseRef.current = phase;
   const revealTimerRef = useRef<number | null>(null);
 
-  // Timer global de la partida. Tick a 250ms; el reloj de pared
-  // (`startedAt + 60s`) es la verdad por si el tab se desactiva un momento.
+  // El stage debe estar activo durante toda la partida (starting → done).
+  // En idle/error volvemos a la página normal con su intro panel.
+  const stageActive =
+    phase.kind === "starting" ||
+    phase.kind === "playing" ||
+    phase.kind === "submitting" ||
+    phase.kind === "done";
+
+  // ─────────────────────── timers ───────────────────────
   useEffect(() => {
     if (phase.kind !== "playing") return;
     const startedAt = Date.now();
@@ -77,7 +83,6 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase.kind === "playing" ? (phase as { token: string }).token : null]);
 
-  // Limpiamos cualquier timer de reveal pendiente al desmontar / cambiar fase.
   useEffect(
     () => () => {
       if (revealTimerRef.current != null) window.clearTimeout(revealTimerRef.current);
@@ -85,6 +90,7 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
     [],
   );
 
+  // ─────────────────────── start / advance / submit ───────────────────────
   const beginGame = useCallback(async () => {
     setPhase({ kind: "starting" });
     try {
@@ -112,12 +118,7 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
   }, []);
 
   const handlePlayClick = () => {
-    if (isGuest) {
-      const stored = getStoredGuestNickname();
-      if (stored) {
-        void beginGame();
-        return;
-      }
+    if (isGuest && !getStoredGuestNickname()) {
       setShowGate(true);
       return;
     }
@@ -145,9 +146,6 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
   const handleChoose = (option: RoundOption) => {
     setPhase((current) => {
       if (current.kind !== "playing") return current;
-      // Si ya hay un reveal activo en esta ronda, ignoramos el tap (evita
-      // contar doble si el jugador hace clic en otra opción mientras se
-      // muestra el feedback).
       if (current.reveal) return current;
       const round = current.rounds[current.index];
       if (!round) return current;
@@ -157,13 +155,8 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
         { roundId: round.roundId, chosenPlayerId: option.playerId },
       ];
 
-      // Programa el avance tras la ventana de feedback. Lo hacemos aquí
-      // (dentro del updater) para arrancar el timer en el mismo tick que
-      // el cambio de estado.
       if (revealTimerRef.current != null) window.clearTimeout(revealTimerRef.current);
-      revealTimerRef.current = window.setTimeout(() => {
-        advance();
-      }, REVEAL_MS);
+      revealTimerRef.current = window.setTimeout(advance, REVEAL_MS);
 
       return {
         ...current,
@@ -211,75 +204,83 @@ export function QuienEsQuienClient({ myIdentityKey, myBestScore }: Props) {
     [isGuest],
   );
 
-  // ───────────────────────── render ─────────────────────────
+  const handleAbandon = useCallback(() => {
+    if (revealTimerRef.current != null) window.clearTimeout(revealTimerRef.current);
+    setPhase({ kind: "idle" });
+  }, []);
 
-  if (phase.kind === "idle" || phase.kind === "error") {
-    return (
-      <>
+  const handleCloseDone = useCallback(() => {
+    setPhase({ kind: "idle" });
+  }, []);
+
+  // ─────────────────────── render ───────────────────────
+
+  return (
+    <>
+      {/* Intro / error en página normal (con la estética del sitio). */}
+      {phase.kind === "idle" || phase.kind === "error" ? (
         <IntroPanel
           myBestScore={myBestScore}
           onPlay={handlePlayClick}
           errorMessage={phase.kind === "error" ? phase.message : null}
         />
-        <NicknameGate
-          enabled={isGuest}
-          open={showGate}
-          onConfirm={handleGateConfirm}
-          onCancel={() => setShowGate(false)}
-        />
-      </>
-    );
-  }
+      ) : null}
 
-  if (phase.kind === "starting") {
-    return (
-      <div className="grid place-items-center rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-12">
-        <p className="font-mono text-[0.7rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-          Preparando partida…
-        </p>
-      </div>
-    );
-  }
-
-  if (phase.kind === "submitting") {
-    return (
-      <div className="grid place-items-center rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-12">
-        <p className="font-mono text-[0.7rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-          Calculando tu puntuación…
-        </p>
-      </div>
-    );
-  }
-
-  if (phase.kind === "done") {
-    return (
-      <ResultPanel
-        score={phase.score}
-        previousBest={phase.previousBest}
-        improved={phase.improved}
-        rank={phase.rank}
-        totalParticipants={phase.totalParticipants}
-        onPlayAgain={() => setPhase({ kind: "idle" })}
+      {/* Gate del apodo — modal sobre la intro. */}
+      <NicknameGate
+        enabled={isGuest}
+        open={showGate}
+        onConfirm={handleGateConfirm}
+        onCancel={() => setShowGate(false)}
       />
-    );
-  }
 
-  // playing
-  const round = phase.rounds[phase.index]!;
-  return (
-    <PlayPanel
-      round={round}
-      roundNumber={phase.index + 1}
-      totalRounds={phase.rounds.length}
-      correctCount={phase.correctCount}
-      answered={phase.choices.length}
-      secondsLeft={secondsLeft}
-      reveal={phase.reveal}
-      onChoose={handleChoose}
-    />
+      {/* Stage arcade — fullscreen durante la partida. */}
+      <GameStage
+        active={stageActive}
+        abandonConfirm={
+          phase.kind === "playing"
+            ? "¿Abandonar la partida? Perderás los aciertos de esta ronda."
+            : undefined
+        }
+        onAbandon={phase.kind === "playing" ? handleAbandon : undefined}
+        onClose={handleCloseDone}
+        exitLabel={phase.kind === "done" ? "Cerrar" : undefined}
+      >
+        {phase.kind === "starting" ? <StagePending label="Preparando partida" /> : null}
+        {phase.kind === "submitting" ? (
+          <StagePending label="Calculando puntuación" />
+        ) : null}
+        {phase.kind === "playing" ? (
+          <PlayPanel
+            round={phase.rounds[phase.index]!}
+            roundNumber={phase.index + 1}
+            totalRounds={phase.rounds.length}
+            correctCount={phase.correctCount}
+            secondsLeft={secondsLeft}
+            reveal={phase.reveal}
+            onChoose={handleChoose}
+          />
+        ) : null}
+        {phase.kind === "done" ? (
+          <ResultPanel
+            score={phase.score}
+            previousBest={phase.previousBest}
+            improved={phase.improved}
+            rank={phase.rank}
+            totalParticipants={phase.totalParticipants}
+            onPlayAgain={() => void beginGame()}
+            onClose={handleCloseDone}
+          />
+        ) : null}
+      </GameStage>
+    </>
   );
 }
 
+// ───────────────────────────────────────────────────────────────
+// Intro panel (página normal) — sigue el lenguaje del sitio pero
+// con un punto arcade (verde césped + label "INSERT COIN").
+// ───────────────────────────────────────────────────────────────
 function IntroPanel({
   myBestScore,
   onPlay,
@@ -290,45 +291,79 @@ function IntroPanel({
   errorMessage: string | null;
 }) {
   return (
-    <div className="flex flex-col items-center gap-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center">
-      <div className="space-y-2">
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-          60 segundos · cuantos más aciertos, mejor
-        </p>
-        <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
-          ¿Listo para empezar?
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center sm:p-12">
+      {/* Línea verde tipo gradiente de campo */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-pitch)] to-transparent opacity-60"
+      />
+      <span
+        aria-hidden
+        className="halftone pointer-events-none absolute inset-0 opacity-[0.04]"
+      />
+
+      <div className="relative space-y-5">
+        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-pitch)]/40 bg-[color-mix(in_oklch,var(--color-pitch)_8%,transparent)] px-3 py-1">
+          <span className="size-1.5 rounded-full bg-[var(--color-pitch)] mj-led-blink" />
+          <span className="font-mono text-[0.55rem] font-semibold uppercase tracking-[0.32em] text-[var(--color-pitch)]">
+            Insert coin · 60 s
+          </span>
+        </div>
+        <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
+          ¿Listo para jugar?
         </h2>
-        <p className="max-w-md font-editorial text-base italic text-[var(--color-muted-foreground)]">
+        <p className="mx-auto max-w-md font-editorial text-base italic text-[var(--color-muted-foreground)]">
           Aparecerán caras de jugadores. Elige el nombre correcto entre cuatro
           opciones. Verás al instante si has acertado.
         </p>
+        {myBestScore != null ? (
+          <p className="font-mono text-[0.7rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+            Tu mejor:{" "}
+            <span className="font-display text-2xl tabular text-[var(--color-pitch)] glow-pitch">
+              {myBestScore}
+            </span>
+          </p>
+        ) : null}
+        <button
+          type="button"
+          onClick={onPlay}
+          className="group inline-flex items-center gap-2 rounded-md border-2 border-[var(--color-pitch)] bg-[var(--color-pitch)] px-6 py-3 font-mono text-[0.7rem] font-bold uppercase tracking-[0.24em] text-black shadow-[var(--shadow-pitch)] transition hover:-translate-y-0.5"
+        >
+          <Play className="size-4" />
+          Empezar partida
+        </button>
+        {errorMessage ? (
+          <p className="mx-auto max-w-sm rounded-md border border-[var(--color-danger)]/40 bg-[color-mix(in_oklch,var(--color-danger)_8%,transparent)] px-3 py-2 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-[var(--color-danger)]">
+            {errorMessage}
+          </p>
+        ) : null}
       </div>
-      {myBestScore != null ? (
-        <p className="font-mono text-[0.7rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-          Tu mejor:{" "}
-          <span className="font-display text-2xl tabular text-[var(--color-arena)]">
-            {myBestScore}
-          </span>
-        </p>
-      ) : null}
-      <Button size="lg" onClick={onPlay}>
-        Empezar
-      </Button>
-      {errorMessage ? (
-        <p className="rounded-md border border-[var(--color-danger)]/40 bg-[color-mix(in_oklch,var(--color-danger)_8%,transparent)] px-3 py-2 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-[var(--color-danger)]">
-          {errorMessage}
-        </p>
-      ) : null}
     </div>
   );
 }
 
+// ───────────────────────────────────────────────────────────────
+// Stage placeholder — starting / submitting
+// ───────────────────────────────────────────────────────────────
+function StagePending({ label }: { label: string }) {
+  return (
+    <div className="m-auto flex flex-col items-center gap-4 text-center">
+      <Loader2 className="size-10 text-[var(--mj-pitch)] mj-spinner" />
+      <p className="font-mono text-[0.65rem] uppercase tracking-[0.36em] text-[var(--mj-text-dim)]">
+        {label}…
+      </p>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────
+// Play panel — HUD scoreboard + foto + opciones
+// ───────────────────────────────────────────────────────────────
 function PlayPanel({
   round,
   roundNumber,
   totalRounds,
   correctCount,
-  answered,
   secondsLeft,
   reveal,
   onChoose,
@@ -337,86 +372,125 @@ function PlayPanel({
   roundNumber: number;
   totalRounds: number;
   correctCount: number;
-  answered: number;
   secondsLeft: number;
   reveal: RevealState | null;
   onChoose: (option: RoundOption) => void;
 }) {
   const progressPct = Math.max(0, Math.min(100, (secondsLeft / GAME_SECONDS) * 100));
   const lowTime = secondsLeft <= 10;
-  const failed = answered - correctCount;
+  const timerColor = lowTime ? "var(--mj-red)" : secondsLeft <= 20 ? "var(--mj-amber)" : "var(--mj-pitch)";
 
   return (
-    <div className="space-y-5">
-      {/* HUD: timer + aciertos + ronda */}
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <Clock
-            className={cn(
-              "size-4",
-              lowTime ? "text-[var(--color-danger)]" : "text-[var(--color-arena)]",
-            )}
-          />
-          <span
-            className={cn(
-              "font-display text-2xl tabular leading-none",
-              lowTime ? "text-[var(--color-danger)]" : "text-[var(--color-foreground)]",
-            )}
-          >
-            {secondsLeft}s
+    <div className="space-y-6">
+      {/* Scoreboard HUD */}
+      <div
+        className={cn(
+          "relative grid grid-cols-3 items-center gap-2 rounded-lg border bg-[var(--mj-bg-2)]/85 p-4 backdrop-blur-sm sm:p-5",
+          reveal == null
+            ? "border-[var(--mj-line)]"
+            : reveal.isCorrect
+              ? "border-[var(--mj-pitch)]/50"
+              : "border-[var(--mj-red)]/50",
+        )}
+      >
+        {/* Pista de "REC" parpadeante */}
+        <span className="absolute left-3 top-3 flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-[var(--mj-red)] mj-led-blink" />
+          <span className="font-mono text-[0.5rem] uppercase tracking-[0.32em] text-[var(--mj-text-dim)]">
+            Live
+          </span>
+        </span>
+
+        {/* Timer */}
+        <div className="flex flex-col items-center">
+          <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--mj-text-dim)]">
+            Tiempo
+          </span>
+          <span className="flex items-baseline gap-1">
+            <Clock3
+              className={cn("size-4 self-center", lowTime ? "animate-pulse" : "")}
+              style={{ color: timerColor }}
+            />
+            <span
+              className={cn(
+                "font-display text-5xl tabular leading-none sm:text-6xl",
+                lowTime ? "mj-glow-red" : secondsLeft <= 20 ? "mj-glow-amber" : "mj-glow-pitch",
+              )}
+              style={{ color: timerColor }}
+            >
+              {secondsLeft.toString().padStart(2, "0")}
+            </span>
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5">
-            <Target className="size-3.5 text-emerald-500" />
-            <span className="font-display text-lg tabular text-emerald-500">
-              {correctCount}
-            </span>
+        {/* Score */}
+        <div className="flex flex-col items-center border-x border-[var(--mj-line)]">
+          <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--mj-text-dim)]">
+            Aciertos
           </span>
-          {failed > 0 ? (
-            <span className="flex items-center gap-1 font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-              <X className="size-3" />
-              {failed}
-            </span>
-          ) : null}
+          <span className="font-display text-5xl tabular leading-none text-[var(--mj-pitch)] mj-glow-pitch sm:text-6xl">
+            {correctCount.toString().padStart(2, "0")}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+        {/* Round */}
+        <div className="flex flex-col items-center">
+          <span className="font-mono text-[0.55rem] uppercase tracking-[0.32em] text-[var(--mj-text-dim)]">
             Ronda
           </span>
-          <span className="font-display text-lg tabular">
-            {roundNumber}
-            <span className="text-[var(--color-muted-foreground)]"> / {totalRounds}</span>
+          <span className="font-display text-3xl tabular leading-none text-[var(--mj-text)] sm:text-4xl">
+            <span>{roundNumber.toString().padStart(2, "0")}</span>
+            <span className="text-[var(--mj-text-dim)] text-2xl">/{totalRounds.toString().padStart(2, "0")}</span>
           </span>
         </div>
       </div>
 
-      {/* Barra de tiempo */}
-      <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
+      {/* Barra de progreso del timer */}
+      <div className="h-[3px] w-full overflow-hidden rounded-full bg-[var(--mj-bg-2)]">
         <div
-          className={cn(
-            "h-full transition-[width] duration-200 ease-linear",
-            lowTime ? "bg-[var(--color-danger)]" : "bg-[var(--color-arena)]",
-          )}
-          style={{ width: `${progressPct}%` }}
+          className="h-full transition-[width] duration-200 ease-linear"
+          style={{
+            width: `${progressPct}%`,
+            backgroundColor: timerColor,
+            boxShadow: `0 0 12px ${timerColor}`,
+          }}
         />
       </div>
 
-      {/* Foto */}
+      {/* Foto del jugador con frame "CRT" */}
       <div
+        key={round.roundId}
         className={cn(
-          "relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl border bg-[var(--color-surface-2)] transition-colors",
+          "relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl border-2 bg-[var(--mj-bg-3)] transition-colors mj-slam-in",
           reveal == null
-            ? "border-[var(--color-border)]"
+            ? "border-[var(--mj-line-strong)]"
             : reveal.isCorrect
-              ? "border-emerald-500/70 ring-2 ring-emerald-500/40"
-              : "border-[var(--color-danger)]/70 ring-2 ring-[var(--color-danger)]/40",
+              ? "border-[var(--mj-pitch)] mj-correct-pulse"
+              : "border-[var(--mj-red)] mj-wrong-shake",
         )}
       >
+        {/* Esquinas decorativas tipo "viewfinder" */}
+        {([
+          "left-2 top-2 border-l-2 border-t-2",
+          "right-2 top-2 border-r-2 border-t-2",
+          "left-2 bottom-2 border-l-2 border-b-2",
+          "right-2 bottom-2 border-r-2 border-b-2",
+        ] as const).map((c, i) => (
+          <span
+            key={i}
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute size-4",
+              c,
+              reveal == null
+                ? "border-[var(--mj-pitch)]/50"
+                : reveal.isCorrect
+                  ? "border-[var(--mj-pitch)]"
+                  : "border-[var(--mj-red)]",
+            )}
+          />
+        ))}
         <Image
-          key={round.roundId}
           src={round.photoUrl}
           alt=""
           fill
@@ -429,36 +503,38 @@ function PlayPanel({
           <span
             aria-hidden
             className={cn(
-              "absolute right-3 top-3 grid size-10 place-items-center rounded-full text-white shadow-lg",
-              reveal.isCorrect ? "bg-emerald-500" : "bg-[var(--color-danger)]",
+              "absolute right-3 top-3 z-10 grid size-12 place-items-center rounded-full shadow-xl",
+              reveal.isCorrect ? "bg-[var(--mj-pitch)]" : "bg-[var(--mj-red)]",
             )}
+            style={{
+              boxShadow: `0 0 24px ${reveal.isCorrect ? "var(--mj-pitch)" : "var(--mj-red)"}`,
+            }}
           >
-            {reveal.isCorrect ? <Check className="size-5" /> : <X className="size-5" />}
+            {reveal.isCorrect ? (
+              <Check className="size-6 text-black" strokeWidth={3} />
+            ) : (
+              <X className="size-6 text-white" strokeWidth={3} />
+            )}
           </span>
         ) : null}
       </div>
 
       {/* Opciones */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
         {round.options.map((opt) => {
           const isChosen = reveal?.chosenPlayerId === opt.playerId;
           const isCorrect = opt.playerId === round.correctPlayerId;
-          // Durante el reveal mostramos:
-          // - chosen: verde si correcto, rojo si no.
-          // - correct (no chosen): borde verde tenue para que el usuario
-          //   vea cuál era la buena cuando ha fallado.
-          // - resto: opacidad reducida.
           let stateClass = "";
           if (reveal != null) {
             if (isChosen) {
               stateClass = reveal.isCorrect
-                ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                : "border-[var(--color-danger)] bg-[var(--color-danger)]/10 text-[var(--color-danger)]";
+                ? "border-[var(--mj-pitch)] bg-[color-mix(in_oklch,var(--mj-pitch)_18%,var(--mj-bg-2))] text-[var(--mj-pitch)]"
+                : "border-[var(--mj-red)] bg-[color-mix(in_oklch,var(--mj-red)_18%,var(--mj-bg-2))] text-[var(--mj-red)]";
             } else if (isCorrect && !reveal.isCorrect) {
               stateClass =
-                "border-emerald-500/70 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300";
+                "border-[var(--mj-pitch)]/70 bg-[color-mix(in_oklch,var(--mj-pitch)_10%,var(--mj-bg-2))] text-[var(--mj-pitch)]";
             } else {
-              stateClass = "opacity-60";
+              stateClass = "opacity-40";
             }
           }
           return (
@@ -468,23 +544,25 @@ function PlayPanel({
               disabled={reveal != null}
               onClick={() => onChoose(opt)}
               className={cn(
-                "group flex items-center gap-3 rounded-lg border px-4 py-3.5 text-left transition disabled:cursor-default",
+                "group flex items-center gap-3 rounded-lg border-2 px-4 py-4 text-left font-mono uppercase tracking-[0.04em] transition disabled:cursor-default",
                 reveal == null
-                  ? "border-[var(--color-border)] bg-[var(--color-surface)] hover:-translate-y-0.5 hover:border-[var(--color-arena)]/60 hover:shadow-[var(--shadow-elev-2)]"
-                  : "bg-[var(--color-surface)]",
+                  ? "border-[var(--mj-line)] bg-[var(--mj-bg-2)]/70 text-[var(--mj-text)] hover:-translate-y-0.5 hover:border-[var(--mj-pitch)] hover:bg-[var(--mj-bg-3)] hover:text-[var(--mj-pitch)]"
+                  : "bg-[var(--mj-bg-2)]/70",
                 stateClass,
               )}
             >
-              <TeamFlag code={opt.teamCode} size={28} />
-              <span className="truncate text-sm font-medium">{opt.name}</span>
+              <TeamFlag code={opt.teamCode} size={28} bare />
+              <span className="truncate text-[0.95rem] font-semibold normal-case tracking-tight">
+                {opt.name}
+              </span>
               {reveal != null && isChosen ? (
                 reveal.isCorrect ? (
-                  <Check className="ml-auto size-4 text-emerald-500" />
+                  <Check className="ml-auto size-4 shrink-0" />
                 ) : (
-                  <X className="ml-auto size-4 text-[var(--color-danger)]" />
+                  <X className="ml-auto size-4 shrink-0" />
                 )
               ) : reveal != null && isCorrect ? (
-                <Check className="ml-auto size-4 text-emerald-500" />
+                <Check className="ml-auto size-4 shrink-0" />
               ) : null}
             </button>
           );
@@ -494,6 +572,9 @@ function PlayPanel({
   );
 }
 
+// ───────────────────────────────────────────────────────────────
+// Result panel — pantalla final dentro del stage
+// ───────────────────────────────────────────────────────────────
 function ResultPanel({
   score,
   previousBest,
@@ -501,6 +582,7 @@ function ResultPanel({
   rank,
   totalParticipants,
   onPlayAgain,
+  onClose,
 }: {
   score: number;
   previousBest: number | null;
@@ -508,56 +590,79 @@ function ResultPanel({
   rank: number;
   totalParticipants: number;
   onPlayAgain: () => void;
+  onClose: () => void;
 }) {
   return (
-    <div className="space-y-6 rounded-xl border border-[var(--color-arena)]/30 bg-[color-mix(in_oklch,var(--color-arena)_4%,var(--color-surface))] p-8 text-center">
-      <div className="space-y-1">
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-          Tu puntuación
+    <div className="m-auto w-full max-w-md space-y-6 rounded-2xl border-2 border-[var(--mj-pitch)]/60 bg-[var(--mj-bg-2)]/90 p-8 text-center backdrop-blur-sm mj-stage-in">
+      <div className="space-y-2">
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.36em] text-[var(--mj-text-dim)]">
+          {improved ? "Récord nuevo" : "Final · Partida"}
         </p>
-        <p className="font-display text-7xl tabular leading-none text-[var(--color-arena)] glow-arena">
-          {score}
+        <p
+          className="font-display text-[7rem] tabular leading-none text-[var(--mj-pitch)] mj-glow-pitch sm:text-[8rem]"
+          style={{ letterSpacing: "-0.04em" }}
+        >
+          {score.toString().padStart(2, "0")}
         </p>
-        <p className="font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[var(--mj-text-dim)]">
           {improved
             ? previousBest != null
-              ? `Récord nuevo · superas tu mejor de ${previousBest}`
-              : "Tu primer registro · ya estás en el ranking"
-            : `Tu mejor sigue siendo ${previousBest ?? score}`}
+              ? `superas tu mejor de ${previousBest}`
+              : "tu primer registro"
+            : `tu mejor sigue siendo ${previousBest ?? score}`}
         </p>
       </div>
 
-      <div className="mx-auto grid max-w-md grid-cols-2 gap-3">
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-left">
-          <div className="flex items-center gap-2 text-[var(--color-arena)]">
-            <Trophy className="size-4" />
-            <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em]">Posición</p>
-          </div>
-          <p className="mt-1 font-display text-3xl tabular">#{rank}</p>
-        </div>
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-left">
-          <div className="flex items-center gap-2 text-[var(--color-arena)]">
-            <Users2 className="size-4" />
-            <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em]">Jugadores</p>
-          </div>
-          <p className="mt-1 font-display text-3xl tabular">{totalParticipants}</p>
-        </div>
+      <div className="grid grid-cols-2 gap-2">
+        <StatChip icon={<Trophy className="size-4" />} label="Posición" value={`#${rank}`} />
+        <StatChip
+          icon={<Users2 className="size-4" />}
+          label="Jugadores"
+          value={totalParticipants}
+        />
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <Button size="lg" onClick={onPlayAgain}>
-          Jugar otra vez
-        </Button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+        <button
+          type="button"
+          onClick={onPlayAgain}
+          className="inline-flex items-center justify-center gap-2 rounded-md border-2 border-[var(--mj-pitch)] bg-[var(--mj-pitch)] px-5 py-3 font-mono text-[0.7rem] font-bold uppercase tracking-[0.24em] text-black transition hover:-translate-y-0.5"
+        >
+          <Zap className="size-4" />
+          Otra partida
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex items-center justify-center gap-2 rounded-md border-2 border-[var(--mj-line-strong)] bg-transparent px-5 py-3 font-mono text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[var(--mj-text)] transition hover:border-[var(--mj-pitch)] hover:text-[var(--mj-pitch)]"
+        >
+          Ver ranking
+        </button>
       </div>
     </div>
   );
 }
 
-/**
- * Prefetch silencioso de fotos en background. Usamos `Image` constructor
- * para que el navegador las cachee antes de que el jugador llegue a la
- * ronda — evita el flicker entre cara y cara.
- */
+function StatChip({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-md border border-[var(--mj-line)] bg-[var(--mj-bg-3)] p-3 text-left">
+      <div className="flex items-center gap-1.5 text-[var(--mj-pitch)]">
+        {icon}
+        <p className="font-mono text-[0.55rem] uppercase tracking-[0.28em]">{label}</p>
+      </div>
+      <p className="mt-1 font-display text-3xl tabular text-[var(--mj-text)]">{value}</p>
+    </div>
+  );
+}
+
 function preloadPhotos(rounds: Round[]) {
   if (typeof window === "undefined") return;
   for (const r of rounds) {

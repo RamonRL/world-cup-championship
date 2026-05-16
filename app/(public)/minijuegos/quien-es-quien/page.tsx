@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { PageHeader } from "@/components/shell/page-header";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { findGame } from "../_lib/games";
 import { loadMyBestScore, loadScoreboard } from "../_lib/scores";
@@ -20,6 +19,7 @@ export default async function QuienEsQuienPage() {
   const game = findGame(SLUG)!;
   const me = await getCurrentUser();
   const myIdentityKey = me?.id ?? null;
+  const Icon = game.icon;
 
   const [rows, myBest] = await Promise.all([
     loadScoreboard(game.gameKey, 50),
@@ -30,23 +30,41 @@ export default async function QuienEsQuienPage() {
     <div className="space-y-8">
       <Link
         href="/minijuegos"
-        className="inline-flex items-center gap-1.5 font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-foreground)]"
+        className="inline-flex items-center gap-1.5 font-mono text-[0.65rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)] transition hover:text-[var(--color-pitch)]"
       >
         <ArrowLeft className="size-3.5" />
-        Volver a minijuegos
+        Volver al lobby
       </Link>
 
-      <PageHeader
-        eyebrow="Minijuegos"
-        title={game.name}
-        description={game.description}
-      />
+      {/* Game header: icono cabinet + tagline + título */}
+      <header className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 sm:p-8">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-pitch)] to-transparent"
+        />
+        <div className="relative flex items-start gap-4">
+          <div className="grid size-16 shrink-0 place-items-center rounded-lg border border-[var(--color-pitch)]/30 bg-[color-mix(in_oklch,var(--color-pitch)_4%,var(--color-surface-2))]">
+            <Icon className="size-8 text-[var(--color-pitch)]" />
+          </div>
+          <div className="space-y-2">
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
+              {game.tagline}
+            </p>
+            <h1 className="font-display text-4xl leading-[0.92] tracking-tight sm:text-5xl">
+              {game.name}
+            </h1>
+            <p className="max-w-xl font-editorial text-sm italic text-[var(--color-muted-foreground)]">
+              {game.description}
+            </p>
+          </div>
+        </div>
+      </header>
 
       <QuienEsQuienClient myIdentityKey={myIdentityKey} myBestScore={myBest} />
 
       <section className="space-y-3">
         <div className="flex items-center gap-3">
-          <span className="h-px w-6 bg-[var(--color-arena)]" />
+          <span className="size-1.5 rounded-full bg-[var(--color-pitch)] mj-led-blink" />
           <h2 className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
             Ranking global · top {rows.length}
           </h2>
@@ -57,7 +75,7 @@ export default async function QuienEsQuienPage() {
           highlightIdentityKey={myIdentityKey}
           emptyMessage="Aún no hay puntuaciones. Sé el primero en jugar."
         />
-        <p className="text-center font-mono text-[0.6rem] uppercase tracking-[0.24em] text-[var(--color-muted-foreground)]">
+        <p className="text-center font-mono text-[0.55rem] uppercase tracking-[0.24em] text-[var(--color-muted-foreground)]">
           Solo se guarda tu mejor puntuación
         </p>
       </section>
