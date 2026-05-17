@@ -24,7 +24,7 @@ import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { requireUser } from "@/lib/auth/guards";
 import { currentLeagueId } from "@/lib/leagues";
 import { formatDateTime } from "@/lib/utils";
-import { loadActivityFeed } from "@/lib/activity-feed";
+import { ActivityFeedCard } from "./activity-feed-card";
 import { ImportPredictionsBanner } from "@/components/predictions/import-banner";
 import { loadOpenMatchdays, type OpenMatchdayEntry } from "@/lib/deadlines";
 import { getBracketStatus } from "@/lib/bracket-state";
@@ -279,11 +279,10 @@ export default async function DashboardPage() {
   ]);
   const myPoints = myPointsRows[0]?.total ?? 0;
 
-  const activity = await safe(
-    myPoints > 0 ? loadActivityFeed(me.id, leagueId, 8) : Promise.resolve([]),
-    [] as Awaited<ReturnType<typeof loadActivityFeed>>,
-    "activity",
-  );
+  // Activity feed se ha movido a un async Server Component dentro de
+  // <Suspense> más abajo — descongestiona el critical path: la página
+  // hace su primer paint sin esperar a `loadActivityFeed`, que streamea
+  // su HTML cuando esté listo.
   const liveMatch = liveMatchRows[0] ?? null;
   const sorted = leaderboardEntries;
   const totalParticipants = computeRanking ? sorted.length : leagueMemberCountFallback;
@@ -664,39 +663,12 @@ export default async function DashboardPage() {
       </section>
       ) : null}
 
-      {/* Activity feed — appears once the user has earned points */}
-      {activity.length > 0 ? (
-        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <header className="flex items-center justify-between gap-3 pb-3">
-            <div className="flex items-center gap-3">
-              <span className="h-px w-6 bg-[var(--color-arena)]" />
-              <p className="font-mono text-[0.6rem] uppercase tracking-[0.32em] text-[var(--color-muted-foreground)]">
-                Últimos puntos · tu ledger
-              </p>
-            </div>
-            <p className="font-display text-xl tracking-tight">+{myPoints}</p>
-          </header>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {activity.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{a.label}</p>
-                  {a.detail ? (
-                    <p className="truncate font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-muted-foreground)]">
-                      {a.detail}
-                    </p>
-                  ) : null}
-                </div>
-                <span className="font-display tabular text-2xl text-[var(--color-arena)] glow-arena">
-                  +{a.points}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {/* Activity feed — streamed via Suspense (su query no bloquea el
+          shell del dashboard). Solo aparece si el usuario tiene puntos. */}
+      {myPoints > 0 ? (
+        <Suspense fallback={null}>
+          <ActivityFeedCard userId={me.id} leagueId={leagueId} myPoints={myPoints} />
+        </Suspense>
       ) : null}
 
       {/* Body — resultados recientes + podio. Layout 2 columnas con paneles

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
@@ -8,6 +9,18 @@ import {
   matches,
 } from "@/lib/db/schema";
 import { compareForRanking } from "@/lib/scoring/tiebreaker";
+
+/**
+ * TTL del leaderboard cacheado a nivel de liga. Suficientemente corto para
+ * que los puntos se vean "en directo" durante una jornada de partidos, y
+ * suficientemente largo para que 5 usuarios concurrentes de la misma liga
+ * pegando al dashboard compartan una sola query agregada.
+ *
+ * Si el admin recomputa puntos, los cambios tardan como mucho este TTL en
+ * verse. Para invalidar inmediato, llamar `revalidateTag("leaderboard")`
+ * tras el recompute.
+ */
+const LEADERBOARD_CACHE_SECONDS = 30;
 
 export type LeaderboardEntry = {
   userId: string;
@@ -34,6 +47,24 @@ export type LeaderboardEntry = {
 export async function loadLeaderboard(
   leagueId: number,
   options: { withChampionCorrect?: boolean } = {},
+): Promise<LeaderboardEntry[]> {
+  // Cacheamos por (leagueId, withChampionCorrect) durante 30s. Cinco
+  // usuarios concurrentes de la misma liga → una sola query agregada en
+  // vez de cinco. El champion-correct cambia solo cuando finaliza la
+  // Final, así que lo metemos en la clave de caché para no servir un
+  // resultado pre-resolución cuando alguien pide la versión "con campeón".
+  const flag = options.withChampionCorrect ? "1" : "0";
+  const cached = unstable_cache(
+    () => loadLeaderboardRaw(leagueId, options),
+    ["leaderboard", String(leagueId), flag],
+    { revalidate: LEADERBOARD_CACHE_SECONDS, tags: ["leaderboard", `leaderboard:${leagueId}`] },
+  );
+  return cached();
+}
+
+async function loadLeaderboardRaw(
+  leagueId: number,
+  options: { withChampionCorrect?: boolean },
 ): Promise<LeaderboardEntry[]> {
   try {
     return await loadLeaderboardUnsafe(leagueId, options);
