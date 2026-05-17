@@ -8,6 +8,10 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/shell/empty-state";
 import { BreadcrumbLD } from "@/components/seo/jsonld";
 
+// Listado de selecciones — el set de equipos cambia rarísimo, cachear 1 h
+// es seguro y libera Postgres del tráfico de visitantes/Googlebot.
+export const revalidate = 3600;
+
 export const metadata = {
   title: "Selecciones",
   description:

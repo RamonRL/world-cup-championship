@@ -22,7 +22,10 @@ export const metadata = {
     url: "/calendario",
   },
 };
-export const dynamic = "force-dynamic";
+// El calendario cambia solo cuando un admin edita un partido (raro) o se
+// guarda un resultado. `force-dynamic` era una pegada gratuita a Postgres
+// en cada navegación; ISR a 5 min refresca de sobra y libera el pool.
+export const revalidate = 300;
 
 const STAGE_LABEL: Record<string, string> = {
   group: "Fase de grupos",

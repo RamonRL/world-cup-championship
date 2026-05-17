@@ -6,6 +6,9 @@ import { PageHeader } from "@/components/shell/page-header";
 import { BreadcrumbLD } from "@/components/seo/jsonld";
 import { InstagramIcon, TikTokIcon, XIcon } from "@/components/icons/social";
 
+// Contacto es estático: cacheamos generosamente (24 h).
+export const revalidate = 86400;
+
 export const metadata = {
   title: "Contacto",
   description:

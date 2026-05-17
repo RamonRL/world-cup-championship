@@ -27,10 +27,15 @@ declare global {
 //   - idle_timeout=20s → reciclar conexiones idle (evita stale connections
 //     entre invocations de Lambda).
 //   - max_lifetime=30 min → reciclar duro periódicamente.
+//
+// Pool: `max: 25` — Supabase free permite 15 conexiones simultáneas en el
+// transaction pooler. Subimos a 25 para tener headroom cuando el dashboard
+// dispara su `Promise.all` de ~14 queries; el cliente abre conexiones
+// perezosamente hasta el límite de Supabase y encola más allá sin caer.
 const client =
   globalThis.__pg ??
   postgres(connectionString, {
-    max: 10,
+    max: 25,
     prepare: false,
     connect_timeout: 5,
     idle_timeout: 20,

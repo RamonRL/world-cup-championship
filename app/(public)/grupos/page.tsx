@@ -8,6 +8,10 @@ import { PageHeader } from "@/components/shell/page-header";
 import { ArrowUpRight, Users } from "lucide-react";
 import { BreadcrumbLD } from "@/components/seo/jsonld";
 
+// Clasificación de grupos: cambia cuando finaliza un partido. ISR a 60s
+// la mantiene fresca sin pegar a Postgres en cada navegación.
+export const revalidate = 60;
+
 export const metadata = {
   title: "Grupos",
   description:

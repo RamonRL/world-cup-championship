@@ -9,6 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { BreadcrumbLD } from "@/components/seo/jsonld";
 import { findVenueByMatchVenue, VENUES } from "@/lib/seo/venues";
 
+// Sedes son contenido estático del torneo — cachear 1 hora reduce a casi
+// cero el hit a Postgres en esta ruta.
+export const revalidate = 3600;
+
 export const metadata = {
   title: "Sedes",
   description:

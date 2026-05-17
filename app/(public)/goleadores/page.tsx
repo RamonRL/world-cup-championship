@@ -8,6 +8,11 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { PageHeader } from "@/components/shell/page-header";
 import { BreadcrumbLD } from "@/components/seo/jsonld";
 
+// Goleadores cambia solo cuando un partido finaliza con goles. ISR a 60s
+// es indistinguible de tiempo real para el usuario y elimina el hit a
+// Postgres en cada visita.
+export const revalidate = 60;
+
 export const metadata = {
   title: "Goleadores",
   description:

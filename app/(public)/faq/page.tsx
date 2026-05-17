@@ -3,6 +3,9 @@ import { ArrowRight, HelpCircle, Mail } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { BreadcrumbLD, FAQPageLD } from "@/components/seo/jsonld";
 
+// FAQ es estático: cacheamos generosamente (24 h).
+export const revalidate = 86400;
+
 export const metadata = {
   title: "Preguntas frecuentes",
   description:
